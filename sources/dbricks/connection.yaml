@@ -1,0 +1,7 @@
+# This file was automatically generated
+name: dbricks
+type: databricks
+options:
+  host: adb-861632032696503.3.azuredatabricks.net
+  path: sql/protocolv1/o/861632032696503/0324-191510-7tfm86rk
+  port: 443

@@ -1,0 +1,1 @@
+SELECT * FROM visionzeroffice_dev.silver.crash_hexgrid
