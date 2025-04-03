@@ -1,4 +1,4 @@
 select 
     SMD
-from smd.smd_2023
+from dbricks.smd
 group by all

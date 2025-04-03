@@ -8,28 +8,28 @@ queries:
 ```sql unique_mode
 select 
     MODE
-from crashes.crashes
+from dbricks.crashes
 group by 1
 ```
 
 ```sql unique_severity
 select 
     SEVERITY
-from crashes.crashes
+from dbricks.crashes
 group by 1
 ```
 
 ```sql unique_wards
 select 
     NAME
-from wards.Wards_from_2022
+from dbricks.wards
 group by 1
 ```
 
 ```sql unique_hex
 select 
     GRID_ID
-from hexgrid.crash_hexgrid
+from dbricks.hexgrid
 group by 1
 ```
 
@@ -37,14 +37,14 @@ group by 1
 select 
     GIS_ID,
     ROUTENAME
-from hin.High_Injury_Network
+from dbricks.hin
 group by all
 ```
 
 ```sql unique_anc
 select 
     ANC
-from anc.anc_2023
+from dbricks.anc
 where ANC = '${params.ANC}'
 group by 1
 ```
@@ -68,7 +68,7 @@ group by 1
             SMD,
             SUM(COUNT) AS Injuries
         FROM 
-            crashes.crashes
+            dbricks.crashes
         WHERE 
             ANC = '${params.ANC}'
             AND MODE IN ${inputs.multi_mode_dd.value}
@@ -82,7 +82,7 @@ group by 1
         smd.SMD = subquery.SMD
     JOIN (
         SELECT DISTINCT SMD
-        FROM crashes.crashes
+        FROM dbricks.crashes
         WHERE ANC = '${params.ANC}'
     ) AS smd_anc
     ON 
@@ -98,7 +98,7 @@ group by 1
         FROM 
             dbricks.smd smd
         JOIN 
-            crashes.crashes crashes
+            dbricks.crashes crashes
         ON 
             smd.SMD = crashes.SMD
         WHERE 
@@ -112,7 +112,7 @@ group by 1
             SUM(crashes.COUNT) AS sum_count, 
             EXTRACT(YEAR FROM current_date) AS current_year
         FROM 
-            crashes.crashes
+            dbricks.crashes
         JOIN 
             unique_smd us 
         ON 
@@ -129,7 +129,7 @@ group by 1
             crashes.SMD, 
             SUM(crashes.COUNT) AS sum_count
         FROM 
-            crashes.crashes
+            dbricks.crashes
         JOIN 
             unique_smd us 
         ON 
@@ -159,6 +159,7 @@ group by 1
     )
     SELECT 
         mas.SMD,
+        '/smd/' || mas.SMD AS link,
         COALESCE(cy.sum_count, 0) AS current_year_sum, 
         COALESCE(py.sum_count, 0) AS prior_year_sum, 
         COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) AS difference,
@@ -215,37 +216,36 @@ group by 1
     description="*Only fatal"
 />
 
-<Tabs fullWidth=true>
-    <Tab label="Selected Period">
-        <Note>
-            Select an SMD to zoom in and see more details about the crashes within it.
-        </Note>
-        <BaseMap
-            height=500
-            startingZoom=14
-        >
-        <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true borderWidth=1.5
-            tooltip={[
-                {id: 'ROUTENAME'}
-            ]}
-        />
-        <Areas data={smd_map} height=650 startingZoom=13 geoJsonUrl='/smd_2023.geojson' geoId=SMD areaCol=SMD value=Injuries min=0 borderWidth=1.5 borderColor='#A9A9A9' link=link
-        />
-        </BaseMap>
-        <Note>
-            The purple lines represent DC's High Injury Network
-        </Note>
-    </Tab>
-    <Tab label="Year Over Year Difference">
-        <DataTable data={smd_yoy} sort="current_year_sum desc" wrapTitles=true rowShading=true totalRow=true>
-            <Column id=SMD title="SMD" totalAgg={`ANC ${unique_anc[0].ANC} Total`}/>
-            <Column id=current_year_sum title={`${smd_yoy[0].current_year} YTD`} />
-            <Column id=prior_year_sum title={`${smd_yoy[0].current_year - 1} YTD`}  />
-            <Column id=difference title="Diff" contentType=delta downIsGood=True />
-            <Column id=percentage_change fmt=pct0 title="% Diff" totalAgg={smd_yoy[0].total_percentage_change} totalFmt=pct0/> 
-        </DataTable>
-        <Note>
-            The table is sorted in descending order by default based on the <Value data={smd_yoy} column="current_year" fmt='####'/> YTD injuries.
-        </Note>
-    </Tab>
-</Tabs>
+### Injuries by SMD within ANC {params.ANC}
+
+<Note>
+    Select an SMD to zoom in and see more details about the crashes within it.
+</Note>
+<BaseMap
+    height=500
+    startingZoom=14
+>
+<Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true borderWidth=1.5
+    tooltip={[
+        {id: 'ROUTENAME'}
+    ]}
+/>
+<Areas data={smd_map} height=650 startingZoom=13 geoJsonUrl='/smd_2023.geojson' geoId=SMD areaCol=SMD value=Injuries min=0 borderWidth=1.5 borderColor='#A9A9A9' link=link
+/>
+</BaseMap>
+<Note>
+    The purple lines represent DC's High Injury Network
+</Note>
+
+#### Year Over Year Difference
+
+<DataTable data={smd_yoy} sort="current_year_sum desc" wrapTitles=true rowShading=true totalRow=true link=link>
+    <Column id=SMD title="SMD" totalAgg={`ANC ${unique_anc[0].ANC} Total`}/>
+    <Column id=current_year_sum title={`${smd_yoy[0].current_year} YTD`} />
+    <Column id=prior_year_sum title={`${smd_yoy[0].current_year - 1} YTD`}  />
+    <Column id=difference title="Diff" contentType=delta downIsGood=True />
+    <Column id=percentage_change fmt=pct0 title="% Diff" totalAgg={smd_yoy[0].total_percentage_change} totalFmt=pct0/> 
+</DataTable>
+<Note>
+    The table is sorted in descending order by default based on the <Value data={smd_yoy} column="current_year" fmt='####'/> YTD injuries.
+</Note>

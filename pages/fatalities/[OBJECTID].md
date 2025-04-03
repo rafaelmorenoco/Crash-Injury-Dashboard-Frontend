@@ -3,7 +3,7 @@ queries:
    - fatality: fatality.sql
 ---
 
-# <Value data={Tittle} column=Address/> - <Value data={Tittle} column=Date/>
+# <Value data={Tittle} column=ADDRESS/> - <Value data={Tittle} column=Date/>
 
 ```sql fatality_with_link
 select *, '/fatalities/' || OBJECTID as link
@@ -13,14 +13,7 @@ from ${fatality}
 ```sql unique_mode
 select 
     MODE
-from crashes.crashes
-group by 1
-```
-
-```sql unique_wards
-select 
-    NAME
-from wards.Wards_from_2022
+from dbricks.crashes
 group by 1
 ```
 
@@ -28,7 +21,7 @@ group by 1
 select 
     GIS_ID,
     ROUTENAME
-from hin.High_Injury_Network
+from dbricks.hin
 group by all
 ```
 
@@ -41,7 +34,7 @@ group by all
 
 ```sql Tittle
   SELECT 
-    Address,
+    ADDRESS,
     CONCAT(
           LPAD(EXTRACT(MONTH FROM REPORTDATE)::TEXT, 2, '0'), '/', 
           LPAD(EXTRACT(DAY FROM REPORTDATE)::TEXT, 2, '0'), '/', 
@@ -49,7 +42,7 @@ group by all
           LPAD(EXTRACT(HOUR FROM REPORTDATE)::TEXT, 2, '0'), ':', 
           LPAD(EXTRACT(MINUTE FROM REPORTDATE)::TEXT, 2, '0')
     ) AS Date
-  FROM crashes.crashes
+  FROM dbricks.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -66,7 +59,7 @@ group by all
           LPAD(EXTRACT(HOUR FROM REPORTDATE)::TEXT, 2, '0'), ':', 
           LPAD(EXTRACT(MINUTE FROM REPORTDATE)::TEXT, 2, '0')
       ) AS column_value
-  FROM crashes.crashes
+  FROM dbricks.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -75,7 +68,7 @@ group by all
   UNION ALL
 
   SELECT 'Mode', MODE::TEXT
-  FROM crashes.crashes
+  FROM dbricks.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -84,7 +77,7 @@ group by all
   UNION ALL
 
   SELECT 'CCN', CCN::TEXT
-  FROM crashes.crashes
+  FROM dbricks.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -92,8 +85,8 @@ group by all
 
   UNION ALL
 
-  SELECT 'Address', Address
-  FROM crashes.crashes
+  SELECT 'Address', ADDRESS
+  FROM dbricks.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -102,7 +95,7 @@ group by all
   UNION ALL
 
   SELECT 'Ward', WARD
-  FROM crashes.crashes
+  FROM dbricks.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -111,7 +104,7 @@ group by all
   UNION ALL
 
   SELECT 'Striking Vehicle', StrinkingVehicle
-  FROM crashes.crashes
+  FROM dbricks.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -120,7 +113,7 @@ group by all
   UNION ALL
 
   SELECT 'Second Striking Vehicle/Object', SecondStrikingVehicleObject
-  FROM crashes.crashes
+  FROM dbricks.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -129,7 +122,7 @@ group by all
   UNION ALL
 
   SELECT 'Site Visit Status', SiteVisitStatus
-  FROM crashes.crashes
+  FROM dbricks.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -138,7 +131,7 @@ group by all
   UNION ALL
 
   SELECT 'Factors Discussed at Site Visit', FactorsDiscussedAtSiteVisit
-  FROM crashes.crashes
+  FROM dbricks.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -147,7 +140,7 @@ group by all
 UNION ALL
 
   SELECT 'Actions Planned and Completed', ActionsPlannedAndCompleted
-  FROM crashes.crashes
+  FROM dbricks.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -156,7 +149,7 @@ UNION ALL
   UNION ALL
 
   SELECT 'Actions Under Consideration', ActionsUnderConsideration
-  FROM crashes.crashes
+  FROM dbricks.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -169,7 +162,7 @@ UNION ALL
       MODE,
       LATITUDE,
       LONGITUDE
-  from crashes.crashes
+  from dbricks.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and OBJECTID = '${params.OBJECTID}'
   and SEVERITY = 'Fatal'
@@ -193,39 +186,24 @@ UNION ALL
     selectAllByDefault=true
 />
 
-<!---
-<ButtonGroup
-    data={unique_mode}
-    name=multi_mode
-    value=MODE
-    defaultValue="Driver"
-/>
--->
-<Tabs fullWidth=true>
-    <Tab label="Placeholder 1">
-    <Grid cols=2>
-        <BaseMap
-          height=445
-          startingZoom=17
-          title="Fatality Location"
-          >
-          <Points data={incidents} lat=LATITUDE long=LONGITUDE value=MODE pointName=MODE colorPalette={['#d62828']}/>
-          <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true
-          tooltip={[
-            {id: 'ROUTENAME'}
-          ]}
-          />
-        </BaseMap>
-        <DataTable data={pivot_table} rows=all wrapTitles=true rowShading=true>
-          <Column id=column_name title="Fatality Details" wrap=true/>
-          <Column id=column_value title=" " wrap=true/>
-        </DataTable>
-        </Grid>
-        <Note>
-          The purple lines represent DC's High Injury Network
-        </Note>
-    </Tab>
-    <Tab label="Placeholder 2">
- 
-    </Tab>
-</Tabs>
+<Grid cols=2>
+    <BaseMap
+      height=445
+      startingZoom=17
+      title="Fatality Location"
+      >
+      <Points data={incidents} lat=LATITUDE long=LONGITUDE value=MODE pointName=MODE colorPalette={['#d62828']}/>
+      <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true
+      tooltip={[
+        {id: 'ROUTENAME'}
+      ]}
+      />
+    </BaseMap>
+    <DataTable data={pivot_table} rows=all wrapTitles=true rowShading=true>
+      <Column id=column_name title="Fatality Details" wrap=true/>
+      <Column id=column_value title=" " wrap=true/>
+    </DataTable>
+    </Grid>
+    <Note>
+      The purple lines represent DC's High Injury Network
+    </Note>

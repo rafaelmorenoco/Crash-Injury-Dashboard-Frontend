@@ -8,21 +8,14 @@ queries:
 ```sql unique_mode
 select 
     MODE
-from crashes.crashes
+from dbricks.crashes
 group by 1
 ```
 
 ```sql unique_severity
 select 
     SEVERITY
-from crashes.crashes
-group by 1
-```
-
-```sql unique_wards
-select 
-    NAME
-from wards.Wards_from_2022
+from dbricks.crashes
 group by 1
 ```
 
@@ -32,7 +25,7 @@ group by 1
             WHEN SMD LIKE '3-4G%' THEN '3-4G'
             ELSE SUBSTRING(SMD, 1, 2)
         END AS ANC
-    FROM smd.smd_2023
+    FROM dbricks.smd
     WHERE SMD = '${params.SMD}'
     GROUP BY 1;
 ```
@@ -41,14 +34,14 @@ group by 1
 select 
     GIS_ID,
     ROUTENAME
-from hin.High_Injury_Network
+from dbricks.hin
 group by all
 ```
 
 ```sql unique_smd
 select 
     SMD
-from smd.smd_2023
+from dbricks.smd
 where SMD = '${params.SMD}'
 group by 1
 ```
@@ -59,7 +52,7 @@ group by 1
       SEVERITY,
       MODE,
       sum(COUNT) as Count
-  from crashes.crashes
+  from dbricks.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and SMD = '${params.SMD}'
   and SEVERITY IN ${inputs.multi_severity.value}
@@ -73,8 +66,10 @@ group by 1
       MODE,
       SEVERITY,
       LATITUDE,
-      LONGITUDE
-  from crashes.crashes
+      LONGITUDE,
+      REPORTDATE,
+      ADDRESS
+  from dbricks.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   --and SMD = '${params.SMD}'
   and SEVERITY IN ${inputs.multi_severity.value}
@@ -87,7 +82,7 @@ group by 1
       SMD,
       sum(COUNT) as Incident_Per_Hex,
       '/smd/' || SMD as link
-  from crashes.crashes
+  from dbricks.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and SEVERITY IN ${inputs.multi_severity.value}
   and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'
@@ -97,24 +92,24 @@ group by 1
 
 ```sql anc_map
 SELECT 
-    smd_2023.SMD,
-    '/smd/' || smd_2023.SMD AS link,
+    smd.SMD,
+    '/smd/' || smd.SMD AS link,
     COALESCE(subquery.Injuries, 0) AS Injuries
 FROM 
-    smd.smd_2023
+    dbricks.smd
 LEFT JOIN (
     SELECT
         SMD,
         SUM(COUNT) AS Injuries
     FROM 
-        crashes.crashes
+        dbricks.crashes
     WHERE 
         ANC = (SELECT 
             CASE 
                 WHEN SMD LIKE '3-4G%' THEN '3-4G'
                 ELSE SUBSTRING(SMD, 1, 2)
             END AS ANC
-        FROM smd.smd_2023
+        FROM dbricks.smd
         WHERE SMD = '${params.SMD}'
         GROUP BY 1)
         AND MODE IN ${inputs.multi_mode_dd.value}
@@ -125,23 +120,23 @@ LEFT JOIN (
         SMD
 ) AS subquery
 ON 
-    smd_2023.SMD = subquery.SMD
+    smd.SMD = subquery.SMD
 JOIN (
     SELECT DISTINCT SMD
-    FROM crashes.crashes
+    FROM dbricks.crashes
     WHERE ANC = (SELECT 
         CASE 
             WHEN SMD LIKE '3-4G%' THEN '3-4G'
             ELSE SUBSTRING(SMD, 1, 2)
         END AS ANC
-    FROM smd.smd_2023
+    FROM dbricks.smd
     WHERE SMD = '${params.SMD}'
     GROUP BY 1)
 ) AS smd_anc
 ON 
-    smd_2023.SMD = smd_anc.SMD
+    smd.SMD = smd_anc.SMD
 ORDER BY 
-    smd_2023.SMD;
+    smd.SMD;
 ```
 
 <DateRange
@@ -175,7 +170,7 @@ ORDER BY
         <Note>
             To navigate to another SMD within ANC <Value data={unique_anc} column="ANC"/> go to the "Selected ANC" tab above the table.
         </Note>
-        <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 subtitle='Injury Table'>
+        <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 subtitle='Injury Table' rowShading=true>
           <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total"/>
           <Column id=SEVERITY totalAgg="-"/>
           <Column id=MODE totalAgg='{inputs.multi_mode}'/>
@@ -188,7 +183,12 @@ ORDER BY
           height=500
           startingZoom=15
         >
-          <Points data={incidents} lat=LATITUDE long=LONGITUDE value=SEVERITY pointName=MODE opacity=1 colorPalette={['#fcbf49','#f77f00','#d62828']} ignoreZoom=true/>
+          <Points data={incidents} lat=LATITUDE long=LONGITUDE value=SEVERITY pointName=MODE opacity=1 colorPalette={['#fcbf49','#f77f00','#d62828']} ignoreZoom=true
+            tooltip={[
+                {id:'MODE', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
+                {id:'REPORTDATE', showColumnName:false, fmt:'mm/dd/yy hh:mm'},
+                {id:'ADDRESS', showColumnName:false, fmt:'id'}
+            ]}/>
           <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ borderWidth=1.5 ignoreZoom=true
           tooltip={[
                 {id: 'ROUTENAME'}

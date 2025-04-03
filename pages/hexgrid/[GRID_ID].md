@@ -8,28 +8,21 @@ queries:
 ```sql unique_mode
 select 
     MODE
-from crashes.crashes
+from dbricks.crashes
 group by 1
 ```
 
 ```sql unique_severity
 select 
     SEVERITY
-from crashes.crashes
-group by 1
-```
-
-```sql unique_wards
-select 
-    NAME
-from wards.Wards_from_2022
+from dbricks.crashes
 group by 1
 ```
 
 ```sql unique_hex
 select 
     GRID_ID
-from hexgrid.crash_hexgrid
+from dbricks.hexgrid
 where GRID_ID = '${params.GRID_ID}'
 group by 1
 ```
@@ -38,7 +31,7 @@ group by 1
 select 
     GIS_ID,
     ROUTENAME
-from hin.High_Injury_Network
+from dbricks.hin
 group by all
 ```
 
@@ -48,7 +41,7 @@ group by all
       SEVERITY,
       MODE,
       sum(COUNT) as Count
-  from crashes.crashes
+  from dbricks.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and GRID_ID = '${params.GRID_ID}'
   and SEVERITY IN ${inputs.multi_severity.value}
@@ -63,7 +56,7 @@ group by all
       SEVERITY,
       LATITUDE,
       LONGITUDE
-  from crashes.crashes
+  from dbricks.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   --and GRID_ID = '${params.GRID_ID}'
   and SEVERITY IN ${inputs.multi_severity.value}
@@ -76,7 +69,7 @@ group by all
       GRID_ID,
       sum(COUNT) as Incident_Per_Hex,
       '/hexgrid/' || GRID_ID as link
-  from crashes.crashes
+  from dbricks.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and SEVERITY IN ${inputs.multi_severity.value}
   and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'

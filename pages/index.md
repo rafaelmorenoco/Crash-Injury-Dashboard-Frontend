@@ -30,14 +30,14 @@ group by 1
 select 
     NAME,
     WARD_ID
-from wards.Wards_from_2022
+from dbricks.wards
 group by all
 ```
 
 ```sql unique_hex
 select 
     GRID_ID
-from hexgrid.crash_hexgrid
+from dbricks.hexgrid
 group by 1
 ```
 
@@ -45,21 +45,21 @@ group by 1
 select 
     GIS_ID,
     ROUTENAME
-from hin.High_Injury_Network
+from dbricks.hin
 group by all
 ```
 
 ```sql unique_anc
 select 
     ANC
-from anc.anc_2023
+from dbricks.anc
 group by 1
 ```
 
 ```sql unique_smd
 select 
     SMD
-from smd.smd_2023
+from dbricks.smd
 group by 1
 ```
 
@@ -237,7 +237,7 @@ group by 1
         COALESCE(SUM(c.COUNT), 0) AS Injuries,
         '/hexgrid/' || h.GRID_ID AS link
     FROM
-        hexgrid.crash_hexgrid h
+        dbricks.hexgrid h
     LEFT JOIN
         dbricks.crashes c ON h.GRID_ID = c.GRID_ID
         AND c.MODE IN ${inputs.multi_mode_dd.value}
@@ -252,7 +252,7 @@ group by 1
         w.WARD_ID AS WARD,
         COALESCE(SUM(c.COUNT), 0) AS Injuries
     FROM
-        wards.Wards_from_2022 w
+        dbricks.wards w
     LEFT JOIN
         dbricks.crashes c
     ON
@@ -272,7 +272,7 @@ group by 1
         COALESCE(SUM(c.COUNT), 0) AS Injuries,
         '/anc/' || a.ANC AS link
     FROM
-        anc.anc_2023 a
+        dbricks.anc a
     LEFT JOIN
         dbricks.crashes c ON a.ANC = c.ANC
         AND c.MODE IN ${inputs.multi_mode_dd.value}
@@ -527,7 +527,7 @@ group by 1
         SELECT 
             ANC 
         FROM 
-            anc.anc_2023 
+            dbricks.anc 
         GROUP BY 
             ANC
     ),
@@ -567,6 +567,7 @@ group by 1
     )
     SELECT 
         mas.ANC,
+        '/anc/' || mas.ANC AS link,
         COALESCE(cy.sum_count, 0) as current_year_sum, 
         COALESCE(py.sum_count, 0) as prior_year_sum, 
         COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) as difference,
@@ -594,7 +595,7 @@ group by 1
         SELECT 
             WARD_ID AS WARD 
         FROM 
-            wards.Wards_from_2022
+            dbricks.wards
         GROUP BY 
             WARD_ID
     ),
@@ -866,7 +867,7 @@ group by 1
     <Column id=difference title="Diff" contentType=delta downIsGood=True />
     <Column id=percentage_change fmt=pct title="% Diff" totalAgg={ward_yoy[0].total_percentage_change} totalFmt=pct/> 
 </DataTable>
-<DataTable data={anc_yoy} sort="current_year_sum desc" search=true wrapTitles=true rowShading=true>
+<DataTable data={anc_yoy} sort="current_year_sum desc" search=true wrapTitles=true rowShading=true link=link>
     <Column id=ANC title="ANC"/>
     <Column id=current_year_sum title={`${yoy_mode[0].current_year} YTD`} />
     <Column id=prior_year_sum title={`${yoy_mode[0].current_year - 1} YTD`}  />

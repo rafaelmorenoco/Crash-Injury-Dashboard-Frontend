@@ -1,4 +1,4 @@
 select 
     GRID_ID
-from hexgrid.crash_hexgrid
+from dbricks.hexgrid
 group by all

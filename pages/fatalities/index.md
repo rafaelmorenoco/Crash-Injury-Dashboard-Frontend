@@ -24,7 +24,7 @@ from ${fatality}
 ```sql unique_mode
 select 
     MODE
-from crashes.crashes
+from dbricks.crashes
 group by 1
 ```
 
@@ -41,7 +41,7 @@ group by 1
 select 
     GIS_ID,
     ROUTENAME
-from hin.High_Injury_Network
+from dbricks.hin
 group by all
 ```
 
@@ -50,7 +50,7 @@ group by all
         SELECT DISTINCT 
             SEVERITY 
         FROM 
-            crashes.crashes
+            dbricks.crashes
     ), 
     current_year AS (
         SELECT 
@@ -58,7 +58,7 @@ group by all
             sum(COUNT) as sum_count,
             extract(year from current_date) as current_year
         FROM 
-            crashes.crashes 
+            dbricks.crashes 
         WHERE 
             SEVERITY = 'Fatal'
             AND REPORTDATE >= date_trunc('year', current_date)
@@ -71,7 +71,7 @@ group by all
             sum(COUNT) as sum_count,
             extract(year from current_date - interval '1 year') as year_prior
         FROM 
-            crashes.crashes 
+            dbricks.crashes 
         WHERE 
             SEVERITY = 'Fatal'
             AND REPORTDATE >= (date_trunc('year', current_date) - interval '1 year')
@@ -131,9 +131,9 @@ group by all
       LONGITUDE,
       MODE,
       SEVERITY,
-      Address,
+      ADDRESS,
       '/fatalities/' || OBJECTID AS link
-  from crashes.crashes
+  from dbricks.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and SEVERITY = 'Fatal'
   and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'
@@ -165,7 +165,7 @@ group by all
 <DataTable data={inc_map} link=link wrapTitles=true rowShading=true>
     <Column id=REPORTDATE title="Date" fmt='mm/dd/yy hh:mm' wrap=true/>
     <Column id=MODE title="Mode" wrap=true/>
-    <Column id=Address wrap=true/>
+    <Column id=ADDRESS wrap=true/>
 </DataTable>
 
 
@@ -180,7 +180,7 @@ group by all
     tooltip={[
         {id:'MODE', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
         {id:'REPORTDATE', showColumnName:false, fmt:'mm/dd/yy hh:mm'},
-        {id:'Address', showColumnName:false, fmt:'id'}
+        {id:'ADDRESS', showColumnName:false, fmt:'id'}
     ]}
     />
     <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true
