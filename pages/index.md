@@ -769,7 +769,9 @@ group by 1
     ]}
     />
 </BaseMap>
-
+<Note>
+   The purple lines represent DC's High Injury Network  
+</Note>
 <Note>
      
 </Note>
