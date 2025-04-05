@@ -15,14 +15,14 @@ As of yesterday <Value data={yesterday} column="Yesterday"/> there <Value data={
 ```sql unique_mode
 select 
     MODE
-from dbricks.crashes
+from crashes.crashes
 group by 1
 ```
 
 ```sql unique_severity
 select 
     SEVERITY
-from dbricks.crashes
+from crashes.crashes
 group by 1
 ```
 
@@ -30,14 +30,14 @@ group by 1
 select 
     NAME,
     WARD_ID
-from dbricks.wards
+from wards.wards_2022
 group by all
 ```
 
 ```sql unique_hex
 select 
     GRID_ID
-from dbricks.hexgrid
+from hexgrid.crash_hexgrid
 group by 1
 ```
 
@@ -45,21 +45,21 @@ group by 1
 select 
     GIS_ID,
     ROUTENAME
-from dbricks.hin
+from hin.hin
 group by all
 ```
 
 ```sql unique_anc
 select 
     ANC
-from dbricks.anc
+from anc.anc_2023
 group by 1
 ```
 
 ```sql unique_smd
 select 
     SMD
-from dbricks.smd
+from smd.smd_2023
 group by 1
 ```
 
@@ -77,14 +77,14 @@ group by 1
         SELECT DISTINCT
             MODE,
             SEVERITY
-        FROM dbricks.crashes
+        FROM crashes.crashes
     ),
     counts AS (
         SELECT
             MODE,
             SEVERITY,
             SUM(COUNT) AS sum_count
-        FROM dbricks.crashes
+        FROM crashes.crashes
         WHERE SEVERITY IN ${inputs.multi_severity.value}
         AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
         GROUP BY MODE, SEVERITY
@@ -133,7 +133,7 @@ group by 1
             END AS day_number,
             LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
             SUM(COUNT) AS sum_count
-        FROM dbricks.crashes
+        FROM crashes.crashes
         WHERE MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
         AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
@@ -163,7 +163,7 @@ group by 1
         SELECT
             LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
             SUM(COUNT) AS sum_count
-        FROM dbricks.crashes
+        FROM crashes.crashes
         WHERE MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
         AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
@@ -213,7 +213,7 @@ group by 1
                 WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
             END AS day_number,
             SUM(COUNT) AS sum_count
-        FROM dbricks.crashes
+        FROM crashes.crashes
         WHERE MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
         AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
@@ -237,9 +237,9 @@ group by 1
         COALESCE(SUM(c.COUNT), 0) AS Injuries,
         '/hexgrid/' || h.GRID_ID AS link
     FROM
-        dbricks.hexgrid h
+        hexgrid.crash_hexgrid h
     LEFT JOIN
-        dbricks.crashes c ON h.GRID_ID = c.GRID_ID
+        crashes.crashes c ON h.GRID_ID = c.GRID_ID
         AND c.MODE IN ${inputs.multi_mode_dd.value}
         AND c.SEVERITY IN ${inputs.multi_severity.value}
         AND c.REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
@@ -252,9 +252,9 @@ group by 1
         w.WARD_ID AS WARD,
         COALESCE(SUM(c.COUNT), 0) AS Injuries
     FROM
-        dbricks.wards w
+        wards.wards_2022 w
     LEFT JOIN
-        dbricks.crashes c
+        crashes.crashes c
     ON
         w.WARD_ID = c.WARD
         AND c.MODE IN ${inputs.multi_mode_dd.value}
@@ -272,9 +272,9 @@ group by 1
         COALESCE(SUM(c.COUNT), 0) AS Injuries,
         '/anc/' || a.ANC AS link
     FROM
-        dbricks.anc a
+        anc.anc_2023 a
     LEFT JOIN
-        dbricks.crashes c ON a.ANC = c.ANC
+        crashes.crashes c ON a.ANC = c.ANC
         AND c.MODE IN ${inputs.multi_mode_dd.value}
         AND c.SEVERITY IN ${inputs.multi_severity.value}
         AND c.REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
@@ -287,7 +287,7 @@ group by 1
         SELECT DISTINCT 
             MODE
         FROM 
-            dbricks.crashes
+            crashes.crashes
     ), 
     current_year AS (
         SELECT 
@@ -295,7 +295,7 @@ group by 1
             SUM(COUNT) as sum_count,
             EXTRACT(YEAR FROM current_date) as current_year
         FROM 
-            dbricks.crashes 
+            crashes.crashes 
         WHERE 
             SEVERITY IN ${inputs.multi_severity.value} 
             AND REPORTDATE >= date_trunc('year', current_date)
@@ -307,7 +307,7 @@ group by 1
             MODE,
             SUM(COUNT) as sum_count
         FROM 
-            dbricks.crashes 
+            crashes.crashes 
         WHERE 
             SEVERITY IN ${inputs.multi_severity.value} 
             AND REPORTDATE >= (date_trunc('year', current_date) - INTERVAL '1 year')
@@ -359,7 +359,7 @@ group by 1
         SELECT DISTINCT 
             SEVERITY
         FROM 
-            dbricks.crashes
+            crashes.crashes
     ), 
     current_year AS (
         SELECT 
@@ -367,7 +367,7 @@ group by 1
             SUM(COUNT) as sum_count,
             EXTRACT(YEAR FROM current_date) as current_year
         FROM 
-            dbricks.crashes 
+            crashes.crashes 
         WHERE 
             SEVERITY IN ${inputs.multi_severity.value} 
             AND REPORTDATE >= date_trunc('year', current_date)
@@ -379,7 +379,7 @@ group by 1
             SEVERITY,
             SUM(COUNT) as sum_count
         FROM 
-            dbricks.crashes 
+            crashes.crashes 
         WHERE 
             SEVERITY IN ${inputs.multi_severity.value} 
             AND REPORTDATE >= (date_trunc('year', current_date) - INTERVAL '1 year')
@@ -448,7 +448,7 @@ group by 1
         SELECT DISTINCT 
             SEVERITY 
         FROM 
-            dbricks.crashes
+            crashes.crashes
     ), 
     current_year AS (
         SELECT 
@@ -456,7 +456,7 @@ group by 1
             sum(COUNT) as sum_count,
             extract(year from current_date) as current_year
         FROM 
-            dbricks.crashes 
+            crashes.crashes 
         WHERE 
             SEVERITY = 'Fatal'
             AND REPORTDATE >= date_trunc('year', current_date)
@@ -469,7 +469,7 @@ group by 1
             sum(COUNT) as sum_count,
             extract(year from current_date - interval '1 year') as year_prior
         FROM 
-            dbricks.crashes 
+            crashes.crashes 
         WHERE 
             SEVERITY = 'Fatal'
             AND REPORTDATE >= (date_trunc('year', current_date) - interval '1 year')
@@ -527,7 +527,7 @@ group by 1
         SELECT 
             ANC 
         FROM 
-            dbricks.anc 
+            anc.anc_2023 
         GROUP BY 
             ANC
     ),
@@ -537,7 +537,7 @@ group by 1
             sum(crashes.COUNT) as sum_count,
             extract(year from current_date) as current_year
         FROM 
-            dbricks.crashes 
+            crashes.crashes 
         JOIN 
             unique_anc ua 
         ON 
@@ -553,7 +553,7 @@ group by 1
             crashes.ANC, 
             sum(crashes.COUNT) as sum_count
         FROM 
-            dbricks.crashes 
+            crashes.crashes 
         JOIN 
             unique_anc ua 
         ON 
@@ -595,7 +595,7 @@ group by 1
         SELECT 
             WARD_ID AS WARD 
         FROM 
-            dbricks.wards
+            wards.wards_2022
         GROUP BY 
             WARD_ID
     ),
@@ -605,7 +605,7 @@ group by 1
             sum(crashes.COUNT) as sum_count,
             extract(year from current_date) as current_year
         FROM 
-            dbricks.crashes 
+            crashes.crashes 
         JOIN 
             unique_ward ua 
         ON 
@@ -621,7 +621,7 @@ group by 1
             crashes.WARD, 
             sum(crashes.COUNT) as sum_count
         FROM 
-            dbricks.crashes 
+            crashes.crashes 
         JOIN 
             unique_ward ua 
         ON 

@@ -8,21 +8,21 @@ queries:
 ```sql unique_mode
 select 
     MODE
-from dbricks.crashes
+from crashes.crashes
 group by 1
 ```
 
 ```sql unique_severity
 select 
     SEVERITY
-from dbricks.crashes
+from crashes.crashes
 group by 1
 ```
 
 ```sql unique_hex
 select 
     GRID_ID
-from dbricks.hexgrid
+from hexgrid.crash_hexgrid
 where GRID_ID = '${params.GRID_ID}'
 group by 1
 ```
@@ -31,7 +31,7 @@ group by 1
 select 
     GIS_ID,
     ROUTENAME
-from dbricks.hin
+from hin.hin
 group by all
 ```
 
@@ -41,7 +41,7 @@ group by all
       SEVERITY,
       MODE,
       sum(COUNT) as Count
-  from dbricks.crashes
+  from crashes.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and GRID_ID = '${params.GRID_ID}'
   and SEVERITY IN ${inputs.multi_severity.value}
@@ -56,7 +56,7 @@ group by all
       SEVERITY,
       LATITUDE,
       LONGITUDE
-  from dbricks.crashes
+  from crashes.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   --and GRID_ID = '${params.GRID_ID}'
   and SEVERITY IN ${inputs.multi_severity.value}
@@ -69,7 +69,7 @@ group by all
       GRID_ID,
       sum(COUNT) as Incident_Per_Hex,
       '/hexgrid/' || GRID_ID as link
-  from dbricks.crashes
+  from crashes.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and SEVERITY IN ${inputs.multi_severity.value}
   and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'
@@ -114,7 +114,7 @@ group by all
 
 <Tabs fullWidth=true>
     <Tab label="Selected Hexagon">
-        <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 subtitle='Injury Table'>
+        <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 subtitle='Injury Table' rowShading=true>
           <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total"/>
           <Column id=SEVERITY totalAgg="-"/>
           <Column id=MODE totalAgg='{inputs.multi_mode}'/>

@@ -13,7 +13,7 @@ from ${fatality}
 ```sql unique_mode
 select 
     MODE
-from dbricks.crashes
+from crashes.crashes
 group by 1
 ```
 
@@ -21,7 +21,7 @@ group by 1
 select 
     GIS_ID,
     ROUTENAME
-from dbricks.hin
+from hin.hin
 group by all
 ```
 
@@ -42,7 +42,7 @@ group by all
           LPAD(EXTRACT(HOUR FROM REPORTDATE)::TEXT, 2, '0'), ':', 
           LPAD(EXTRACT(MINUTE FROM REPORTDATE)::TEXT, 2, '0')
     ) AS Date
-  FROM dbricks.crashes
+  FROM crashes.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -59,7 +59,7 @@ group by all
           LPAD(EXTRACT(HOUR FROM REPORTDATE)::TEXT, 2, '0'), ':', 
           LPAD(EXTRACT(MINUTE FROM REPORTDATE)::TEXT, 2, '0')
       ) AS column_value
-  FROM dbricks.crashes
+  FROM crashes.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -68,7 +68,7 @@ group by all
   UNION ALL
 
   SELECT 'Mode', MODE::TEXT
-  FROM dbricks.crashes
+  FROM crashes.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -77,7 +77,7 @@ group by all
   UNION ALL
 
   SELECT 'CCN', CCN::TEXT
-  FROM dbricks.crashes
+  FROM crashes.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -86,7 +86,7 @@ group by all
   UNION ALL
 
   SELECT 'Address', ADDRESS
-  FROM dbricks.crashes
+  FROM crashes.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -95,7 +95,7 @@ group by all
   UNION ALL
 
   SELECT 'Ward', WARD
-  FROM dbricks.crashes
+  FROM crashes.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -104,7 +104,7 @@ group by all
   UNION ALL
 
   SELECT 'Striking Vehicle', StrinkingVehicle
-  FROM dbricks.crashes
+  FROM crashes.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -113,7 +113,7 @@ group by all
   UNION ALL
 
   SELECT 'Second Striking Vehicle/Object', SecondStrikingVehicleObject
-  FROM dbricks.crashes
+  FROM crashes.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -122,7 +122,7 @@ group by all
   UNION ALL
 
   SELECT 'Site Visit Status', SiteVisitStatus
-  FROM dbricks.crashes
+  FROM crashes.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -131,7 +131,7 @@ group by all
   UNION ALL
 
   SELECT 'Factors Discussed at Site Visit', FactorsDiscussedAtSiteVisit
-  FROM dbricks.crashes
+  FROM crashes.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -140,7 +140,7 @@ group by all
 UNION ALL
 
   SELECT 'Actions Planned and Completed', ActionsPlannedAndCompleted
-  FROM dbricks.crashes
+  FROM crashes.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -149,7 +149,7 @@ UNION ALL
   UNION ALL
 
   SELECT 'Actions Under Consideration', ActionsUnderConsideration
-  FROM dbricks.crashes
+  FROM crashes.crashes
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
@@ -162,7 +162,7 @@ UNION ALL
       MODE,
       LATITUDE,
       LONGITUDE
-  from dbricks.crashes
+  from crashes.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and OBJECTID = '${params.OBJECTID}'
   and SEVERITY = 'Fatal'

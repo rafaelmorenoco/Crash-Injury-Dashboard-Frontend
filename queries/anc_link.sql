@@ -1,4 +1,4 @@
 select 
     ANC
-from dbricks.anc
+from anc.anc_2023
 group by all

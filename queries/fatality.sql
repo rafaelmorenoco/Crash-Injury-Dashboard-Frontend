@@ -1,5 +1,5 @@
 select 
     OBJECTID
-from dbricks.crashes
+from crashes.crashes
 where SEVERITY = 'Fatal'
 group by all
