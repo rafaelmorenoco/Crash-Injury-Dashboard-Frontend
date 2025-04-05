@@ -1,1 +1,0 @@
-SELECT * FROM visionzeroffice_dev.silver.wards_from_2022

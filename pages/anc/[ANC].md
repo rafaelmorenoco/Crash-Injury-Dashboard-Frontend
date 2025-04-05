@@ -8,28 +8,28 @@ queries:
 ```sql unique_mode
 select 
     MODE
-from dbricks.crashes
+from crashes.crashes
 group by 1
 ```
 
 ```sql unique_severity
 select 
     SEVERITY
-from dbricks.crashes
+from crashes.crashes
 group by 1
 ```
 
 ```sql unique_wards
 select 
     NAME
-from dbricks.wards
+from wards.wards_2022
 group by 1
 ```
 
 ```sql unique_hex
 select 
     GRID_ID
-from dbricks.hexgrid
+from hexgrid.crash_hexgrid
 group by 1
 ```
 
@@ -37,14 +37,14 @@ group by 1
 select 
     GIS_ID,
     ROUTENAME
-from dbricks.hin
+from hin.hin
 group by all
 ```
 
 ```sql unique_anc
 select 
     ANC
-from dbricks.anc
+from anc.anc_2023
 where ANC = '${params.ANC}'
 group by 1
 ```
@@ -52,24 +52,24 @@ group by 1
 ```sql unique_smd
 select 
     SMD
-from dbricks.smd
+from smd.smd_2023
 group by 1
 ```
 
 ```sql smd_map
     SELECT 
-        smd.SMD,
-        '/smd/' || smd.SMD AS link,
+        smd_2023.SMD,
+        '/smd/' || smd_2023.SMD AS link,
         COALESCE(subquery.Injuries, 0) AS Injuries
     FROM 
-        dbricks.smd
+        smd.smd_2023 AS smd_2023
     LEFT JOIN (
         SELECT
             SMD,
             SUM(COUNT) AS Injuries
         FROM 
-            dbricks.crashes
-        WHERE 
+            crashes.crashes
+            WHERE 
             ANC = '${params.ANC}'
             AND MODE IN ${inputs.multi_mode_dd.value}
             AND SEVERITY IN ${inputs.multi_severity.value}
@@ -79,16 +79,16 @@ group by 1
             SMD
     ) AS subquery
     ON 
-        smd.SMD = subquery.SMD
+        smd_2023.SMD = subquery.SMD
     JOIN (
         SELECT DISTINCT SMD
-        FROM dbricks.crashes
+        FROM crashes.crashes
         WHERE ANC = '${params.ANC}'
     ) AS smd_anc
     ON 
-        smd.SMD = smd_anc.SMD
+        smd_2023.SMD = smd_anc.SMD
     ORDER BY 
-        smd.SMD;
+        smd_2023.SMD;
 ```
 
 ```sql smd_yoy
@@ -96,9 +96,9 @@ group by 1
         SELECT 
             smd.SMD
         FROM 
-            dbricks.smd smd
+            smd.smd_2023 smd
         JOIN 
-            dbricks.crashes crashes
+            crashes.crashes crashes
         ON 
             smd.SMD = crashes.SMD
         WHERE 
@@ -112,7 +112,7 @@ group by 1
             SUM(crashes.COUNT) AS sum_count, 
             EXTRACT(YEAR FROM current_date) AS current_year
         FROM 
-            dbricks.crashes
+            crashes.crashes
         JOIN 
             unique_smd us 
         ON 
@@ -129,7 +129,7 @@ group by 1
             crashes.SMD, 
             SUM(crashes.COUNT) AS sum_count
         FROM 
-            dbricks.crashes
+            crashes.crashes
         JOIN 
             unique_smd us 
         ON 

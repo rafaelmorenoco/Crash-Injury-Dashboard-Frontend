@@ -1,1 +1,0 @@
-SELECT * FROM visionzeroffice_dev.silver.smd_2023

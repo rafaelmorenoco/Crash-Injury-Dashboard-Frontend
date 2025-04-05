@@ -24,7 +24,7 @@ from ${fatality}
 ```sql unique_mode
 select 
     MODE
-from dbricks.crashes
+from crashes.crashes
 group by 1
 ```
 
@@ -41,7 +41,7 @@ group by 1
 select 
     GIS_ID,
     ROUTENAME
-from dbricks.hin
+from hin.hin
 group by all
 ```
 
@@ -50,7 +50,7 @@ group by all
         SELECT DISTINCT 
             SEVERITY 
         FROM 
-            dbricks.crashes
+            crashes.crashes
     ), 
     current_year AS (
         SELECT 
@@ -58,7 +58,7 @@ group by all
             sum(COUNT) as sum_count,
             extract(year from current_date) as current_year
         FROM 
-            dbricks.crashes 
+            crashes.crashes 
         WHERE 
             SEVERITY = 'Fatal'
             AND REPORTDATE >= date_trunc('year', current_date)
@@ -71,7 +71,7 @@ group by all
             sum(COUNT) as sum_count,
             extract(year from current_date - interval '1 year') as year_prior
         FROM 
-            dbricks.crashes 
+            crashes.crashes 
         WHERE 
             SEVERITY = 'Fatal'
             AND REPORTDATE >= (date_trunc('year', current_date) - interval '1 year')
@@ -133,7 +133,7 @@ group by all
       SEVERITY,
       ADDRESS,
       '/fatalities/' || OBJECTID AS link
-  from dbricks.crashes
+  from crashes.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and SEVERITY = 'Fatal'
   and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'

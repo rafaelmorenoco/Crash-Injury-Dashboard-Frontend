@@ -8,14 +8,14 @@ queries:
 ```sql unique_mode
 select 
     MODE
-from dbricks.crashes
+from crashes.crashes
 group by 1
 ```
 
 ```sql unique_severity
 select 
     SEVERITY
-from dbricks.crashes
+from crashes.crashes
 group by 1
 ```
 
@@ -25,7 +25,7 @@ group by 1
             WHEN SMD LIKE '3-4G%' THEN '3-4G'
             ELSE SUBSTRING(SMD, 1, 2)
         END AS ANC
-    FROM dbricks.smd
+    FROM smd.smd_2023
     WHERE SMD = '${params.SMD}'
     GROUP BY 1;
 ```
@@ -34,14 +34,14 @@ group by 1
 select 
     GIS_ID,
     ROUTENAME
-from dbricks.hin
+from hin.hin
 group by all
 ```
 
 ```sql unique_smd
 select 
     SMD
-from dbricks.smd
+from smd.smd_2023
 where SMD = '${params.SMD}'
 group by 1
 ```
@@ -52,7 +52,7 @@ group by 1
       SEVERITY,
       MODE,
       sum(COUNT) as Count
-  from dbricks.crashes
+  from crashes.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and SMD = '${params.SMD}'
   and SEVERITY IN ${inputs.multi_severity.value}
@@ -69,7 +69,7 @@ group by 1
       LONGITUDE,
       REPORTDATE,
       ADDRESS
-  from dbricks.crashes
+  from crashes.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   --and SMD = '${params.SMD}'
   and SEVERITY IN ${inputs.multi_severity.value}
@@ -82,7 +82,7 @@ group by 1
       SMD,
       sum(COUNT) as Incident_Per_Hex,
       '/smd/' || SMD as link
-  from dbricks.crashes
+  from crashes.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and SEVERITY IN ${inputs.multi_severity.value}
   and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'
@@ -91,52 +91,52 @@ group by 1
 ```
 
 ```sql anc_map
-SELECT 
-    smd.SMD,
-    '/smd/' || smd.SMD AS link,
-    COALESCE(subquery.Injuries, 0) AS Injuries
-FROM 
-    dbricks.smd
-LEFT JOIN (
-    SELECT
-        SMD,
-        SUM(COUNT) AS Injuries
+    SELECT 
+        smd_2023.SMD,
+        '/smd/' || smd_2023.SMD AS link,
+        COALESCE(subquery.Injuries, 0) AS Injuries
     FROM 
-        dbricks.crashes
-    WHERE 
-        ANC = (SELECT 
+        smd.smd_2023 AS smd_2023
+    LEFT JOIN (
+        SELECT
+            crashes.SMD,
+            SUM(COUNT) AS Injuries
+        FROM 
+            crashes.crashes AS crashes
+        WHERE 
+            ANC = (SELECT 
+                CASE 
+                    WHEN smd_2023.SMD LIKE '3-4G%' THEN '3-4G'
+                    ELSE SUBSTRING(smd_2023.SMD, 1, 2)
+                END AS ANC
+            FROM smd.smd_2023 AS smd_2023
+            WHERE smd_2023.SMD = '${params.SMD}'
+            GROUP BY 1)
+            AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+            AND crashes.SEVERITY IN ${inputs.multi_severity.value}
+            AND crashes.REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+            AND crashes.SMD IS NOT NULL
+        GROUP BY 
+            crashes.SMD
+    ) AS subquery
+    ON 
+        smd_2023.SMD = subquery.SMD
+    JOIN (
+        SELECT DISTINCT crashes.SMD
+        FROM crashes.crashes AS crashes
+        WHERE ANC = (SELECT 
             CASE 
-                WHEN SMD LIKE '3-4G%' THEN '3-4G'
-                ELSE SUBSTRING(SMD, 1, 2)
+                WHEN smd_2023.SMD LIKE '3-4G%' THEN '3-4G'
+                ELSE SUBSTRING(smd_2023.SMD, 1, 2)
             END AS ANC
-        FROM dbricks.smd
-        WHERE SMD = '${params.SMD}'
+        FROM smd.smd_2023 AS smd_2023
+        WHERE smd_2023.SMD = '${params.SMD}'
         GROUP BY 1)
-        AND MODE IN ${inputs.multi_mode_dd.value}
-        AND SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
-        AND SMD IS NOT NULL
-    GROUP BY 
-        SMD
-) AS subquery
-ON 
-    smd.SMD = subquery.SMD
-JOIN (
-    SELECT DISTINCT SMD
-    FROM dbricks.crashes
-    WHERE ANC = (SELECT 
-        CASE 
-            WHEN SMD LIKE '3-4G%' THEN '3-4G'
-            ELSE SUBSTRING(SMD, 1, 2)
-        END AS ANC
-    FROM dbricks.smd
-    WHERE SMD = '${params.SMD}'
-    GROUP BY 1)
-) AS smd_anc
-ON 
-    smd.SMD = smd_anc.SMD
-ORDER BY 
-    smd.SMD;
+    ) AS smd_anc
+    ON 
+        smd_2023.SMD = smd_anc.SMD
+    ORDER BY 
+        smd_2023.SMD;
 ```
 
 <DateRange
