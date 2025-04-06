@@ -699,9 +699,11 @@ group by 1
 
 ### Injuries by Mode and Severity
 
-<Tabs fullWidth=true>
-    <Tab label="Selected Period">
+<Grid cols=2>
+    <Group>
         <BarChart 
+            title="Selected Period"
+            chartAreaHeight=300
             subtitle="Mode"
             data={barchart_mode}
             x=MODE
@@ -716,10 +718,9 @@ group by 1
         <Note>
             *Fatal only.
         </Note>
-    </Tab>
-    <Tab label="Year Over Year Difference">
-        <Grid cols=2>
-        <DataTable data={yoy_mode} totalRow=true sort="current_year_sum desc" wrapTitles=true rowShading=true >
+    </Group>
+        <Group>
+        <DataTable data={yoy_mode} totalRow=true sort="current_year_sum desc" wrapTitles=true rowShading=true title="Year Over Year Difference">
             <Column id=MODE wrap=true totalAgg="Total"/>
             <Column id=current_year_sum title={`${yoy_mode[0].current_year} YTD`} />
             <Column id=prior_year_sum title={`${yoy_mode[0].current_year - 1} YTD`}  />
@@ -733,15 +734,14 @@ group by 1
             <Column id=difference contentType=delta downIsGood=True title="Diff"/>
             <Column id=percentage_change fmt=pct title="% Diff" totalAgg={yoy_mode[0].total_percentage_change} totalFmt=pct /> 
         </DataTable>
-        </Grid>
-        <Note>
-            *Fatal only.
-        </Note>
         <Note>
             The results for both tables will depend on your severity selection above; by default, it displays "Major" and "Fatal" severity.
         </Note>
-    </Tab>
-</Tabs>
+        <Note>
+            *Fatal only.
+        </Note>
+    </Group>
+</Grid>
 
 <Dropdown
     data={unique_mode} 
@@ -755,128 +755,124 @@ group by 1
 
 ### Injuries Heatmap
 
-<Note>
-    Select a hexagon to zoom in and view more details about the injuries resulting from a crash within it.
-</Note>
-
-<BaseMap
-    height=650
-    startingZoom=12
->
-    <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link min=0 opacity=0.7 />
-    <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true 
-    tooltip={[
-        {id: 'ROUTENAME'}
-    ]}
-    />
-</BaseMap>
-<Note>
-   The purple lines represent DC's High Injury Network  
-</Note>
-<Note>
-     
-</Note>
-
-#### Day of the Week & Time of the Day
-
-<Grid cols=6>
-<div class="col-span-5" >
-<Group>
-<Heatmap 
-    data={day_time} 
-    subtitle="24-Hour Format"
-    x=hour_number xSort=hour_number
-    y=day_of_week ySort=day_number
-    value=sum_count
-    legend=true
-    filter=true
-    mobileValueLabels=true
-/>
-<Heatmap 
-    data={time} 
-    subtitle="24-Hour Format"
-    x=hour_number xSort=hour_number
-    y=Total
-    value=sum_count
-    legend=true
-    filter=true
-    chartAreaHeight=50
-    mobileValueLabels=true
-/>
-</Group>
-</div>
-<Heatmap 
-    data={day}
-    subtitle=" "
-    x=total
-    y=day_of_week ySort=day_number
-    value=sum_count
-    legend=false
-    valueLabels=true
-    mobileValueLabels=true
-/>
+<Grid cols=2>
+    <Group>
+        <Note>
+            Select a hexagon to zoom in and view more details about the injuries resulting from a crash within it.
+        </Note>
+        <BaseMap
+            height=560
+            startingZoom=12
+        >
+            <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link min=0 opacity=0.7 />
+            <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true 
+            tooltip={[
+                {id: 'ROUTENAME'}
+            ]}
+            />
+        </BaseMap>
+        <Note>
+        The purple lines represent DC's High Injury Network  
+        </Note>
+    </Group>
+    <Group>
+        <Heatmap 
+            data={day}
+            title="Injuries by Day of Week & Time of the Day"
+            subtitle=" "
+            x=day_of_week xSort=day_number
+            y=total
+            value=sum_count
+            legend=true
+            valueLabels=true
+            mobileValueLabels=true
+            chartAreaHeight=50
+        />    
+        <Heatmap 
+            data={day_time} 
+            subtitle="24-Hour Format"
+            x=hour_number xSort=hour_number
+            y=day_of_week ySort=day_number
+            value=sum_count
+            legend=true
+            filter=true
+            mobileValueLabels=true
+        />
+        <Heatmap 
+            data={time} 
+            subtitle="24-Hour Format"
+            x=hour_number xSort=hour_number
+            y=Total
+            value=sum_count
+            legend=true
+            filter=true
+            chartAreaHeight=50
+            mobileValueLabels=true
+        />
+    </Group>
 </Grid>
 
 ### Injuries by Ward & ANC
-
 <Note>
-    Select an ANC to zoom in and see more details about the injuries resulting from a crash within its SMDs.
+    Select an ANC to zoom in and see more details about the injuries resulting from a crash within its SMDs."
 </Note>
 <Grid cols=2>
-<BaseMap
-    height=470
-    startingZoom=11
-    title="Ward"
->
-<Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true
-    tooltip={[
-        {id: 'ROUTENAME'}
-    ]}
-/>
-<Areas data={ward_map} geoJsonUrl='/Wards_from_2022.geojson' geoId=WARD_ID areaCol=WARD value=Injuries min=0 opacity=0.7 borderWidth=1 borderColor='#A9A9A9'
-    tooltip={[
-        {id:'WARD', title:"Ward", valueClass: 'text-base font-semibold', fieldClass: 'text-base font-semibold'},
-        {id:'Injuries'}
-    ]}
-/>
-</BaseMap>
-<BaseMap
-    height=470
-    startingZoom=11
-    title="ANC"
->
-<Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true
-    tooltip={[
-        {id: 'ROUTENAME'}
-    ]}
-/>
-<Areas data={anc_map} geoJsonUrl='/anc_2023.geojson' geoId=ANC areaCol=ANC value=Injuries link=link min=0 opacity=0.7 borderWidth=1 borderColor='#A9A9A9'/>
-</BaseMap>
+    <Group>
+        <BaseMap
+            height=470
+            startingZoom=11
+            title="ANC"
+        >
+        <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true
+            tooltip={[
+                {id: 'ROUTENAME'}
+            ]}
+        />
+        <Areas data={anc_map} geoJsonUrl='/anc_2023.geojson' geoId=ANC areaCol=ANC value=Injuries link=link min=0 opacity=0.7 borderWidth=1 borderColor='#A9A9A9'/>
+        </BaseMap>
+        <Note>
+            The purple lines represent DC's High Injury Network
+        </Note>
+        <DataTable data={anc_yoy} sort="current_year_sum desc" title="Year Over Year Difference" search=true wrapTitles=true rowShading=true link=link>
+            <Column id=ANC title="ANC"/>
+            <Column id=current_year_sum title={`${yoy_mode[0].current_year} YTD`} />
+            <Column id=prior_year_sum title={`${yoy_mode[0].current_year - 1} YTD`}  />
+            <Column id=difference title="Diff" contentType=delta downIsGood=True />
+            <Column id=percentage_change fmt=pct0 title="% Diff"/> 
+        </DataTable>
+    </Group>
+        <Group>
+        <BaseMap
+            height=470
+            startingZoom=11
+            title="Ward"
+        >
+        <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true
+            tooltip={[
+                {id: 'ROUTENAME'}
+            ]}
+        />
+        <Areas data={ward_map} geoJsonUrl='/Wards_from_2022.geojson' geoId=WARD_ID areaCol=WARD value=Injuries min=0 opacity=0.7 borderWidth=1 borderColor='#A9A9A9'
+            tooltip={[
+                {id:'WARD', title:"Ward", valueClass: 'text-base font-semibold', fieldClass: 'text-base font-semibold'},
+                {id:'Injuries'}
+            ]}
+        />
+        </BaseMap>
+        <Note>
+            The purple lines represent DC's High Injury Network
+        </Note>
+        <DataTable data={ward_yoy} sort="current_year_sum desc" title="Year Over Year Difference" totalRow=true search=true wrapTitles=true rowShading=true>
+            <Column id=WARD title="Ward" totalAgg="Total"/>
+            <Column id=current_year_sum title={`${yoy_mode[0].current_year} YTD`} />
+            <Column id=prior_year_sum title={`${yoy_mode[0].current_year - 1} YTD`}  />
+            <Column id=difference title="Diff" contentType=delta downIsGood=True />
+            <Column id=percentage_change fmt=pct title="% Diff" totalAgg={ward_yoy[0].total_percentage_change} totalFmt=pct/> 
+        </DataTable>
+    </Group>
 </Grid>
 <Note>
-    The purple lines represent DC's High Injury Network
-</Note>
-
-#### Year Over Year Difference
-
-<Grid cols=2>
-<DataTable data={ward_yoy} sort="current_year_sum desc" totalRow=true search=true wrapTitles=true rowShading=true>
-    <Column id=WARD title="Ward" totalAgg="Total"/>
-    <Column id=current_year_sum title={`${yoy_mode[0].current_year} YTD`} />
-    <Column id=prior_year_sum title={`${yoy_mode[0].current_year - 1} YTD`}  />
-    <Column id=difference title="Diff" contentType=delta downIsGood=True />
-    <Column id=percentage_change fmt=pct title="% Diff" totalAgg={ward_yoy[0].total_percentage_change} totalFmt=pct/> 
-</DataTable>
-<DataTable data={anc_yoy} sort="current_year_sum desc" search=true wrapTitles=true rowShading=true link=link>
-    <Column id=ANC title="ANC"/>
-    <Column id=current_year_sum title={`${yoy_mode[0].current_year} YTD`} />
-    <Column id=prior_year_sum title={`${yoy_mode[0].current_year - 1} YTD`}  />
-    <Column id=difference title="Diff" contentType=delta downIsGood=True />
-    <Column id=percentage_change fmt=pct0 title="% Diff"/> 
-</DataTable>
-</Grid>
-<Note>
-    The table is sorted in descending order by default based on the <Value data={yoy_text_fatal} column="current_year" fmt='####'/> YTD injuries.
+    The tables are sorted in descending order by default based on the <Value data={yoy_text_fatal} column="current_year" fmt='####'/> YTD injuries.
 </Note>
 
 <!---

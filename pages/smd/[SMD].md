@@ -165,17 +165,10 @@ group by 1
     description="*Only fatal"
 />
 
-<Tabs fullWidth=true>
-    <Tab label="Selected SMD">
-        <Note>
-            To navigate to another SMD within ANC <Value data={unique_anc} column="ANC"/> go to the "Selected ANC" tab above the table.
-        </Note>
-        <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 subtitle='Injury Table' rowShading=true>
-          <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total"/>
-          <Column id=SEVERITY totalAgg="-"/>
-          <Column id=MODE totalAgg='{inputs.multi_mode}'/>
-          <Column id=Count totalAgg=sum/>
-        </DataTable>
+### Selected SMD
+
+<Grid cols=2>
+    <Group>
         <Note>
         Each point on the map represents an injury. Injury incidents can overlap in the same spot.
         </Note>
@@ -199,8 +192,21 @@ group by 1
         <Note>
         The purple lines represent DC's High Injury Network
         </Note>
-    </Tab>
-    <Tab label="Selected ANC">
+    </Group>    
+    <Group>
+        <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 subtitle='Injury Table' rowShading=true>
+          <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total"/>
+          <Column id=SEVERITY totalAgg="-"/>
+          <Column id=MODE totalAgg='{inputs.multi_mode}'/>
+          <Column id=Count totalAgg=sum/>
+        </DataTable>
+        <Alert status="info">
+            To navigate to another SMD within ANC <Value data={unique_anc} column="ANC"/> go to the "Selected ANC" section bellow.
+        </Alert>
+    </Group>
+</Grid>
+
+#### Selected ANC
         <Note>
             Select an SMD to zoom in and see more details about the crashes within it.
         </Note>
@@ -219,5 +225,3 @@ group by 1
         <Note>
             The purple lines represent DC's High Injury Network
         </Note>
-    </Tab>
-</Tabs>
