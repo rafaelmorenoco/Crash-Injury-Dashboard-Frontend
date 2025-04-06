@@ -67,7 +67,7 @@ group by all
 ```sql hex_map
   select
       GRID_ID,
-      sum(COUNT) as Incident_Per_Hex,
+      sum(COUNT) as Injuries,
       '/hexgrid/' || GRID_ID as link
   from crashes.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
@@ -103,23 +103,10 @@ group by all
     description="*Only fatal"
 />
 
-<!---
-<ButtonGroup
-    data={unique_mode}
-    name=multi_mode
-    value=MODE
-    defaultValue="Driver"
-/>
--->
+### Selected Hexagon
 
-<Tabs fullWidth=true>
-    <Tab label="Selected Hexagon">
-        <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 subtitle='Injury Table' rowShading=true>
-          <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total"/>
-          <Column id=SEVERITY totalAgg="-"/>
-          <Column id=MODE totalAgg='{inputs.multi_mode}'/>
-          <Column id=Count totalAgg=sum/>
-        </DataTable>
+<Grid cols=2>
+    <Group>
         <Note>
         Each point on the map represents an injury. Injury incidents can overlap in the same spot.
         </Note>
@@ -138,25 +125,37 @@ group by all
         <Note>
         The purple lines represent DC's High Injury Network
         </Note>
-    </Tab>
-    <Tab label="Zoomed-in Heatmap">
-        <Note>
-          Select a hexagon to zoom in and see more details about the crashes within it.
-        </Note>
-        <BaseMap
-          height=400
-          startingZoom=17
-        >
-          <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Incident_Per_Hex link=link min=0 opacity=0.7 ignoreZoom=true/>
-          <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true
-          tooltip={[
-                {id: 'ROUTENAME'}
-            ]}
-          />
-          <Areas data={unique_hex} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID min=0 borderColor=#000000 color=#1C00ff00/>
-        </BaseMap>
-        <Note>
-        The purple lines represent DC's High Injury Network
-        </Note>
-    </Tab>
-</Tabs>
+    </Group>    
+    <Group>
+        <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 subtitle='Injury Table' rowShading=true>
+          <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total"/>
+          <Column id=SEVERITY totalAgg="-"/>
+          <Column id=MODE totalAgg='{inputs.multi_mode}'/>
+          <Column id=Count totalAgg=sum/>
+        </DataTable>
+        <Alert status="info">
+            To navigate to another hexagon go to the "Zoomed-in Heatmap" section bellow. Only hexagons with injuries will be visible.
+        </Alert>
+    </Group>
+</Grid>
+
+#### Zoomed-in Heatmap
+
+<Note>
+  Select a hexagon to zoom in and see more details about the crashes within it.
+</Note>
+<BaseMap
+  height=400
+  startingZoom=17
+>
+  <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link min=0 opacity=0.7 ignoreZoom=true/>
+  <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true
+  tooltip={[
+        {id: 'ROUTENAME'}
+    ]}
+  />
+  <Areas data={unique_hex} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID min=0 borderColor=#000000 color=#1C00ff00/>
+</BaseMap>
+<Note>
+The purple lines represent DC's High Injury Network
+</Note>

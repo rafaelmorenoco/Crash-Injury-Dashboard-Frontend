@@ -218,34 +218,37 @@ group by 1
 
 ### Injuries by SMD within ANC {params.ANC}
 
-<Note>
-    Select an SMD to zoom in and see more details about the crashes within it.
-</Note>
-<BaseMap
-    height=500
-    startingZoom=14
->
-<Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true borderWidth=1.5
-    tooltip={[
-        {id: 'ROUTENAME'}
-    ]}
-/>
-<Areas data={smd_map} height=650 startingZoom=13 geoJsonUrl='/smd_2023.geojson' geoId=SMD areaCol=SMD value=Injuries min=0 borderWidth=1.5 borderColor='#A9A9A9' link=link
-/>
-</BaseMap>
-<Note>
-    The purple lines represent DC's High Injury Network
-</Note>
-
-#### Year Over Year Difference
-
-<DataTable data={smd_yoy} sort="current_year_sum desc" wrapTitles=true rowShading=true totalRow=true link=link>
-    <Column id=SMD title="SMD" totalAgg={`ANC ${unique_anc[0].ANC} Total`}/>
-    <Column id=current_year_sum title={`${smd_yoy[0].current_year} YTD`} />
-    <Column id=prior_year_sum title={`${smd_yoy[0].current_year - 1} YTD`}  />
-    <Column id=difference title="Diff" contentType=delta downIsGood=True />
-    <Column id=percentage_change fmt=pct0 title="% Diff" totalAgg={smd_yoy[0].total_percentage_change} totalFmt=pct0/> 
-</DataTable>
-<Note>
-    The table is sorted in descending order by default based on the <Value data={smd_yoy} column="current_year" fmt='####'/> YTD injuries.
-</Note>
+<Grid cols=2>
+    <Group>
+        <Note>
+            Select an SMD to zoom in and see more details about the crashes within it.
+        </Note>
+        <BaseMap
+            height=500
+            startingZoom=14
+        >
+        <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true borderWidth=1.5
+            tooltip={[
+                {id: 'ROUTENAME'}
+            ]}
+        />
+        <Areas data={smd_map} height=650 startingZoom=13 geoJsonUrl='/smd_2023.geojson' geoId=SMD areaCol=SMD value=Injuries min=0 borderWidth=1.5 borderColor='#A9A9A9' link=link
+        />
+        </BaseMap>
+        <Note>
+            The purple lines represent DC's High Injury Network
+        </Note>
+    </Group>
+    <Group>
+        <DataTable data={smd_yoy} sort="current_year_sum desc" title="Year Over Year Difference" wrapTitles=true rowShading=true totalRow=true link=link>
+            <Column id=SMD title="SMD" totalAgg={`ANC ${unique_anc[0].ANC} Total`}/>
+            <Column id=current_year_sum title={`${smd_yoy[0].current_year} YTD`} />
+            <Column id=prior_year_sum title={`${smd_yoy[0].current_year - 1} YTD`}  />
+            <Column id=difference title="Diff" contentType=delta downIsGood=True />
+            <Column id=percentage_change fmt=pct0 title="% Diff" totalAgg={smd_yoy[0].total_percentage_change} totalFmt=pct0/> 
+        </DataTable>
+        <Note>
+            The table is sorted in descending order by default based on the <Value data={smd_yoy} column="current_year" fmt='####'/> YTD injuries.
+        </Note>
+    </Group>
+</Grid>
