@@ -176,7 +176,7 @@ group by 1
           height=500
           startingZoom=15
         >
-          <Points data={incidents} lat=LATITUDE long=LONGITUDE value=SEVERITY pointName=MODE opacity=1 colorPalette={['#fcbf49','#f77f00','#d62828']} ignoreZoom=true
+          <Points data={incidents} lat=LATITUDE long=LONGITUDE value=SEVERITY pointName=MODE opacity=1 colorPalette={['#ffdf00','#ff9412','#ff5a53']} ignoreZoom=true
             tooltip={[
                 {id:'MODE', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
                 {id:'REPORTDATE', showColumnName:false, fmt:'mm/dd/yy hh:mm'},

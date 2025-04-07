@@ -4,8 +4,6 @@
 
 The Fatal and Injury Crashes Dashboard can be used by the public to know more about injuries or fatalities resulting from crashes in the District of Columbia (DC).
 
-Adjust the Mode, Severity, and Date filters to refine the results.
-
 ## About the data
 
 The data comes from the tables **Crashes in DC** and **Crash Details** from DC's Open Data portal (see links below), as well as internal tracking of traffic fatalities by the District Department of Transportation (DDOT) and the Metropolitan Police Department (MPD).

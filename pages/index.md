@@ -709,7 +709,7 @@ group by 1
             x=MODE
             y=sum_count
             series=SEVERITY
-            seriesColors={{"Major": '#f77f00',"Minor": '#fcbf49',"Fatal": '#d62828'}}
+            seriesColors={{"Major": '#ff9412',"Minor": '#ffdf00',"Fatal": '#ff5a53'}}
             swapXY=true
             labels=true
             leftPadding=20
