@@ -189,11 +189,11 @@ UNION ALL
 <Grid cols=2>
     <BaseMap
       height=445
-      startingZoom=17
       title="Fatality Location"
+      startingZoom=17
       >
-      <Points data={incidents} lat=LATITUDE long=LONGITUDE value=MODE pointName=MODE colorPalette={['#d62828']}/>
-      <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true
+      <Points data={incidents} lat=LATITUDE long=LONGITUDE value=MODE pointName=MODE colorPalette={['#ff5a53']}/>
+      <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true 
       tooltip={[
         {id: 'ROUTENAME'}
       ]}

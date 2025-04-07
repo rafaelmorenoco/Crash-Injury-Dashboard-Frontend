@@ -176,7 +176,7 @@ group by all
     height=650
     startingZoom=12
 >
-    <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=SEVERITY colorPalette={['#d62828']} link=link
+    <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=SEVERITY colorPalette={['#ff5a53']} link=link
     tooltip={[
         {id:'MODE', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
         {id:'REPORTDATE', showColumnName:false, fmt:'mm/dd/yy hh:mm'},
