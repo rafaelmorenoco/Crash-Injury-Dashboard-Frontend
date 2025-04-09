@@ -680,13 +680,14 @@ group by 1
         totals;
 ```
 
-```sql intersections_table
+<!---
+sql intersections_table
     SELECT
         INTERSECTIONNAME,
         '/hexgrid/' || GRID_ID AS link
     FROM
         intersections.intersections
-```
+-->
 
 <DateRange
   start='2018-01-01'
@@ -782,9 +783,11 @@ group by 1
         <Note>
         The purple lines represent DC's High Injury Network  
         </Note>
+        <!---
         <DataTable data={intersections_table} title= "Intersection Search" subtitle="Use the Intersection Search function to pinpoint an intersection within a hexagon" search=true rowShading=true rows=3 link=link downloadable=false>
             <Column id=INTERSECTIONNAME title=" "/>
         </DataTable>
+        -->
     </Group>
     <Group>
         <Heatmap 
