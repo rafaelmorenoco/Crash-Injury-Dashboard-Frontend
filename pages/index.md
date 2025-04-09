@@ -26,41 +26,12 @@ from crashes.crashes
 group by 1
 ```
 
-```sql unique_wards
-select 
-    NAME,
-    WARD_ID
-from wards.wards_2022
-group by all
-```
-
-```sql unique_hex
-select 
-    GRID_ID
-from hexgrid.crash_hexgrid
-group by 1
-```
-
 ```sql unique_hin
 select 
     GIS_ID,
     ROUTENAME
 from hin.hin
 group by all
-```
-
-```sql unique_anc
-select 
-    ANC
-from anc.anc_2023
-group by 1
-```
-
-```sql unique_smd
-select 
-    SMD
-from smd.smd_2023
-group by 1
 ```
 
 ```sql yesterday
@@ -98,155 +69,6 @@ group by 1
     ON c.MODE = cnt.MODE AND c.SEVERITY = cnt.SEVERITY;
 ```
 
-```sql day_time
-    WITH reference AS (
-        SELECT
-            dow.day_of_week,
-            dow.day_number,
-            hr.hour_number
-        FROM 
-            (VALUES 
-                ('Sun', 0), ('Mon', 1), ('Tue', 2), 
-                ('Wed', 3), ('Thu', 4), ('Fri', 5), ('Sat', 6)
-            ) AS dow(day_of_week, day_number),
-            GENERATE_SERIES(0, 23) AS hr(hour_number)
-    ),
-    count_data AS (
-        SELECT
-            CASE
-                WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 'Sun'
-                WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 'Mon'
-                WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 'Tue'
-                WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 'Wed'
-                WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 'Thu'
-                WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 'Fri'
-                WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 'Sat'
-            END AS day_of_week,
-            CASE
-                WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 0
-                WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 1
-                WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 2
-                WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 3
-                WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 4
-                WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 5
-                WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
-            END AS day_number,
-            LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
-            SUM(COUNT) AS sum_count
-        FROM crashes.crashes
-        WHERE MODE IN ${inputs.multi_mode_dd.value}
-        AND SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
-        GROUP BY day_of_week, day_number, hour_number
-    )
-
-    SELECT
-        r.day_of_week,
-        r.day_number,
-        LPAD(r.hour_number::TEXT, 2, '0') AS hour_number,
-        COALESCE(cd.sum_count, 0) AS sum_count
-    FROM reference r
-    LEFT JOIN count_data cd
-    ON r.day_of_week = cd.day_of_week
-    AND r.hour_number = cd.hour_number
-    ORDER BY r.day_number, r.hour_number;
-```
-
-```sql time
-    WITH reference AS (
-        SELECT
-            hr.hour_number
-        FROM 
-            GENERATE_SERIES(0, 23) AS hr(hour_number)
-    ),
-    count_data AS (
-        SELECT
-            LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
-            SUM(COUNT) AS sum_count
-        FROM crashes.crashes
-        WHERE MODE IN ${inputs.multi_mode_dd.value}
-        AND SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
-        GROUP BY hour_number
-    )
-
-    SELECT
-        'Total' AS Total,
-        LPAD(r.hour_number::TEXT, 2, '0') AS hour_number,
-        COALESCE(cd.sum_count, 0) AS sum_count
-    FROM reference r
-    LEFT JOIN count_data cd
-    ON r.hour_number = cd.hour_number
-    ORDER BY r.hour_number;
-```
-
-```sql day
-    WITH reference AS (
-        SELECT
-            dow.day_of_week,
-            dow.day_number,
-            'Total' AS total
-        FROM 
-            (VALUES 
-                ('Sun', 0), ('Mon', 1), ('Tue', 2), 
-                ('Wed', 3), ('Thu', 4), ('Fri', 5), ('Sat', 6)
-            ) AS dow(day_of_week, day_number)
-    ),
-    count_data AS (
-        SELECT
-            CASE
-                WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 'Sun'
-                WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 'Mon'
-                WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 'Tue'
-                WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 'Wed'
-                WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 'Thu'
-                WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 'Fri'
-                WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 'Sat'
-            END AS day_of_week,
-            CASE
-                WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 0
-                WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 1
-                WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 2
-                WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 3
-                WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 4
-                WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 5
-                WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
-            END AS day_number,
-            SUM(COUNT) AS sum_count
-        FROM crashes.crashes
-        WHERE MODE IN ${inputs.multi_mode_dd.value}
-        AND SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
-        GROUP BY day_of_week, day_number
-    )
-
-    SELECT
-        r.day_of_week,
-        r.day_number,
-        r.total,
-        COALESCE(cd.sum_count, 0) AS sum_count
-    FROM reference r
-    LEFT JOIN count_data cd
-    ON r.day_of_week = cd.day_of_week
-    ORDER BY r.day_number;
-```
-
-```sql hex_map
-    SELECT
-        h.GRID_ID,
-        COALESCE(SUM(c.COUNT), 0) AS Injuries,
-        '/hexgrid/' || h.GRID_ID AS link
-    FROM
-        hexgrid.crash_hexgrid h
-    LEFT JOIN
-        crashes.crashes c ON h.GRID_ID = c.GRID_ID
-        AND c.MODE IN ${inputs.multi_mode_dd.value}
-        AND c.SEVERITY IN ${inputs.multi_severity.value}
-        AND c.REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
-    GROUP BY
-        h.GRID_ID
-```
-
 ```sql ward_map
     SELECT
         w.WARD_ID AS WARD,
@@ -264,22 +86,6 @@ group by 1
         w.WARD_ID
     ORDER BY
         w.WARD_ID;
-```
-
-```sql anc_map
-    SELECT
-        a.ANC,
-        COALESCE(SUM(c.COUNT), 0) AS Injuries,
-        '/anc/' || a.ANC AS link
-    FROM
-        anc.anc_2023 a
-    LEFT JOIN
-        crashes.crashes c ON a.ANC = c.ANC
-        AND c.MODE IN ${inputs.multi_mode_dd.value}
-        AND c.SEVERITY IN ${inputs.multi_severity.value}
-        AND c.REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
-    GROUP BY
-        a.ANC
 ```
 
 ```sql yoy_mode
@@ -444,6 +250,64 @@ group by 1
 ```
 
 ```sql yoy_text_fatal
+    WITH date_boundaries AS (
+    SELECT 
+        date_trunc('year', current_date) AS current_year_start,
+        date_trunc('year', current_date) - interval '1 year' AS prior_year_start,
+        current_date - interval '1 year' AS prior_year_end
+    ),
+    aggregated AS (
+    SELECT 
+        c.SEVERITY,
+        SUM(CASE 
+            WHEN c.REPORTDATE >= d.current_year_start THEN c.COUNT 
+            ELSE 0 
+            END) AS current_year_sum,
+        SUM(CASE 
+            WHEN c.REPORTDATE >= d.prior_year_start 
+            AND c.REPORTDATE < d.prior_year_end THEN c.COUNT 
+            ELSE 0 
+            END) AS prior_year_sum
+    FROM crashes.crashes c
+    CROSS JOIN date_boundaries d
+    GROUP BY c.SEVERITY
+    )
+    SELECT 
+    a.SEVERITY,
+    a.current_year_sum,
+    a.prior_year_sum,
+    ABS(a.current_year_sum - a.prior_year_sum) AS difference,
+    CASE 
+        WHEN a.prior_year_sum != 0 THEN 
+        NULLIF((a.current_year_sum - a.prior_year_sum)::numeric / a.prior_year_sum, 0)
+        ELSE NULL 
+    END AS percentage_change,
+    CASE 
+        WHEN a.current_year_sum - a.prior_year_sum > 0 THEN 'an increase of'
+        WHEN a.current_year_sum - a.prior_year_sum < 0 THEN 'a decrease of'
+        ELSE NULL 
+    END AS percentage_change_text,
+    CASE 
+        WHEN a.current_year_sum - a.prior_year_sum > 0 THEN 'more'
+        WHEN a.current_year_sum - a.prior_year_sum < 0 THEN 'fewer'
+        ELSE 'no change'
+    END AS difference_text,
+    extract(year FROM current_date) AS current_year,
+    extract(year FROM current_date - interval '1 year') AS year_prior,
+    CASE 
+        WHEN a.current_year_sum = 1 THEN 'has' 
+        ELSE 'have' 
+    END AS has_have,
+    CASE 
+        WHEN a.current_year_sum = 1 THEN 'fatality' 
+        ELSE 'fatalities'
+    END AS fatality
+    FROM aggregated a
+    WHERE a.SEVERITY = 'Fatal';
+```
+
+<!--
+old sql yoy_text_fatal
     WITH modes_and_severities AS (
         SELECT DISTINCT 
             SEVERITY 
@@ -520,173 +384,6 @@ group by 1
         prior_year py 
     ON 
         mas.SEVERITY = py.SEVERITY
-```
-
-```sql anc_yoy
-    WITH unique_anc AS (
-        SELECT 
-            ANC 
-        FROM 
-            anc.anc_2023 
-        GROUP BY 
-            ANC
-    ),
-    current_year AS (
-        SELECT 
-            crashes.ANC, 
-            sum(crashes.COUNT) as sum_count,
-            extract(year from current_date) as current_year
-        FROM 
-            crashes.crashes 
-        JOIN 
-            unique_anc ua 
-        ON 
-            crashes.ANC = ua.ANC
-        WHERE 
-            crashes.SEVERITY IN ${inputs.multi_severity.value} 
-            AND crashes.REPORTDATE >= date_trunc('year', current_date)
-        GROUP BY 
-            crashes.ANC
-    ), 
-    prior_year AS (
-        SELECT 
-            crashes.ANC, 
-            sum(crashes.COUNT) as sum_count
-        FROM 
-            crashes.crashes 
-        JOIN 
-            unique_anc ua 
-        ON 
-            crashes.ANC = ua.ANC
-        WHERE 
-            crashes.SEVERITY IN ${inputs.multi_severity.value} 
-            AND crashes.REPORTDATE >= (date_trunc('year', current_date) - interval '1 year')
-            AND crashes.REPORTDATE < (current_date - interval '1 year')
-        GROUP BY 
-            crashes.ANC
-    )
-    SELECT 
-        mas.ANC,
-        '/anc/' || mas.ANC AS link,
-        COALESCE(cy.sum_count, 0) as current_year_sum, 
-        COALESCE(py.sum_count, 0) as prior_year_sum, 
-        COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) as difference,
-        CASE 
-            WHEN COALESCE(cy.sum_count, 0) = 0 THEN NULL
-            WHEN COALESCE(py.sum_count, 0) != 0 THEN ((COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0)) / COALESCE(py.sum_count, 0)) 
-            WHEN COALESCE(py.sum_count, 0) != 0 AND COALESCE(cy.sum_count, 0) = 0 THEN -1
-            ELSE NULL 
-        END as percentage_change,
-        extract(year from current_date) as current_year
-    FROM 
-        unique_anc mas
-    LEFT JOIN 
-        current_year cy 
-    ON 
-        mas.ANC = cy.ANC
-    LEFT JOIN 
-        prior_year py 
-    ON 
-        mas.ANC = py.ANC;
-```
-
-```sql ward_yoy
-    WITH unique_ward AS (
-        SELECT 
-            WARD_ID AS WARD 
-        FROM 
-            wards.wards_2022
-        GROUP BY 
-            WARD_ID
-    ),
-    current_year AS (
-        SELECT 
-            crashes.WARD, 
-            sum(crashes.COUNT) as sum_count,
-            extract(year from current_date) as current_year
-        FROM 
-            crashes.crashes 
-        JOIN 
-            unique_ward ua 
-        ON 
-            crashes.WARD = ua.WARD
-        WHERE 
-            crashes.SEVERITY IN ${inputs.multi_severity.value} 
-            AND crashes.REPORTDATE >= date_trunc('year', current_date)
-        GROUP BY 
-            crashes.WARD
-    ), 
-    prior_year AS (
-        SELECT 
-            crashes.WARD, 
-            sum(crashes.COUNT) as sum_count
-        FROM 
-            crashes.crashes 
-        JOIN 
-            unique_ward ua 
-        ON 
-            crashes.WARD = ua.WARD
-        WHERE 
-            crashes.SEVERITY IN ${inputs.multi_severity.value} 
-            AND crashes.REPORTDATE >= (date_trunc('year', current_date) - interval '1 year')
-            AND crashes.REPORTDATE < (current_date - interval '1 year')
-        GROUP BY 
-            crashes.WARD
-    ),
-    totals AS (
-        SELECT 
-            SUM(COALESCE(cy.sum_count, 0)) AS current_year_total,
-            SUM(COALESCE(py.sum_count, 0)) AS prior_year_total
-        FROM 
-            unique_ward mas
-        LEFT JOIN 
-            current_year cy 
-        ON 
-            mas.WARD = cy.WARD
-        LEFT JOIN 
-            prior_year py 
-        ON 
-            mas.WARD = py.WARD
-    )
-    SELECT 
-        mas.WARD,
-        COALESCE(cy.sum_count, 0) as current_year_sum, 
-        COALESCE(py.sum_count, 0) as prior_year_sum, 
-        COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) as difference,
-        CASE 
-            WHEN COALESCE(cy.sum_count, 0) = 0 THEN NULL
-            WHEN COALESCE(py.sum_count, 0) != 0 THEN ((COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0)) / COALESCE(py.sum_count, 0)) 
-            WHEN COALESCE(py.sum_count, 0) != 0 AND COALESCE(cy.sum_count, 0) = 0 THEN -1
-            ELSE NULL 
-        END as percentage_change,
-        extract(year from current_date) as current_year,
-        CASE 
-            WHEN totals.prior_year_total != 0 THEN (
-                (totals.current_year_total - totals.prior_year_total) / totals.prior_year_total
-            )
-            ELSE NULL
-        END AS total_percentage_change
-    FROM 
-        unique_ward mas
-    LEFT JOIN 
-        current_year cy 
-    ON 
-        mas.WARD = cy.WARD
-    LEFT JOIN 
-        prior_year py 
-    ON 
-        mas.WARD = py.WARD
-    CROSS JOIN 
-        totals;
-```
-
-<!---
-sql intersections_table
-    SELECT
-        INTERSECTIONNAME,
-        '/hexgrid/' || GRID_ID AS link
-    FROM
-        intersections.intersections
 -->
 
 <DateRange
@@ -751,143 +448,6 @@ sql intersections_table
         </Note>
     </Group>
 </Grid>
-
-<Dropdown
-    data={unique_mode} 
-    name=multi_mode_dd
-    value=MODE
-    title="Select Mode"
-    multiple=true
-    selectAllByDefault=true
-    description="*Only fatal"
-/>
-
-### Injuries Heatmap
-
-<Grid cols=2>
-    <Group>
-        <Note>
-            Select a hexagon to zoom in and view more details about the injuries resulting from a crash within it.
-        </Note>
-        <BaseMap
-            height=560
-            startingZoom=12
-        >
-            <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link min=0 opacity=0.7 />
-            <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true 
-            tooltip={[
-                {id: 'ROUTENAME'}
-            ]}
-            />
-        </BaseMap>
-        <Note>
-        The purple lines represent DC's High Injury Network  
-        </Note>
-        <!---
-        <DataTable data={intersections_table} title= "Intersection Search" subtitle="Use the Intersection Search function to pinpoint an intersection within a hexagon" search=true rowShading=true rows=3 link=link downloadable=false>
-            <Column id=INTERSECTIONNAME title=" "/>
-        </DataTable>
-        -->
-    </Group>
-    <Group>
-        <Heatmap 
-            data={day}
-            title="Injuries by Day of Week & Time of the Day"
-            subtitle=" "
-            x=day_of_week xSort=day_number
-            y=total
-            value=sum_count
-            legend=true
-            valueLabels=true
-            mobileValueLabels=true
-            chartAreaHeight=50
-        />    
-        <Heatmap 
-            data={day_time} 
-            subtitle="24-Hour Format"
-            x=hour_number xSort=hour_number
-            y=day_of_week ySort=day_number
-            value=sum_count
-            legend=true
-            filter=true
-            mobileValueLabels=true
-        />
-        <Heatmap 
-            data={time} 
-            subtitle="24-Hour Format"
-            x=hour_number xSort=hour_number
-            y=Total
-            value=sum_count
-            legend=true
-            filter=true
-            chartAreaHeight=50
-            mobileValueLabels=true
-        />
-    </Group>
-</Grid>
-
-### Injuries by Ward & ANC
-<Note>
-    Select an ANC to zoom in and see more details about the injuries resulting from a crash within its SMDs."
-</Note>
-<Grid cols=2>
-    <Group>
-        <BaseMap
-            height=470
-            startingZoom=11
-            title="ANC"
-        >
-        <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true
-            tooltip={[
-                {id: 'ROUTENAME'}
-            ]}
-        />
-        <Areas data={anc_map} geoJsonUrl='/anc_2023.geojson' geoId=ANC areaCol=ANC value=Injuries link=link min=0 opacity=0.7 borderWidth=1 borderColor='#A9A9A9'/>
-        </BaseMap>
-        <Note>
-            The purple lines represent DC's High Injury Network
-        </Note>
-        <DataTable data={anc_yoy} sort="current_year_sum desc" title="Year Over Year Difference" search=true wrapTitles=true rowShading=true link=link>
-            <Column id=ANC title="ANC"/>
-            <Column id=current_year_sum title={`${yoy_mode[0].current_year} YTD`} />
-            <Column id=prior_year_sum title={`${yoy_mode[0].current_year - 1} YTD`}  />
-            <Column id=difference title="Diff" contentType=delta downIsGood=True />
-            <Column id=percentage_change fmt=pct0 title="% Diff"/> 
-        </DataTable>
-    </Group>
-        <Group>
-        <BaseMap
-            height=470
-            startingZoom=11
-            title="Ward"
-        >
-        <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true
-            tooltip={[
-                {id: 'ROUTENAME'}
-            ]}
-        />
-        <Areas data={ward_map} geoJsonUrl='/Wards_from_2022.geojson' geoId=WARD_ID areaCol=WARD value=Injuries min=0 opacity=0.7 borderWidth=1 borderColor='#A9A9A9'
-            tooltip={[
-                {id:'WARD', title:"Ward", valueClass: 'text-base font-semibold', fieldClass: 'text-base font-semibold'},
-                {id:'Injuries'}
-            ]}
-        />
-        </BaseMap>
-        <Note>
-            The purple lines represent DC's High Injury Network
-        </Note>
-        <DataTable data={ward_yoy} sort="current_year_sum desc" title="Year Over Year Difference" totalRow=true search=true wrapTitles=true rowShading=true>
-            <Column id=WARD title="Ward" totalAgg="Total"/>
-            <Column id=current_year_sum title={`${yoy_mode[0].current_year} YTD`} />
-            <Column id=prior_year_sum title={`${yoy_mode[0].current_year - 1} YTD`}  />
-            <Column id=difference title="Diff" contentType=delta downIsGood=True />
-            <Column id=percentage_change fmt=pct title="% Diff" totalAgg={ward_yoy[0].total_percentage_change} totalFmt=pct/> 
-        </DataTable>
-    </Group>
-</Grid>
-<Note>
-    The tables are sorted in descending order by default based on the <Value data={yoy_text_fatal} column="current_year" fmt='####'/> YTD injuries.
-</Note>
 
 <!---
 <LastRefreshed prefix="Data last updated" printShowDate=True fmt='mmmm d, yyyy'/>
