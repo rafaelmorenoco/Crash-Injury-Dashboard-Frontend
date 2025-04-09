@@ -682,13 +682,10 @@ group by 1
 
 ```sql intersections_table
     SELECT
-        c.INTERSECTIONNAME,
-        h.GRID_ID,
-        '/hexgrid/' || h.GRID_ID AS link
+        INTERSECTIONNAME,
+        '/hexgrid/' || GRID_ID AS link
     FROM
-        hexgrid.crash_hexgrid h
-    LEFT JOIN
-        intersections.intersections c ON h.GRID_ID = c.GRID_ID
+        intersections.intersections
 ```
 
 <DateRange
@@ -785,7 +782,7 @@ group by 1
         <Note>
         The purple lines represent DC's High Injury Network  
         </Note>
-        <DataTable data={intersections_table} title= "Intersection Search" subtitle="Use the Intersection Search function to pinpoint an intersection within a hexagon" search=true wrapTitles=true rowShading=true rows=3 link=link downloadable=false>
+        <DataTable data={intersections_table} title= "Intersection Search" subtitle="Use the Intersection Search function to pinpoint an intersection within a hexagon" search=true rowShading=true rows=3 link=link downloadable=false>
             <Column id=INTERSECTIONNAME title=" "/>
         </DataTable>
     </Group>
