@@ -78,14 +78,14 @@ group by all
 ```
 
 ```sql intersections_table
-    SELECT
-        c.INTERSECTIONNAME,
-        h.GRID_ID,
-        '/hexgrid/' || h.GRID_ID AS link,
-    FROM
-        hexgrid.crash_hexgrid h
-    LEFT JOIN
-        intersections.intersections c ON h.GRID_ID = c.GRID_ID
+  SELECT
+      c.INTERSECTIONNAME,
+      h.GRID_ID,
+      '/hexgrid/' || h.GRID_ID AS link
+  FROM
+      hexgrid.crash_hexgrid h
+  LEFT JOIN
+      intersections.intersections c ON h.GRID_ID = c.GRID_ID
 ```
 
 <DateRange
