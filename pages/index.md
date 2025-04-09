@@ -684,7 +684,7 @@ group by 1
     SELECT
         c.INTERSECTIONNAME,
         h.GRID_ID,
-        '/hexgrid/' || h.GRID_ID AS link,
+        '/hexgrid/' || h.GRID_ID AS link
     FROM
         hexgrid.crash_hexgrid h
     LEFT JOIN
