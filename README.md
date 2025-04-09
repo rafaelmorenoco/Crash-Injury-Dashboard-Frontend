@@ -1,4 +1,4 @@
-# Fatal and Injury Crashes Dashboard
+# DC Vision Zero Traffic Fatalities and Injury Crashes Dashboard Frontend
 
 ## About this dashboard
 
