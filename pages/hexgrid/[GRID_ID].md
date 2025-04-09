@@ -77,13 +77,14 @@ group by all
   group by all
 ```
 
-```sql intersections_table
+<!---
+sql intersections_table
     SELECT
         INTERSECTIONNAME,
         '/hexgrid/' || GRID_ID AS link
     FROM
         intersections.intersections
-```
+-->
 
 <DateRange
   start='2020-01-01'
@@ -144,9 +145,11 @@ group by all
         <Alert status="info">
             To navigate to another hexagon go to the "Zoomed-in Heatmap" section bellow. Only hexagons with injuries will be visible.
         </Alert>
+        <!---
         <DataTable data={intersections_table} title= "Intersection Search" subtitle="Use the Intersection Search function to pinpoint an intersection within a hexagon" search=true rowShading=true rows=3 link=link downloadable=false>
             <Column id=INTERSECTIONNAME title=" "/>
         </DataTable>
+        -->
     </Group>
 </Grid>
 
