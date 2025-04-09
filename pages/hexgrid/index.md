@@ -245,6 +245,7 @@ LIMIT 5;
             title="Intersection Search"
             description="Search for an intersection within a hexagon"
             placeholder="E.g. 14TH ST NW & PENNSYLVANIA AVE NW"
+            defaultValue="14TH ST NW"
         />
         <DataTable data={intersections_table} subtitle="Select an intersection to zoom into a hexagon containing the selected intersection." rowShading=true rows=5 link=link downloadable=false>
                     <Column id=INTERSECTIONNAME title=" "/>
