@@ -188,7 +188,7 @@ group by all
         <Note class='text-sm'>
             Select a fatality in the table or map to see more details.
         </Note>
-        <DataTable data={inc_map} link=link wrapTitles=true rowShading=true>
+        <DataTable data={inc_map} link=link wrapTitles=true rowShading=true rows=8>
             <Column id=REPORTDATE title="Date" fmt='mm/dd/yy hh:mm' wrap=true/>
             <Column id=MODE title="Mode" wrap=true/>
             <Column id=ADDRESS wrap=true/>
