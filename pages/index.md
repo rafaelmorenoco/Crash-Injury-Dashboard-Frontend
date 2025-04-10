@@ -69,25 +69,6 @@ group by all
     ON c.MODE = cnt.MODE AND c.SEVERITY = cnt.SEVERITY;
 ```
 
-```sql ward_map
-    SELECT
-        w.WARD_ID AS WARD,
-        COALESCE(SUM(c.COUNT), 0) AS Injuries
-    FROM
-        wards.wards_2022 w
-    LEFT JOIN
-        crashes.crashes c
-    ON
-        w.WARD_ID = c.WARD
-        AND c.MODE IN ${inputs.multi_mode_dd.value}
-        AND c.SEVERITY IN ${inputs.multi_severity.value}
-        AND c.REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
-    GROUP BY
-        w.WARD_ID
-    ORDER BY
-        w.WARD_ID;
-```
-
 ```sql yoy_mode
     WITH modes_and_severities AS (
         SELECT DISTINCT 

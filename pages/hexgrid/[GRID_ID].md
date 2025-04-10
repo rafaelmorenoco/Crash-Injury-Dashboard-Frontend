@@ -77,6 +77,17 @@ group by all
   group by all
 ```
 
+```sql intersections_table
+    SELECT
+        INTERSECTIONNAME,
+        '/hexgrid/' || GRID_ID AS link
+    FROM
+        intersections.intersections
+    WHERE
+        INTERSECTIONNAME ILIKE '%' || '${inputs.intersection_search}' || '%'
+    LIMIT 5;
+```
+
 <!---
 sql intersections_table
     SELECT
@@ -145,13 +156,28 @@ sql intersections_table
         <Alert status="info">
             To navigate to another hexagon go to the "Zoomed-in Heatmap" section bellow. Only hexagons with injuries will be visible.
         </Alert>
-        <!---
-        <DataTable data={intersections_table} title= "Intersection Search" subtitle="Use the Intersection Search function to pinpoint an intersection within a hexagon" search=true rowShading=true rows=3 link=link downloadable=false>
-            <Column id=INTERSECTIONNAME title=" "/>
+        <TextInput
+            name=intersection_search
+            title="Intersection Search"
+            description="Search for an intersection within a hexagon"
+            placeholder="E.g. 14TH ST NW & PENNSYLVANIA AVE NW"
+            defaultValue="14TH ST NW"
+        />
+        <DataTable data={intersections_table} subtitle="Select an intersection to zoom into a hexagon containing the selected intersection." rowShading=true rows=5 link=link downloadable=false>
+                    <Column id=INTERSECTIONNAME title=" "/>
         </DataTable>
-        -->
     </Group>
 </Grid>
+
+<Details title="Having trouble with the search? Tap here for solutions.">
+
+### Tips:
+- For numbered streets, keep the ordinal attached directly to the number without spaces (e.g., "14TH ST NW" is correct, while "14 TH ST NW" is not).
+- Always include the road type after the name or number, followed by the quadrant (e.g., "PENNSYLVANIA AVE NW").
+- Don’t use "and" for intersections; always use "&" (e.g., "14TH ST NW & PENNSYLVANIA AVE NW").
+- If you don’t see the intersection listed here, try reversing the order (e.g., change "PENNSYLVANIA AVE NW & 14TH ST NW" to "14TH ST NW & PENNSYLVANIA AVE NW").
+
+</Details>
 
 #### Zoomed-in Heatmap
 

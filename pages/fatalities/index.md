@@ -158,37 +158,40 @@ group by all
     description="*Only fatal"
 />
 
-<Note class='text-sm'>
-    Select a fatality in the table or map to see more details.
-</Note>
-
-<DataTable data={inc_map} link=link wrapTitles=true rowShading=true>
-    <Column id=REPORTDATE title="Date" fmt='mm/dd/yy hh:mm' wrap=true/>
-    <Column id=MODE title="Mode" wrap=true/>
-    <Column id=ADDRESS wrap=true/>
-</DataTable>
-
-
-<Note>
-    Use Mode and Time Period filters above the table to further refine the data.
-</Note>
-<BaseMap
-    height=650
-    startingZoom=12
->
-    <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=SEVERITY colorPalette={['#ff5a53']} link=link
-    tooltip={[
-        {id:'MODE', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
-        {id:'REPORTDATE', showColumnName:false, fmt:'mm/dd/yy hh:mm'},
-        {id:'ADDRESS', showColumnName:false, fmt:'id'}
-    ]}
-    />
-    <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true
-    tooltip={[
-        {id: 'ROUTENAME'}
-    ]}
-    />
-</BaseMap>
-<Note>
-    The purple lines represent DC's High Injury Network
-</Note>
+<Grid cols=2>
+    <Group>
+        <Note>
+            Use Mode and Time Period filters above the table to further refine the data.
+        </Note>
+        <BaseMap
+            height=560
+            startingZoom=12
+        >
+            <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=SEVERITY colorPalette={['#ff5a53']} link=link
+            tooltip={[
+                {id:'MODE', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
+                {id:'REPORTDATE', showColumnName:false, fmt:'mm/dd/yy hh:mm'},
+                {id:'ADDRESS', showColumnName:false, fmt:'id'}
+            ]}
+            />
+            <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true
+            tooltip={[
+                {id: 'ROUTENAME'}
+            ]}
+            />
+        </BaseMap>
+        <Note>
+            The purple lines represent DC's High Injury Network
+        </Note>
+    </Group>
+    <Group>
+        <Note class='text-sm'>
+            Select a fatality in the table or map to see more details.
+        </Note>
+        <DataTable data={inc_map} link=link wrapTitles=true rowShading=true>
+            <Column id=REPORTDATE title="Date" fmt='mm/dd/yy hh:mm' wrap=true/>
+            <Column id=MODE title="Mode" wrap=true/>
+            <Column id=ADDRESS wrap=true/>
+        </DataTable>
+    </Group>
+</Grid>    
