@@ -68,7 +68,7 @@ group by all
   select
       GRID_ID,
       sum(COUNT) as Injuries,
-      '/hexgrid/' || GRID_ID as link
+      '/hexgrid/' || GRID_ID as link_map
   from crashes.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
   and SEVERITY IN ${inputs.multi_severity.value}
@@ -188,7 +188,7 @@ sql intersections_table
   height=400
   startingZoom=17
 >
-  <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link min=0 opacity=0.7 ignoreZoom=true/>
+  <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link_map min=0 opacity=0.7 ignoreZoom=true/>
   <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true
   tooltip={[
         {id: 'ROUTENAME'}

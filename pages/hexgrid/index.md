@@ -170,7 +170,7 @@ group by all
     SELECT
         h.GRID_ID,
         COALESCE(SUM(c.COUNT), 0) AS Injuries,
-        '/hexgrid/' || h.GRID_ID AS link
+        '/hexgrid/' || h.GRID_ID AS link_map
     FROM
         hexgrid.crash_hexgrid h
     LEFT JOIN
@@ -230,7 +230,7 @@ group by all
             height=560
             startingZoom=12
         >
-            <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link min=0 opacity=0.7 />
+            <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link_map min=0 opacity=0.7 />
             <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true 
             tooltip={[
                 {id: 'ROUTENAME'}
