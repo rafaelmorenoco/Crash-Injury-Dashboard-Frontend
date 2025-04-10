@@ -184,14 +184,14 @@ group by all
 
 
 ```sql intersections_table
-SELECT
-    INTERSECTIONNAME,
-    '/hexgrid/' || GRID_ID AS link
-FROM
-    intersections.intersections
-WHERE
-    INTERSECTIONNAME ILIKE '%' || '${inputs.intersection_search}' || '%'
-LIMIT 5;
+    SELECT
+        INTERSECTIONNAME,
+        '/hexgrid/' || GRID_ID AS link
+    FROM
+        intersections.intersections
+    WHERE
+        INTERSECTIONNAME ILIKE '%' || '${inputs.intersection_search}' || '%'
+    LIMIT 5;
 ```
 
 <DateRange
@@ -250,7 +250,6 @@ LIMIT 5;
         <DataTable data={intersections_table} subtitle="Select an intersection to zoom into a hexagon containing the selected intersection." rowShading=true rows=5 link=link downloadable=false>
                     <Column id=INTERSECTIONNAME title=" "/>
         </DataTable>
-
     </Group>
     <Group>
         <Heatmap 
