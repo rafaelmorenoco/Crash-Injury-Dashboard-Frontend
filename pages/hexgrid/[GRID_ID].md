@@ -154,7 +154,7 @@ sql intersections_table
           <Column id=Count totalAgg=sum/>
         </DataTable>
         <Alert status="info">
-            To navigate to another hexagon go to the "Zoomed-in Heatmap" section bellow. Only hexagons with injuries will be visible.
+            To navigate to another hexagon, use the intersection search function below, or go back to: <a href="https://crash-injury-dashboard.evidence.app/hexgrid/">Injuries Heatmap</a>.
         </Alert>
         <TextInput
             name=intersection_search
@@ -178,24 +178,3 @@ sql intersections_table
 - If you don’t see the intersection listed here, try reversing the order (e.g., change "PENNSYLVANIA AVE NW & 14TH ST NW" to "14TH ST NW & PENNSYLVANIA AVE NW").
 
 </Details>
-
-#### Zoomed-in Heatmap
-
-<Note>
-  Select a hexagon to zoom in and see more details about the crashes within it.
-</Note>
-<BaseMap
-  height=400
-  startingZoom=17
->
-  <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link_map min=0 opacity=0.7 ignoreZoom=true/>
-  <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true
-  tooltip={[
-        {id: 'ROUTENAME'}
-    ]}
-  />
-  <Areas data={unique_hex} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID min=0 borderColor=#000000 color=#1C00ff00/>
-</BaseMap>
-<Note>
-The purple lines represent DC's High Injury Network
-</Note>

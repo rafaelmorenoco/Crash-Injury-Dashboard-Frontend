@@ -170,7 +170,7 @@ group by all
     SELECT
         h.GRID_ID,
         COALESCE(SUM(c.COUNT), 0) AS Injuries,
-        '/hexgrid/' || h.GRID_ID AS link_map
+        '/hexgrid/' || h.GRID_ID AS link
     FROM
         hexgrid.crash_hexgrid h
     LEFT JOIN
@@ -230,7 +230,7 @@ group by all
             height=560
             startingZoom=12
         >
-            <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link_map min=0 opacity=0.7 />
+            <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link min=0 opacity=0.7 />
             <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true 
             tooltip={[
                 {id: 'ROUTENAME'}
@@ -240,16 +240,6 @@ group by all
         <Note>
         The purple lines represent DC's High Injury Network  
         </Note>
-        <TextInput
-            name=intersection_search
-            title="Intersection Search"
-            description="Search for an intersection within a hexagon"
-            placeholder="E.g. 14TH ST NW & PENNSYLVANIA AVE NW"
-            defaultValue="14TH ST NW"
-        />
-        <DataTable data={intersections_table} subtitle="Select an intersection to zoom into a hexagon containing the selected intersection." rowShading=true rows=5 link=link downloadable=false>
-                    <Column id=INTERSECTIONNAME title=" "/>
-        </DataTable>
     </Group>
     <Group>
         <Heatmap 
@@ -288,12 +278,6 @@ group by all
     </Group>
 </Grid>
 
-<Details title="Having trouble with the search? Tap here for solutions.">
-
-### Tips:
-- For numbered streets, keep the ordinal attached directly to the number without spaces (e.g., "14TH ST NW" is correct, while "14 TH ST NW" is not).
-- Always include the road type after the name or number, followed by the quadrant (e.g., "PENNSYLVANIA AVE NW").
-- Don’t use "and" for intersections; always use "&" (e.g., "14TH ST NW & PENNSYLVANIA AVE NW").
-- If you don’t see the intersection listed here, try reversing the order (e.g., change "PENNSYLVANIA AVE NW & 14TH ST NW" to "14TH ST NW & PENNSYLVANIA AVE NW").
-
-</Details>
+<Alert status="info">
+    To search for a specific intersection or road, select any hexagon on the map. Then, on the zoomed-in page, use the intersection search functionality.
+</Alert>

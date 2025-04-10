@@ -46,82 +46,58 @@ group by all
 ```
 
 ```sql yoy_text_fatal
-    WITH modes_and_severities AS (
-        SELECT DISTINCT 
-            SEVERITY 
-        FROM 
-            crashes.crashes
-    ), 
-    current_year AS (
+    WITH date_boundaries AS (
         SELECT 
-            SEVERITY, 
-            sum(COUNT) as sum_count,
-            extract(year from current_date) as current_year
-        FROM 
-            crashes.crashes 
-        WHERE 
-            SEVERITY = 'Fatal'
-            AND REPORTDATE >= date_trunc('year', current_date)
-        GROUP BY 
-            SEVERITY
-    ), 
-    prior_year AS (
-        SELECT 
-            SEVERITY, 
-            sum(COUNT) as sum_count,
-            extract(year from current_date - interval '1 year') as year_prior
-        FROM 
-            crashes.crashes 
-        WHERE 
-            SEVERITY = 'Fatal'
-            AND REPORTDATE >= (date_trunc('year', current_date) - interval '1 year')
-            AND REPORTDATE < (current_date - interval '1 year')
-        GROUP BY 
-            SEVERITY
+            date_trunc('year', current_date) AS current_year_start,
+            date_trunc('year', current_date) - interval '1 year' AS prior_year_start,
+            current_date - interval '1 year' AS prior_year_end
     )
     SELECT 
-        mas.SEVERITY, 
-        COALESCE(cy.sum_count, 0) as current_year_sum, 
-        COALESCE(py.sum_count, 0) as prior_year_sum, 
-        COALESCE(ABS(COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0)), 0) AS difference,
+        'Fatal' AS SEVERITY,
+        COALESCE(cy.current_year_sum, 0) AS current_year_sum,
+        COALESCE(py.prior_year_sum, 0) AS prior_year_sum,
+        ABS(COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0)) AS difference,
         CASE 
-            WHEN COALESCE(py.sum_count, 0) != 0 AND COALESCE(cy.sum_count, 0) != 0 THEN 
-                CASE 
-                    WHEN ((COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0)) / COALESCE(py.sum_count, 0)) = 0 THEN NULL
-                    ELSE ((COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0)) / COALESCE(py.sum_count, 0))
-                END
+            WHEN COALESCE(py.prior_year_sum, 0) != 0 THEN 
+            NULLIF((COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0))::numeric / py.prior_year_sum, 0)
             ELSE NULL 
-        END as percentage_change,
+        END AS percentage_change,
         CASE 
-            WHEN COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) > 0 THEN 'an increase of'
-            WHEN COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) < 0 THEN 'a decrease of'
+            WHEN COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0) > 0 THEN 'an increase of'
+            WHEN COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0) < 0 THEN 'a decrease of'
             ELSE NULL 
-        END as percentage_change_text,
+        END AS percentage_change_text,
         CASE 
-            WHEN COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) > 0 THEN 'more'
-            WHEN COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) < 0 THEN 'fewer'
-            ELSE 'no change' 
-        END as difference_text,
-        extract(year from current_date) as current_year,
-        COALESCE(py.year_prior, extract(year from current_date - interval '1 year')) as year_prior,
+            WHEN COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0) > 0 THEN 'more'
+            WHEN COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0) < 0 THEN 'fewer'
+            ELSE 'no change'
+        END AS difference_text,
+        extract(year FROM current_date) AS current_year,
+        extract(year FROM current_date - interval '1 year') AS year_prior,
         CASE 
-            WHEN COALESCE(cy.sum_count, 0) = 1 THEN 'has' 
+            WHEN COALESCE(cy.current_year_sum, 0) = 1 THEN 'has' 
             ELSE 'have' 
-        END as has_have,
+        END AS has_have,
         CASE 
-            WHEN COALESCE(cy.sum_count, 0) = 1 THEN 'fatality' 
-            ELSE 'fatalities' 
-        END as fatality
-    FROM 
-        modes_and_severities mas
-    LEFT JOIN 
-        current_year cy 
-    ON 
-        mas.SEVERITY = cy.SEVERITY
-    LEFT JOIN 
-        prior_year py 
-    ON 
-        mas.SEVERITY = py.SEVERITY
+            WHEN COALESCE(cy.current_year_sum, 0) = 1 THEN 'fatality' 
+            ELSE 'fatalities'
+        END AS fatality
+    FROM date_boundaries d
+    LEFT JOIN (
+        SELECT 
+            SUM(COUNT) AS current_year_sum
+        FROM crashes.crashes
+        WHERE SEVERITY = 'Fatal'
+        AND REPORTDATE >= (SELECT current_year_start FROM date_boundaries)
+    ) cy ON true
+    LEFT JOIN (
+        SELECT 
+            SUM(COUNT) AS prior_year_sum
+        FROM crashes.crashes
+        WHERE SEVERITY = 'Fatal'
+        AND REPORTDATE >= (SELECT prior_year_start FROM date_boundaries)
+        AND REPORTDATE < (SELECT prior_year_end FROM date_boundaries)
+    ) py ON true;
 ```
 
 ```sql inc_map
