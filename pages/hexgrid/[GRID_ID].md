@@ -64,7 +64,8 @@ group by all
   group by all
 ```
 
-```sql hex_map
+<!---
+sql hex_map
   select
       GRID_ID,
       sum(COUNT) as Injuries,
@@ -75,8 +76,7 @@ group by all
   and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'
   and GRID_ID is not null
   group by all
-```
-<!---
+
 sql intersections_table
     SELECT
         INTERSECTIONNAME,
