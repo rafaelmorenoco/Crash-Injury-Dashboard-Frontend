@@ -66,14 +66,13 @@ group by all
 
 ```sql intersections_table
     SELECT
-        GRID_ID,
-        STRING_AGG(
-            COALESCE(NULLIF(INTERSECTIONNAME, ''), NULLIF(ROUTENAME, ''))
-            , ' - '
-        ) AS INTERSECTIONNAMES,
+        INTERSECTIONNAME,
         '/hexgrid/' || GRID_ID AS link
-    FROM intersections.intersections
-    GROUP BY GRID_ID;
+    FROM
+        intersections.intersections
+    WHERE
+        INTERSECTIONNAME ILIKE '%' || '${inputs.intersection_search}' || '%'
+    LIMIT 5;
 ```
 
 ```sql modes_selected
@@ -166,13 +165,18 @@ The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR
         <Alert status="info">
             To navigate to another hexagon, use the intersection search function below, or go back to: <a href="https://crash-injury-dashboard.evidence.app/hexgrid/">Injuries Heatmap</a>.
         </Alert>
+        <TextInput
+            name=intersection_search
+            title="Intersection Search"
+            description="Search for an intersection within a hexagon"
+            placeholder="E.g. 14TH ST NW & PENNSYLVANIA AVE NW"
+            defaultValue="14TH ST NW"
+        />
+        <DataTable data={intersections_table} subtitle="Select an intersection from the resulting search to zoom into the hexagon that contains it." rowShading=true rows=5 link=link downloadable=false>
+                    <Column id=INTERSECTIONNAME title="Intersection Match:"/>
+        </DataTable>
     </Group>
 </Grid>
-
-<DataTable data={intersections_table} subtitle="Select an intersection or road from the resulting search to zoom into the hexagon that contains it." rowShading=true rows=5 link=link downloadable=false search=true>
-    <Column id=GRID_ID title="Hexagon ID"/>
-    <Column id=INTERSECTIONNAMES title="Intersections / Roads in Hexagon" wrap="true"/>
-</DataTable>
 
 <Details title="Having trouble with the search? Tap here for solutions.">
 
@@ -180,5 +184,6 @@ The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR
 - For numbered streets, keep the ordinal attached directly to the number without spaces (e.g., "14TH ST NW" is correct, while "14 TH ST NW" is not).
 - Always include the road type after the name or number, followed by the quadrant (e.g., "PENNSYLVANIA AVE NW").
 - Don’t use "and" for intersections; always use "&" (e.g., "14TH ST NW & PENNSYLVANIA AVE NW").
+- If you don’t see the intersection listed here, try reversing the order (e.g., change "PENNSYLVANIA AVE NW & 14TH ST NW" to "14TH ST NW & PENNSYLVANIA AVE NW").
 
 </Details>
