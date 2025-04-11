@@ -241,6 +241,19 @@ group by 1
         totals;
 ```
 
+```sql modes_selected
+    SELECT
+        STRING_AGG(DISTINCT MODE, ', ') AS MODE_SELECTED,
+        CASE 
+            WHEN COUNT(DISTINCT MODE) > 1 THEN 'modes are:'
+            ELSE 'mode is:'
+        END AS PLURAL_SINGULAR
+    FROM
+        crashes.crashes
+    WHERE
+        MODE IN ${inputs.multi_mode_dd.value};
+```
+
 <DateRange
   start='2018-01-01'
   title="Select Time Period"
@@ -268,8 +281,12 @@ group by 1
     description="*Only fatal"
 />
 
+<Alert status="info">
+The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <Value data={modes_selected} column="MODE_SELECTED"/>
+</Alert>
+
 <Note>
-    Select an ANC to zoom in and see more details about the injuries resulting from a crash within its SMDs."
+    Select an ANC to zoom in and see more details about the injuries resulting from a crash within its SMDs.
 </Note>
 <Grid cols=2>
     <Group>

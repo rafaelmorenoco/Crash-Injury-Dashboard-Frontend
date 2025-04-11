@@ -4,8 +4,6 @@ queries:
    - fatality: fatality.sql
 ---
 
-As of yesterday <Value data={yesterday} column="Yesterday"/> there <Value data={yoy_text_fatal} column="has_have"/> been <Value data={yoy_text_fatal} column="current_year_sum" agg=sum/> <Value data={yoy_text_fatal} column="fatality"/> for all modes in <Value data={yoy_text_fatal} column="current_year" fmt='####","'/>   <Value data={yoy_text_fatal} column="difference" agg=sum fmt='####' /> <Value data={yoy_text_fatal} column="difference_text"/> (<Delta data={yoy_text_fatal} column="percentage_change" fmt="+0%;-0%;0%" downIsGood=True neutralMin=-0.00 neutralMax=0.00/>) compared to the same period in <Value data={yoy_text_fatal} column="year_prior" fmt="####."/>
-
 <Details title="About this dashboard">
 
     This dashboard shows traffic fatalities in the District of Columbia and can be filtered from 20__-present. Following a fatal crash, the DDOT team visits the site and, in coordination with The Metropolitan Police Department's (MPD) Major Crash Investigation Unit, determines if there are any short-term measures that DDOT can install to improve safety for all roadway users. Starting in 2021, site visit findings and follow-up can be found in the docked window on the right for each fatality.
@@ -116,23 +114,46 @@ group by all
   group by all
 ```
 
-<DateRange
-  start='2018-01-01'
-  title="Select Time Period"
-  name=date_range
-  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Date','Last Year','All Time']}
-  defaultValue={'Year to Date'}
-/>
+```sql modes_selected
+    SELECT
+        STRING_AGG(DISTINCT MODE, ', ') AS MODE_SELECTED,
+        CASE 
+            WHEN COUNT(DISTINCT MODE) > 1 THEN 'modes are:'
+            ELSE 'mode is:'
+        END AS PLURAL_SINGULAR
+    FROM
+        crashes.crashes
+    WHERE
+        MODE IN ${inputs.multi_mode_dd.value};
+```
 
-<Dropdown
-    data={unique_mode} 
-    name=multi_mode_dd
-    value=MODE
-    title="Select Mode"
-    multiple=true
-    selectAllByDefault=true
-    description="*Only fatal"
-/>
+<Grid cols=2>
+    <Group>
+        <DateRange
+        start='2018-01-01'
+        title="Select Time Period"
+        name=date_range
+        presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Date','Last Year','All Time']}
+        defaultValue={'Year to Date'}
+        />
+        <Dropdown
+            data={unique_mode} 
+            name=multi_mode_dd
+            value=MODE
+            title="Select Mode"
+            multiple=true
+            selectAllByDefault=true
+            description="*Only fatal"
+        />
+    </Group>
+    <Group>
+        As of yesterday <Value data={yesterday} column="Yesterday"/> there <Value data={yoy_text_fatal} column="has_have"/> been <Value data={yoy_text_fatal} column="current_year_sum" agg=sum/> <Value data={yoy_text_fatal} column="fatality"/> for all modes in <Value data={yoy_text_fatal} column="current_year" fmt='####","'/>   <Value data={yoy_text_fatal} column="difference" agg=sum fmt='####' /> <Value data={yoy_text_fatal} column="difference_text"/> (<Delta data={yoy_text_fatal} column="percentage_change" fmt="+0%;-0%;0%" downIsGood=True neutralMin=-0.00 neutralMax=0.00/>) compared to the same period in <Value data={yoy_text_fatal} column="year_prior" fmt="####."/>
+    </Group>
+</Grid>
+
+<Alert status="info">
+The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <Value data={modes_selected} column="MODE_SELECTED"/>
+</Alert>
 
 <Grid cols=2>
     <Group>
