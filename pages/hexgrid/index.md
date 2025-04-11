@@ -20,10 +20,9 @@ group by 1
 
 ```sql unique_hex
 select 
-    GRID_ID,
-    '/hexgrid/' || h.GRID_ID AS link
+    GRID_ID
 from hexgrid.crash_hexgrid
-group by GRID_ID
+group by 1
 ```
 
 ```sql unique_hin
@@ -183,17 +182,30 @@ group by all
         h.GRID_ID
 ```
 
-<!---
-sql intersections_table
+```sql intersections_table
     SELECT
-        INTERSECTIONNAME,
+        GRID_ID,
+        STRING_AGG(
+            COALESCE(NULLIF(INTERSECTIONNAME, ''), NULLIF(ROUTENAME, ''))
+            , ' - '
+        ) AS INTERSECTIONNAMES,
         '/hexgrid/' || GRID_ID AS link
+    FROM intersections.intersections
+    GROUP BY GRID_ID;
+```
+
+```sql modes_selected
+    SELECT
+        STRING_AGG(DISTINCT MODE, ', ') AS MODE_SELECTED,
+        CASE 
+            WHEN COUNT(DISTINCT MODE) > 1 THEN 'modes are:'
+            ELSE 'mode is:'
+        END AS PLURAL_SINGULAR
     FROM
-        intersections.intersections
+        crashes.crashes
     WHERE
-        INTERSECTIONNAME ILIKE '%' || '${inputs.intersection_search}' || '%'
-    LIMIT 5;
--->
+        MODE IN ${inputs.multi_mode_dd.value};
+```
 
 <DateRange
   start='2018-01-01'
@@ -221,6 +233,10 @@ sql intersections_table
     selectAllByDefault=true
     description="*Only fatal"
 />
+
+<Alert status="info">
+The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <Value data={modes_selected} column="MODE_SELECTED"/>
+</Alert>
 
 <Grid cols=2>
     <Group>
@@ -278,8 +294,17 @@ sql intersections_table
         />
     </Group>
 </Grid>
-<!---
-<Alert status="info">
-    To search for a specific intersection or road, select any hexagon on the map. Then, on the zoomed-in page, use the intersection search functionality.
-</Alert>
--->
+
+<DataTable data={intersections_table} subtitle="Select an intersection or road from the resulting search to zoom into the hexagon that contains it." rowShading=true rows=5 link=link downloadable=false search=true>
+    <Column id=GRID_ID title="Hexagon ID"/>
+    <Column id=INTERSECTIONNAMES title="Intersections / Roads in Hexagon" wrap="true"/>
+</DataTable>
+
+<Details title="Having trouble with the search? Tap here for solutions.">
+
+### Tips:
+- For numbered streets, keep the ordinal attached directly to the number without spaces (e.g., "14TH ST NW" is correct, while "14 TH ST NW" is not).
+- Always include the road type after the name or number, followed by the quadrant (e.g., "PENNSYLVANIA AVE NW").
+- Don’t use "and" for intersections; always use "&" (e.g., "14TH ST NW & PENNSYLVANIA AVE NW").
+
+</Details>

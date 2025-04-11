@@ -170,6 +170,19 @@ UNION ALL
   group by all
 ```
 
+```sql modes_selected
+    SELECT
+        STRING_AGG(DISTINCT MODE, ', ') AS MODE_SELECTED,
+        CASE 
+            WHEN COUNT(DISTINCT MODE) > 1 THEN 'modes are:'
+            ELSE 'mode is:'
+        END AS PLURAL_SINGULAR
+    FROM
+        crashes.crashes
+    WHERE
+        MODE IN ${inputs.multi_mode_dd.value};
+```
+
 <DateRange
   start='2020-01-01'
   name=date_range
@@ -185,6 +198,10 @@ UNION ALL
     multiple=true
     selectAllByDefault=true
 />
+
+<Alert status="info">
+The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <Value data={modes_selected} column="MODE_SELECTED"/>
+</Alert>
 
 <Grid cols=2>
     <BaseMap
