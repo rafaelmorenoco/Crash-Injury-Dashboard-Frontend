@@ -20,9 +20,10 @@ group by 1
 
 ```sql unique_hex
 select 
-    GRID_ID
+    GRID_ID,
+    '/hexgrid/' || h.GRID_ID AS link
 from hexgrid.crash_hexgrid
-group by 1
+group by GRID_ID
 ```
 
 ```sql unique_hin
