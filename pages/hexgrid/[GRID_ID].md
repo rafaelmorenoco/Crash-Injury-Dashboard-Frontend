@@ -153,10 +153,10 @@ sql old intersections_table
           <Column id=MODE totalAgg='{inputs.multi_mode}'/>
           <Column id=Count totalAgg=sum/>
         </DataTable>
+        <!---
         <Alert status="info">
             To navigate to another hexagon, use the intersection search function below, or go back to: <a href="https://crash-injury-dashboard.evidence.app/hexgrid/">Injuries Heatmap</a>.
         </Alert>
-        <!---
         <TextInput
             name=intersection_search
             title="Intersection Search"
@@ -171,6 +171,7 @@ sql old intersections_table
     </Group>
 </Grid>
 
+<!---
 <Details title="Having trouble with the search? Tap here for solutions.">
 
 ### Tips:
@@ -180,3 +181,4 @@ sql old intersections_table
 - If you don’t see the intersection listed here, try reversing the order (e.g., change "PENNSYLVANIA AVE NW & 14TH ST NW" to "14TH ST NW & PENNSYLVANIA AVE NW").
 
 </Details>
+ -->

@@ -277,7 +277,8 @@ sql intersections_table
         />
     </Group>
 </Grid>
-
+<!---
 <Alert status="info">
     To search for a specific intersection or road, select any hexagon on the map. Then, on the zoomed-in page, use the intersection search functionality.
 </Alert>
+-->
