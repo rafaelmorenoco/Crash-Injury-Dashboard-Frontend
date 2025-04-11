@@ -76,8 +76,8 @@ group by all
   and GRID_ID is not null
   group by all
 ```
-
-```sql intersections_table
+<!---
+sql intersections_table
     SELECT
         INTERSECTIONNAME,
         '/hexgrid/' || GRID_ID AS link
@@ -86,10 +86,10 @@ group by all
     WHERE
         INTERSECTIONNAME ILIKE '%' || '${inputs.intersection_search}' || '%'
     LIMIT 5;
-```
 
-<!---
-sql intersections_table
+
+
+sql old intersections_table
     SELECT
         INTERSECTIONNAME,
         '/hexgrid/' || GRID_ID AS link
@@ -156,6 +156,7 @@ sql intersections_table
         <Alert status="info">
             To navigate to another hexagon, use the intersection search function below, or go back to: <a href="https://crash-injury-dashboard.evidence.app/hexgrid/">Injuries Heatmap</a>.
         </Alert>
+        <!---
         <TextInput
             name=intersection_search
             title="Intersection Search"
@@ -166,6 +167,7 @@ sql intersections_table
         <DataTable data={intersections_table} subtitle="Select an intersection to zoom into a hexagon containing the selected intersection." rowShading=true rows=5 link=link downloadable=false>
                     <Column id=INTERSECTIONNAME title=" "/>
         </DataTable>
+        -->
     </Group>
 </Grid>
 

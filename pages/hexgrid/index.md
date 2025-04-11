@@ -182,8 +182,8 @@ group by all
         h.GRID_ID
 ```
 
-
-```sql intersections_table
+<!---
+sql intersections_table
     SELECT
         INTERSECTIONNAME,
         '/hexgrid/' || GRID_ID AS link
@@ -192,7 +192,7 @@ group by all
     WHERE
         INTERSECTIONNAME ILIKE '%' || '${inputs.intersection_search}' || '%'
     LIMIT 5;
-```
+-->
 
 <DateRange
   start='2018-01-01'
