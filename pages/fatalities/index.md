@@ -116,7 +116,7 @@ group by all
 
 ```sql modes_selected
     SELECT
-        STRING_AGG(DISTINCT MODE, ', ') AS MODE_SELECTED,
+        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTED,
         CASE 
             WHEN COUNT(DISTINCT MODE) > 1 THEN 'modes are:'
             ELSE 'mode is:'
@@ -152,7 +152,7 @@ group by all
 </Grid>
 
 <Alert status="info">
-The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <Value data={modes_selected} column="MODE_SELECTED"/>
+The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <b><Value data={modes_selected} column="MODE_SELECTED"/></b> <Info description="*Only fatal" color="primary" />
 </Alert>
 
 <Grid cols=2>
@@ -164,14 +164,14 @@ The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR
             height=560
             startingZoom=12
         >
-            <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=SEVERITY colorPalette={['#ff5a53']} link=link
+            <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=SEVERITY colorPalette={['#ff5a53']} link=link ignoreZoom=true
             tooltip={[
                 {id:'MODE', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
                 {id:'REPORTDATE', showColumnName:false, fmt:'mm/dd/yy hh:mm'},
                 {id:'ADDRESS', showColumnName:false, fmt:'id'}
             ]}
             />
-            <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true
+            <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ 
             tooltip={[
                 {id: 'ROUTENAME'}
             ]}
