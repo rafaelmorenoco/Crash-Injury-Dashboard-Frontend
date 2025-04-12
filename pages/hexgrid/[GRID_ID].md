@@ -77,7 +77,7 @@ group by all
 
 ```sql modes_selected
     SELECT
-        STRING_AGG(DISTINCT MODE, ', ') AS MODE_SELECTED,
+        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTED,
         CASE 
             WHEN COUNT(DISTINCT MODE) > 1 THEN 'modes are:'
             ELSE 'mode is:'
@@ -129,7 +129,7 @@ sql hex_map
 />
 
 <Alert status="info">
-The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <Value data={modes_selected} column="MODE_SELECTED"/>
+The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <b><Value data={modes_selected} column="MODE_SELECTED"/></b> <Info description="*Only fatal" color="primary" />
 </Alert>
 
 ### Selected Hexagon
@@ -163,7 +163,7 @@ The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR
           <Column id=Count totalAgg=sum/>
         </DataTable>
         <Alert status="info">
-            To navigate to another hexagon, use the intersection search function below, or go back to: <a href="https://crash-injury-dashboard.evidence.app/hexgrid/">Injuries Heatmap</a>.
+            To navigate to another hexagon, use the intersection search function below, or go back to: <b><a href="https://crash-injury-dashboard.evidence.app/hexgrid/">Injuries Heatmap</a></b>.
         </Alert>
         <TextInput
             name=intersection_search

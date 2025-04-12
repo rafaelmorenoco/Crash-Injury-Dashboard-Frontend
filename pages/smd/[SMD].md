@@ -141,7 +141,7 @@ group by 1
 
 ```sql modes_selected
     SELECT
-        STRING_AGG(DISTINCT MODE, ', ') AS MODE_SELECTED,
+        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTED,
         CASE 
             WHEN COUNT(DISTINCT MODE) > 1 THEN 'modes are:'
             ELSE 'mode is:'
@@ -179,7 +179,7 @@ group by 1
 />
 
 <Alert status="info">
-The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <Value data={modes_selected} column="MODE_SELECTED"/>
+The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <b><Value data={modes_selected} column="MODE_SELECTED"/></b> <Info description="*Only fatal" color="primary" />
 </Alert>
 
 ### Selected SMD
