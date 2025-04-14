@@ -139,24 +139,23 @@ group by 1
         smd_2023.SMD;
 ```
 
-```sql modes_selected
+```sql mode_severity_selection
     SELECT
-        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTED,
-        CASE 
-            WHEN COUNT(DISTINCT MODE) > 1 THEN 'modes are:'
-            ELSE 'mode is:'
-        END AS PLURAL_SINGULAR
+        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
+        STRING_AGG(DISTINCT SEVERITY, ', ' ORDER BY SEVERITY ASC) AS SEVERITY_SELECTION
     FROM
         crashes.crashes
     WHERE
-        MODE IN ${inputs.multi_mode_dd.value};
+        MODE IN ${inputs.multi_mode_dd.value}
+        AND SEVERITY IN ${inputs.multi_severity.value};
 ```
 
 <DateRange
-  start='2020-01-01'
+  start='2018-01-01'
+  title="Select Time Period"
   name=date_range
-  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Date','Last Year','All Time']}
-  defaultValue={'Year to Date'}
+  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Today','Last Year','All Time']}
+  defaultValue={'Year to Today'}
 />
 
 <Dropdown
@@ -179,7 +178,7 @@ group by 1
 />
 
 <Alert status="info">
-The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <b><Value data={modes_selected} column="MODE_SELECTED"/></b> <Info description="*Only fatal" color="primary" />
+The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Mode</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 ### Selected SMD

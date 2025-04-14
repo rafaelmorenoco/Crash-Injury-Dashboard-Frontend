@@ -232,113 +232,184 @@ group by all
 ```
 
 ```sql yoy_text_fatal
-    WITH date_boundaries AS (
+    WITH b AS (
         SELECT 
             date_trunc('year', current_date) AS current_year_start,
             date_trunc('year', current_date) - interval '1 year' AS prior_year_start,
-            current_date - interval '1 year' AS prior_year_end
+            current_date - interval '1 year' AS prior_year_end,
+            extract(year FROM current_date) AS current_year,
+            extract(year FROM current_date - interval '1 year') AS year_prior
     )
     SELECT 
-        'Fatal' AS SEVERITY,
-        COALESCE(cy.current_year_sum, 0) AS current_year_sum,
-        COALESCE(py.prior_year_sum, 0) AS prior_year_sum,
-        ABS(COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0)) AS difference,
+        'Fatal' AS severity,
+        COALESCE(SUM(CASE 
+            WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT 
+            ELSE 0 
+            END), 0) AS current_year_sum,
+        COALESCE(SUM(CASE 
+            WHEN cr.REPORTDATE >= b.prior_year_start 
+                AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT 
+            ELSE 0 
+            END), 0) AS prior_year_sum,
+        ABS(
+            COALESCE(SUM(CASE 
+                WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END), 0)
+        - COALESCE(SUM(CASE 
+                WHEN cr.REPORTDATE >= b.prior_year_start 
+                    AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END), 0)
+        ) AS difference,
         CASE 
-            WHEN COALESCE(py.prior_year_sum, 0) != 0 THEN 
-            NULLIF((COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0))::numeric / py.prior_year_sum, 0)
-            ELSE NULL 
+        WHEN SUM(CASE 
+                WHEN cr.REPORTDATE >= b.prior_year_start 
+                AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END) != 0 
+        THEN NULLIF(
+            (SUM(CASE 
+                    WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END) - 
+            SUM(CASE 
+                    WHEN cr.REPORTDATE >= b.prior_year_start 
+                    AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END)
+            )::numeric /
+            SUM(CASE 
+                    WHEN cr.REPORTDATE >= b.prior_year_start 
+                    AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END)
+            , 0)
+        ELSE NULL 
         END AS percentage_change,
         CASE 
-            WHEN COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0) > 0 THEN 'an increase of'
-            WHEN COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0) < 0 THEN 'a decrease of'
-            ELSE NULL 
+        WHEN (SUM(CASE WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END)
+            - SUM(CASE WHEN cr.REPORTDATE >= b.prior_year_start 
+                        AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END)) > 0 
+        THEN 'an increase of'
+        WHEN (SUM(CASE WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END)
+            - SUM(CASE WHEN cr.REPORTDATE >= b.prior_year_start 
+                        AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END)) < 0 
+        THEN 'a decrease of'
+        ELSE NULL 
         END AS percentage_change_text,
         CASE 
-            WHEN COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0) > 0 THEN 'more'
-            WHEN COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0) < 0 THEN 'fewer'
-            ELSE 'no change'
+        WHEN (SUM(CASE WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END)
+            - SUM(CASE WHEN cr.REPORTDATE >= b.prior_year_start 
+                        AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END)) > 0 
+        THEN 'more'
+        WHEN (SUM(CASE WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END)
+            - SUM(CASE WHEN cr.REPORTDATE >= b.prior_year_start 
+                        AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END)) < 0 
+        THEN 'fewer'
+        ELSE 'no change'
         END AS difference_text,
-        extract(year FROM current_date) AS current_year,
-        extract(year FROM current_date - interval '1 year') AS year_prior,
+        b.current_year,
+        b.year_prior,
         CASE 
-            WHEN COALESCE(cy.current_year_sum, 0) = 1 THEN 'has' 
-            ELSE 'have' 
+        WHEN SUM(CASE WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END) = 1 
+        THEN 'has' 
+        ELSE 'have' 
         END AS has_have,
         CASE 
-            WHEN COALESCE(cy.current_year_sum, 0) = 1 THEN 'fatality' 
-            ELSE 'fatalities'
+        WHEN SUM(CASE WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END) = 1 
+        THEN 'fatality' 
+        ELSE 'fatalities'
         END AS fatality
-    FROM date_boundaries d
-    LEFT JOIN (
-        SELECT 
-            SUM(COUNT) AS current_year_sum
-        FROM crashes.crashes
-        WHERE SEVERITY = 'Fatal'
-        AND REPORTDATE >= (SELECT current_year_start FROM date_boundaries)
-    ) cy ON true
-    LEFT JOIN (
-        SELECT 
-            SUM(COUNT) AS prior_year_sum
-        FROM crashes.crashes
-        WHERE SEVERITY = 'Fatal'
-        AND REPORTDATE >= (SELECT prior_year_start FROM date_boundaries)
-        AND REPORTDATE < (SELECT prior_year_end FROM date_boundaries)
-    ) py ON true;
+    FROM 
+        b
+        INNER JOIN crashes.crashes AS cr
+        ON cr.SEVERITY = 'Fatal'
+    GROUP BY b.current_year_start, b.prior_year_start, b.prior_year_end, 
+            b.current_year, b.year_prior;
 ```
 
 ```sql yoy_text_major_injury
-    WITH date_boundaries AS (
+    WITH b AS (
         SELECT 
             date_trunc('year', current_date) AS current_year_start,
             date_trunc('year', current_date) - interval '1 year' AS prior_year_start,
-            current_date - interval '1 year' AS prior_year_end
+            current_date - interval '1 year' AS prior_year_end,
+            extract(year FROM current_date) AS current_year,
+            extract(year FROM current_date - interval '1 year') AS year_prior
     )
     SELECT 
-        'Major' AS SEVERITY,
-        COALESCE(cy.current_year_sum, 0) AS current_year_sum,
-        COALESCE(py.prior_year_sum, 0) AS prior_year_sum,
-        ABS(COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0)) AS difference,
+        'Major' AS severity,
+        COALESCE(SUM(CASE 
+            WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT 
+            ELSE 0 
+            END), 0) AS current_year_sum,
+        COALESCE(SUM(CASE 
+            WHEN cr.REPORTDATE >= b.prior_year_start 
+                AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT 
+            ELSE 0 
+            END), 0) AS prior_year_sum,
+        ABS(
+            COALESCE(SUM(CASE 
+                WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END), 0)
+        - COALESCE(SUM(CASE 
+                WHEN cr.REPORTDATE >= b.prior_year_start 
+                    AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END), 0)
+        ) AS difference,
         CASE 
-            WHEN COALESCE(py.prior_year_sum, 0) != 0 THEN 
-            NULLIF((COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0))::numeric / py.prior_year_sum, 0)
-            ELSE NULL 
+        WHEN SUM(CASE 
+                WHEN cr.REPORTDATE >= b.prior_year_start 
+                AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END) != 0 
+        THEN NULLIF(
+            (SUM(CASE 
+                    WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END) - 
+            SUM(CASE 
+                    WHEN cr.REPORTDATE >= b.prior_year_start 
+                    AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END)
+            )::numeric /
+            SUM(CASE 
+                    WHEN cr.REPORTDATE >= b.prior_year_start 
+                    AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END)
+            , 0)
+        ELSE NULL 
         END AS percentage_change,
         CASE 
-            WHEN COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0) > 0 THEN 'an increase of'
-            WHEN COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0) < 0 THEN 'a decrease of'
-            ELSE NULL 
+        WHEN (SUM(CASE WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END)
+            - SUM(CASE WHEN cr.REPORTDATE >= b.prior_year_start 
+                        AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END)) > 0 
+        THEN 'an increase of'
+        WHEN (SUM(CASE WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END)
+            - SUM(CASE WHEN cr.REPORTDATE >= b.prior_year_start 
+                        AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END)) < 0 
+        THEN 'a decrease of'
+        ELSE NULL 
         END AS percentage_change_text,
         CASE 
-            WHEN COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0) > 0 THEN 'more'
-            WHEN COALESCE(cy.current_year_sum, 0) - COALESCE(py.prior_year_sum, 0) < 0 THEN 'fewer'
-            ELSE 'no change'
+        WHEN (SUM(CASE WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END)
+            - SUM(CASE WHEN cr.REPORTDATE >= b.prior_year_start 
+                        AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END)) > 0 
+        THEN 'more'
+        WHEN (SUM(CASE WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END)
+            - SUM(CASE WHEN cr.REPORTDATE >= b.prior_year_start 
+                        AND cr.REPORTDATE < b.prior_year_end THEN cr.COUNT ELSE 0 END)) < 0 
+        THEN 'fewer'
+        ELSE 'no change'
         END AS difference_text,
-        extract(year FROM current_date) AS current_year,
-        extract(year FROM current_date - interval '1 year') AS year_prior,
+        b.current_year,
+        b.year_prior,
         CASE 
-            WHEN COALESCE(cy.current_year_sum, 0) = 1 THEN 'has' 
-            ELSE 'have' 
+        WHEN SUM(CASE WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END) = 1 
+        THEN 'has' 
+        ELSE 'have' 
         END AS has_have,
         CASE 
-            WHEN COALESCE(cy.current_year_sum, 0) = 1 THEN 'major injury' 
-            ELSE 'major injuries'
+        WHEN SUM(CASE WHEN cr.REPORTDATE >= b.current_year_start THEN cr.COUNT ELSE 0 END) = 1 
+        THEN 'major injurie' 
+        ELSE 'major injuries'
         END AS major_injury
-    FROM date_boundaries d
-    LEFT JOIN (
-        SELECT 
-            SUM(COUNT) AS current_year_sum
-        FROM crashes.crashes
-        WHERE SEVERITY = 'Major'
-        AND REPORTDATE >= (SELECT current_year_start FROM date_boundaries)
-    ) cy ON true
-    LEFT JOIN (
-        SELECT 
-            SUM(COUNT) AS prior_year_sum
-        FROM crashes.crashes
-        WHERE SEVERITY = 'Major'
-        AND REPORTDATE >= (SELECT prior_year_start FROM date_boundaries)
-        AND REPORTDATE < (SELECT prior_year_end FROM date_boundaries)
-    ) py ON true;
+    FROM 
+        b
+        INNER JOIN crashes.crashes AS cr
+        ON cr.SEVERITY = 'Major'
+    GROUP BY b.current_year_start, b.prior_year_start, b.prior_year_end, 
+            b.current_year, b.year_prior;
+```
+
+```sql severity_selection
+    SELECT
+        STRING_AGG(DISTINCT SEVERITY, ', ' ORDER BY SEVERITY ASC) AS SEVERITY_SELECTION
+    FROM
+        crashes.crashes
+    WHERE
+        SEVERITY IN ${inputs.multi_severity.value}; 
 ```
 
 <!--
@@ -425,8 +496,8 @@ old sql yoy_text_fatal
   start='2018-01-01'
   title="Select Time Period"
   name=date_range
-  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Date','Last Year','All Time']}
-  defaultValue={'Year to Date'}
+  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Today','Last Year','All Time']}
+  defaultValue={'Year to Today'}
 />
 
 <Dropdown
@@ -437,6 +508,10 @@ old sql yoy_text_fatal
     multiple=true
     defaultValue={['Fatal', 'Major']}
 />
+
+<Alert status="info">
+The slection for <b>Severity</b> is: <b><Value data={severity_selection} column="SEVERITY_SELECTION"/></b>.
+</Alert>
 
 ### Injuries by Mode and Severity
 
@@ -453,7 +528,8 @@ old sql yoy_text_fatal
             seriesColors={{"Major": '#ff9412',"Minor": '#ffdf00',"Fatal": '#ff5a53'}}
             swapXY=true
             labels=true
-            leftPadding=20
+            leftPadding=10
+            rightPadding=30
             echartsOptions={{animation: false}}
         />
         <Note>
