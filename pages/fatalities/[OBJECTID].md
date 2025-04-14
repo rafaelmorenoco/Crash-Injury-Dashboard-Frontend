@@ -170,13 +170,9 @@ UNION ALL
   group by all
 ```
 
-```sql modes_selected
+```sql mode_selection
     SELECT
-        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTED,
-        CASE 
-            WHEN COUNT(DISTINCT MODE) > 1 THEN 'modes are:'
-            ELSE 'mode is:'
-        END AS PLURAL_SINGULAR
+        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION
     FROM
         crashes.crashes
     WHERE
@@ -184,10 +180,11 @@ UNION ALL
 ```
 
 <DateRange
-  start='2020-01-01'
+  start='2018-01-01'
+  title="Select Time Period"
   name=date_range
-  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Date','Last Year','All Time']}
-  defaultValue={'Year to Date'}
+  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Today','Last Year','All Time']}
+  defaultValue={'Year to Today'}
 />
 
 <Dropdown
@@ -200,7 +197,7 @@ UNION ALL
 />
 
 <Alert status="info">
-The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <b><Value data={modes_selected} column="MODE_SELECTED"/></b> <Info description="*Only fatal" color="primary" />
+The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 <Grid cols=2>

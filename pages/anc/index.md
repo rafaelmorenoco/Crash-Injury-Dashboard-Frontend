@@ -95,60 +95,58 @@ group by 1
     current_year AS (
         SELECT 
             crashes.ANC, 
-            sum(crashes.COUNT) as sum_count,
-            extract(year from current_date) as current_year
+            SUM(crashes.COUNT) AS sum_count,
+            EXTRACT(YEAR FROM current_date) AS current_year
         FROM 
             crashes.crashes 
         JOIN 
             unique_anc ua 
-        ON 
-            crashes.ANC = ua.ANC
+            ON crashes.ANC = ua.ANC
         WHERE 
             crashes.SEVERITY IN ${inputs.multi_severity.value} 
-            AND crashes.REPORTDATE >= date_trunc('year', current_date)
+            AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+            AND crashes.REPORTDATE >= DATE_TRUNC('year', current_date)
         GROUP BY 
             crashes.ANC
     ), 
     prior_year AS (
         SELECT 
             crashes.ANC, 
-            sum(crashes.COUNT) as sum_count
+            SUM(crashes.COUNT) AS sum_count
         FROM 
             crashes.crashes 
         JOIN 
             unique_anc ua 
-        ON 
-            crashes.ANC = ua.ANC
+            ON crashes.ANC = ua.ANC
         WHERE 
             crashes.SEVERITY IN ${inputs.multi_severity.value} 
-            AND crashes.REPORTDATE >= (date_trunc('year', current_date) - interval '1 year')
-            AND crashes.REPORTDATE < (current_date - interval '1 year')
+            AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+            AND crashes.REPORTDATE >= (DATE_TRUNC('year', current_date) - INTERVAL '1 year')
+            AND crashes.REPORTDATE < (current_date - INTERVAL '1 year')
         GROUP BY 
             crashes.ANC
     )
     SELECT 
         mas.ANC,
         '/anc/' || mas.ANC AS link,
-        COALESCE(cy.sum_count, 0) as current_year_sum, 
-        COALESCE(py.sum_count, 0) as prior_year_sum, 
-        COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) as difference,
+        COALESCE(cy.sum_count, 0) AS current_year_sum, 
+        COALESCE(py.sum_count, 0) AS prior_year_sum, 
+        COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) AS difference,
         CASE 
             WHEN COALESCE(cy.sum_count, 0) = 0 THEN NULL
             WHEN COALESCE(py.sum_count, 0) != 0 THEN ((COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0)) / COALESCE(py.sum_count, 0)) 
             WHEN COALESCE(py.sum_count, 0) != 0 AND COALESCE(cy.sum_count, 0) = 0 THEN -1
             ELSE NULL 
-        END as percentage_change,
-        extract(year from current_date) as current_year
+        END AS percentage_change,
+        EXTRACT(YEAR FROM current_date) AS current_year
     FROM 
         unique_anc mas
     LEFT JOIN 
         current_year cy 
-    ON 
-        mas.ANC = cy.ANC
+        ON mas.ANC = cy.ANC
     LEFT JOIN 
         prior_year py 
-    ON 
-        mas.ANC = py.ANC;
+        ON mas.ANC = py.ANC;
 ```
 
 ```sql ward_yoy
@@ -163,34 +161,34 @@ group by 1
     current_year AS (
         SELECT 
             crashes.WARD, 
-            sum(crashes.COUNT) as sum_count,
-            extract(year from current_date) as current_year
+            SUM(crashes.COUNT) AS sum_count,
+            EXTRACT(YEAR FROM current_date) AS current_year
         FROM 
             crashes.crashes 
         JOIN 
             unique_ward ua 
-        ON 
-            crashes.WARD = ua.WARD
+        ON crashes.WARD = ua.WARD
         WHERE 
             crashes.SEVERITY IN ${inputs.multi_severity.value} 
-            AND crashes.REPORTDATE >= date_trunc('year', current_date)
+            AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+            AND crashes.REPORTDATE >= DATE_TRUNC('year', current_date)
         GROUP BY 
             crashes.WARD
     ), 
     prior_year AS (
         SELECT 
             crashes.WARD, 
-            sum(crashes.COUNT) as sum_count
+            SUM(crashes.COUNT) AS sum_count
         FROM 
             crashes.crashes 
         JOIN 
             unique_ward ua 
-        ON 
-            crashes.WARD = ua.WARD
+        ON crashes.WARD = ua.WARD
         WHERE 
             crashes.SEVERITY IN ${inputs.multi_severity.value} 
-            AND crashes.REPORTDATE >= (date_trunc('year', current_date) - interval '1 year')
-            AND crashes.REPORTDATE < (current_date - interval '1 year')
+            AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+            AND crashes.REPORTDATE >= (DATE_TRUNC('year', current_date) - INTERVAL '1 year')
+            AND crashes.REPORTDATE < (current_date - INTERVAL '1 year')
         GROUP BY 
             crashes.WARD
     ),
@@ -202,25 +200,23 @@ group by 1
             unique_ward mas
         LEFT JOIN 
             current_year cy 
-        ON 
-            mas.WARD = cy.WARD
+        ON mas.WARD = cy.WARD
         LEFT JOIN 
             prior_year py 
-        ON 
-            mas.WARD = py.WARD
+        ON mas.WARD = py.WARD
     )
     SELECT 
         mas.WARD,
-        COALESCE(cy.sum_count, 0) as current_year_sum, 
-        COALESCE(py.sum_count, 0) as prior_year_sum, 
-        COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) as difference,
+        COALESCE(cy.sum_count, 0) AS current_year_sum, 
+        COALESCE(py.sum_count, 0) AS prior_year_sum, 
+        COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) AS difference,
         CASE 
             WHEN COALESCE(cy.sum_count, 0) = 0 THEN NULL
             WHEN COALESCE(py.sum_count, 0) != 0 THEN ((COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0)) / COALESCE(py.sum_count, 0)) 
             WHEN COALESCE(py.sum_count, 0) != 0 AND COALESCE(cy.sum_count, 0) = 0 THEN -1
             ELSE NULL 
-        END as percentage_change,
-        extract(year from current_date) as current_year,
+        END AS percentage_change,
+        EXTRACT(YEAR FROM current_date) AS current_year,
         CASE 
             WHEN totals.prior_year_total != 0 THEN (
                 (totals.current_year_total - totals.prior_year_total) / totals.prior_year_total
@@ -230,36 +226,30 @@ group by 1
     FROM 
         unique_ward mas
     LEFT JOIN 
-        current_year cy 
-    ON 
-        mas.WARD = cy.WARD
+        current_year cy ON mas.WARD = cy.WARD
     LEFT JOIN 
-        prior_year py 
-    ON 
-        mas.WARD = py.WARD
+        prior_year py ON mas.WARD = py.WARD
     CROSS JOIN 
         totals;
 ```
 
-```sql modes_selected
+```sql mode_severity_selection
     SELECT
-        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTED,
-        CASE 
-            WHEN COUNT(DISTINCT MODE) > 1 THEN 'modes are:'
-            ELSE 'mode is:'
-        END AS PLURAL_SINGULAR
+        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
+        STRING_AGG(DISTINCT SEVERITY, ', ' ORDER BY SEVERITY ASC) AS SEVERITY_SELECTION
     FROM
         crashes.crashes
     WHERE
-        MODE IN ${inputs.multi_mode_dd.value};
+        MODE IN ${inputs.multi_mode_dd.value}
+        AND SEVERITY IN ${inputs.multi_severity.value};
 ```
 
 <DateRange
   start='2018-01-01'
   title="Select Time Period"
   name=date_range
-  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Date','Last Year','All Time']}
-  defaultValue={'Year to Date'}
+  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Today','Last Year','All Time']}
+  defaultValue={'Year to Today'}
 />
 
 <Dropdown
@@ -282,7 +272,7 @@ group by 1
 />
 
 <Alert status="info">
-The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <b><Value data={modes_selected} column="MODE_SELECTED"/></b> <Info description="*Only fatal" color="primary" />
+The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Mode</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 <Note>

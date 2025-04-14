@@ -67,7 +67,7 @@ group by all
                 WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
             END AS day_number,
             LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
-            SUM(COUNT) AS sum_count
+            SUM(COUNT) AS Injuries
         FROM crashes.crashes
         WHERE MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
@@ -79,7 +79,7 @@ group by all
         r.day_of_week,
         r.day_number,
         LPAD(r.hour_number::TEXT, 2, '0') AS hour_number,
-        COALESCE(cd.sum_count, 0) AS sum_count
+        COALESCE(cd.Injuries, 0) AS Injuries
     FROM reference r
     LEFT JOIN count_data cd
     ON r.day_of_week = cd.day_of_week
@@ -97,7 +97,7 @@ group by all
     count_data AS (
         SELECT
             LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
-            SUM(COUNT) AS sum_count
+            SUM(COUNT) AS Injuries
         FROM crashes.crashes
         WHERE MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
@@ -108,7 +108,7 @@ group by all
     SELECT
         'Total' AS Total,
         LPAD(r.hour_number::TEXT, 2, '0') AS hour_number,
-        COALESCE(cd.sum_count, 0) AS sum_count
+        COALESCE(cd.Injuries, 0) AS Injuries
     FROM reference r
     LEFT JOIN count_data cd
     ON r.hour_number = cd.hour_number
@@ -147,7 +147,7 @@ group by all
                 WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 5
                 WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
             END AS day_number,
-            SUM(COUNT) AS sum_count
+            SUM(COUNT) AS Injuries
         FROM crashes.crashes
         WHERE MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
@@ -159,7 +159,7 @@ group by all
         r.day_of_week,
         r.day_number,
         r.total,
-        COALESCE(cd.sum_count, 0) AS sum_count
+        COALESCE(cd.Injuries, 0) AS Injuries
     FROM reference r
     LEFT JOIN count_data cd
     ON r.day_of_week = cd.day_of_week
@@ -198,25 +198,23 @@ from ${hex}
     LIMIT 5;
 ```
 
-```sql modes_selected
+```sql mode_severity_selection
     SELECT
-        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTED,
-        CASE 
-            WHEN COUNT(DISTINCT MODE) > 1 THEN 'modes are:'
-            ELSE 'mode is:'
-        END AS PLURAL_SINGULAR
+        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
+        STRING_AGG(DISTINCT SEVERITY, ', ' ORDER BY SEVERITY ASC) AS SEVERITY_SELECTION
     FROM
         crashes.crashes
     WHERE
-        MODE IN ${inputs.multi_mode_dd.value};
+        MODE IN ${inputs.multi_mode_dd.value}
+        AND SEVERITY IN ${inputs.multi_severity.value};
 ```
 
 <DateRange
   start='2018-01-01'
   title="Select Time Period"
   name=date_range
-  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Date','Last Year','All Time']}
-  defaultValue={'Year to Date'}
+  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Today','Last Year','All Time']}
+  defaultValue={'Year to Today'}
 />
 
 <Dropdown
@@ -239,7 +237,7 @@ from ${hex}
 />
 
 <Alert status="info">
-The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR"/> <b><Value data={modes_selected} column="MODE_SELECTED"/></b> <Info description="*Only fatal" color="primary" />
+The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Mode</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 <Grid cols=2>
@@ -269,18 +267,19 @@ The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR
             subtitle=" "
             x=day_of_week xSort=day_number
             y=total
-            value=sum_count
+            value=Injuries
             legend=true
             valueLabels=true
             mobileValueLabels=true
             chartAreaHeight=50
+            
         />    
         <Heatmap 
             data={day_time} 
             subtitle="24-Hour Format"
             x=hour_number xSort=hour_number
             y=day_of_week ySort=day_number
-            value=sum_count
+            value=Injuries
             legend=true
             filter=true
             mobileValueLabels=true
@@ -290,7 +289,7 @@ The selected transportation <Value data={modes_selected} column="PLURAL_SINGULAR
             subtitle="24-Hour Format"
             x=hour_number xSort=hour_number
             y=Total
-            value=sum_count
+            value=Injuries
             legend=true
             filter=true
             chartAreaHeight=50
