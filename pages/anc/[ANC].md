@@ -21,15 +21,8 @@ group by 1
 
 ```sql unique_wards
 select 
-    NAME
+    WARD_ID
 from wards.wards_2022
-group by 1
-```
-
-```sql unique_hex
-select 
-    GRID_ID
-from hexgrid.crash_hexgrid
 group by 1
 ```
 

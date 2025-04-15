@@ -2,6 +2,7 @@
 title: Traffic Fatalities
 queries:
    - fatality: fatality.sql
+sidebar_position: 1
 ---
 
 <Details title="About this dashboard">
