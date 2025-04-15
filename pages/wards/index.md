@@ -1,8 +1,8 @@
 ---
-title: Injuries by ANC
-queries:
-   - anc_link: anc_link.sql
-sidebar_position: 4
+title: Injuries by Ward
+#queries:
+#   - anc_link: ward_link.sql
+sidebar_position: 3
 ---
 
 ```sql unique_mode
@@ -19,6 +19,14 @@ from crashes.crashes
 group by 1
 ```
 
+```sql unique_wards
+select 
+    NAME,
+    WARD_ID
+from wards.wards_2022
+group by all
+```
+
 ```sql unique_hin
 select 
     GIS_ID,
@@ -27,82 +35,85 @@ from hin.hin
 group by all
 ```
 
-```sql unique_anc
-select 
-    ANC
-from anc.anc_2023
-group by 1
-```
-
-```sql unique_smd
-select 
-    SMD
-from smd.smd_2023
-group by 1
-```
-
-```sql anc_map
+```sql ward_map
     SELECT
-        a.ANC,
-        COALESCE(SUM(c.COUNT), 0) AS Injuries,
-        '/anc/' || a.ANC AS link
+        w.WARD_ID AS WARD,
+        --CAST(w.WARD_ID AS INTEGER) AS link,
+        COALESCE(SUM(c.COUNT), 0) AS Injuries
     FROM
-        anc.anc_2023 a
+        wards.wards_2022 w
     LEFT JOIN
-        crashes.crashes c ON a.ANC = c.ANC
+        crashes.crashes c
+    ON
+        w.WARD_ID = c.WARD
         AND c.MODE IN ${inputs.multi_mode_dd.value}
         AND c.SEVERITY IN ${inputs.multi_severity.value}
         AND c.REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
     GROUP BY
-        a.ANC
+        w.WARD_ID
+    ORDER BY
+        w.WARD_ID;
 ```
 
-```sql anc_yoy
-    WITH unique_anc AS (
+```sql ward_yoy
+    WITH unique_ward AS (
         SELECT 
-            ANC 
+            WARD_ID AS WARD 
         FROM 
-            anc.anc_2023 
+            wards.wards_2022
         GROUP BY 
-            ANC
+            WARD_ID
     ),
     current_year AS (
         SELECT 
-            crashes.ANC, 
+            crashes.WARD, 
             SUM(crashes.COUNT) AS sum_count,
             EXTRACT(YEAR FROM current_date) AS current_year
         FROM 
             crashes.crashes 
         JOIN 
-            unique_anc ua 
-            ON crashes.ANC = ua.ANC
+            unique_ward ua 
+        ON crashes.WARD = ua.WARD
         WHERE 
             crashes.SEVERITY IN ${inputs.multi_severity.value} 
             AND crashes.MODE IN ${inputs.multi_mode_dd.value}
             AND crashes.REPORTDATE >= DATE_TRUNC('year', current_date)
         GROUP BY 
-            crashes.ANC
+            crashes.WARD
     ), 
     prior_year AS (
         SELECT 
-            crashes.ANC, 
+            crashes.WARD, 
             SUM(crashes.COUNT) AS sum_count
         FROM 
             crashes.crashes 
         JOIN 
-            unique_anc ua 
-            ON crashes.ANC = ua.ANC
+            unique_ward ua 
+        ON crashes.WARD = ua.WARD
         WHERE 
             crashes.SEVERITY IN ${inputs.multi_severity.value} 
             AND crashes.MODE IN ${inputs.multi_mode_dd.value}
             AND crashes.REPORTDATE >= (DATE_TRUNC('year', current_date) - INTERVAL '1 year')
             AND crashes.REPORTDATE < (current_date - INTERVAL '1 year')
         GROUP BY 
-            crashes.ANC
+            crashes.WARD
+    ),
+    totals AS (
+        SELECT 
+            SUM(COALESCE(cy.sum_count, 0)) AS current_year_total,
+            SUM(COALESCE(py.sum_count, 0)) AS prior_year_total
+        FROM 
+            unique_ward mas
+        LEFT JOIN 
+            current_year cy 
+        ON mas.WARD = cy.WARD
+        LEFT JOIN 
+            prior_year py 
+        ON mas.WARD = py.WARD
     )
     SELECT 
-        mas.ANC,
-        '/anc/' || mas.ANC AS link,
+        mas.WARD,
+        --CAST(mas.WARD AS INTEGER) AS link,
         COALESCE(cy.sum_count, 0) AS current_year_sum, 
         COALESCE(py.sum_count, 0) AS prior_year_sum, 
         COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) AS difference,
@@ -112,15 +123,21 @@ group by 1
             WHEN COALESCE(py.sum_count, 0) != 0 AND COALESCE(cy.sum_count, 0) = 0 THEN -1
             ELSE NULL 
         END AS percentage_change,
-        EXTRACT(YEAR FROM current_date) AS current_year
+        EXTRACT(YEAR FROM current_date) AS current_year,
+        CASE 
+            WHEN totals.prior_year_total != 0 THEN (
+                (totals.current_year_total - totals.prior_year_total) / totals.prior_year_total
+            )
+            ELSE NULL
+        END AS total_percentage_change
     FROM 
-        unique_anc mas
+        unique_ward mas
     LEFT JOIN 
-        current_year cy 
-        ON mas.ANC = cy.ANC
+        current_year cy ON mas.WARD = cy.WARD
     LEFT JOIN 
-        prior_year py 
-        ON mas.ANC = py.ANC;
+        prior_year py ON mas.WARD = py.WARD
+    CROSS JOIN 
+        totals;
 ```
 
 ```sql mode_severity_selection
@@ -165,37 +182,39 @@ group by 1
 The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Mode</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
-<Note>
-    Select an ANC to zoom in and see more details about the injuries resulting from a crash within its SMDs.
-</Note>
 <Grid cols=2>
     <Group>
         <BaseMap
             height=470
             startingZoom=11
-            title="ANC"
+            title="Wards"
         >
         <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true
             tooltip={[
                 {id: 'ROUTENAME'}
             ]}
         />
-        <Areas data={anc_map} geoJsonUrl='/anc_2023.geojson' geoId=ANC areaCol=ANC value=Injuries link=link min=0 opacity=0.7 borderWidth=1 borderColor='#A9A9A9'/>
+        <Areas data={ward_map} geoJsonUrl='/Wards_from_2022.geojson' geoId=WARD_ID areaCol=WARD value=Injuries min=0 opacity=0.7 borderWidth=1 borderColor='#A9A9A9'
+            tooltip={[
+                {id:'WARD', title:"Ward", valueClass: 'text-base font-semibold', fieldClass: 'text-base font-semibold'},
+                {id:'Injuries'}
+            ]}
+        />
         </BaseMap>
         <Note>
             The purple lines represent DC's High Injury Network
         </Note>
     </Group>
     <Group>
-        <DataTable data={anc_yoy} sort="current_year_sum desc" title="Year Over Year Difference" search=true wrapTitles=true rowShading=true link=link>
-            <Column id=ANC title="ANC"/>
-            <Column id=current_year_sum title={`${anc_yoy[0].current_year} YTD`} />
-            <Column id=prior_year_sum title={`${anc_yoy[0].current_year - 1} YTD`}  />
+        <DataTable data={ward_yoy} sort="current_year_sum desc" title="Year Over Year Difference" totalRow=true wrapTitles=true rowShading=true>
+            <Column id=WARD title="Ward" totalAgg="Total"/>
+            <Column id=current_year_sum title={`${ward_yoy[0].current_year} YTD`} />
+            <Column id=prior_year_sum title={`${ward_yoy[0].current_year - 1} YTD`}  />
             <Column id=difference title="Diff" contentType=delta downIsGood=True />
-            <Column id=percentage_change fmt=pct0 title="% Diff"/> 
+            <Column id=percentage_change fmt=pct title="% Diff" totalAgg={ward_yoy[0].total_percentage_change} totalFmt=pct/> 
         </DataTable>
         <Note>
-            The table is sorted in descending order by default based on the <Value data={anc_yoy} column="current_year" fmt='####'/> YTD injuries.
+            The table is sorted in descending order by default based on the <Value data={ward_yoy} column="current_year" fmt='####'/> YTD injuries.
          </Note>
     </Group>
 </Grid>

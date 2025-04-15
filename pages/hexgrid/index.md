@@ -2,6 +2,7 @@
 title: Injuries Heatmap
 queries:
    - hex: hex.sql
+sidebar_position: 2
 ---
 
 ```sql unique_mode
@@ -272,8 +273,37 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             valueLabels=true
             mobileValueLabels=true
             chartAreaHeight=50
-            
-        />    
+            echartsOptions={{
+                tooltip: {
+                formatter: function (params) {
+                    const dayNames = {
+                    'Sun': 'Sunday',
+                    'Mon': 'Monday',
+                    'Tue': 'Tuesday',
+                    'Wed': 'Wednesday',
+                    'Thu': 'Thursday',
+                    'Fri': 'Friday',
+                    'Sat': 'Saturday'
+                    };
+                    // When using the Heatmap component, the data is usually transformed
+                    // into an array in the order specified by x, y, and value.
+                    // Given:
+                    //   x  → day_of_week  (index 0)
+                    //   y  → total        (index 1) – always "Total"
+                    //   value → Injuries   (index 2)
+                    // We can then extract the values like this:
+                    const dayAbbrev = params.value && Array.isArray(params.value)
+                    ? params.value[0]
+                    : params.data.day_of_week;
+                    const injuries =
+                    params.value && Array.isArray(params.value)
+                    ? params.value[2]
+                    : params.data.Injuries;
+                    return `<strong>${dayNames[dayAbbrev]}</strong><br>Injuries: ${injuries}`;
+                }
+                }
+            }}
+        />   
         <Heatmap 
             data={day_time} 
             subtitle="24-Hour Format"
@@ -283,6 +313,35 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             legend=true
             filter=true
             mobileValueLabels=true
+            echartsOptions={{
+                tooltip: {
+                formatter: function (params) {
+                    const dayNames = {
+                    'Sun': 'Sunday',
+                    'Mon': 'Monday',
+                    'Tue': 'Tuesday',
+                    'Wed': 'Wednesday',
+                    'Thu': 'Thursday',
+                    'Fri': 'Friday',
+                    'Sat': 'Saturday'
+                    };
+                    // When the data comes as an array:
+                    // index 0: hour_number, index 1: day_of_week, index 2: injuries
+                    let hour, dayAbbrev, injuries;
+                    if (params.value && Array.isArray(params.value)) {
+                    hour = params.value[0];
+                    dayAbbrev = params.value[1];
+                    injuries = params.value[2];
+                    } else {
+                    // Fall-back to object properties if needed
+                    hour = params.data.hour_number;
+                    dayAbbrev = params.data.day_of_week;
+                    injuries = params.data.Injuries;
+                    }
+                    return `<strong>${dayNames[dayAbbrev]}</strong><br><strong>${hour} hrs</strong><br>Injuries: ${injuries}`;
+                }
+                }
+            }}
         />
         <Heatmap 
             data={time} 
@@ -294,6 +353,24 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             filter=true
             chartAreaHeight=50
             mobileValueLabels=true
+            echartsOptions={{
+                tooltip: {
+                formatter: function (params) {
+                    let hour, injuries;
+                    if (params.value && Array.isArray(params.value)) {
+                    // Assuming params.value is an array in the following order:
+                    // [hour_number, Total, Injuries]
+                    hour = params.value[0];
+                    injuries = params.value[2]; // skip index 1 ('Total')
+                    } else {
+                    // Fallback if data is provided as an object:
+                    hour = params.data.hour_number;
+                    injuries = params.data.Injuries;
+                    }
+                    return `<strong>${hour} hrs</strong><br>Injuries: ${injuries}`;
+                }
+                }
+            }}
         />
     </Group>
 </Grid>
