@@ -55,89 +55,128 @@ group by all
         w.WARD_ID;
 ```
 
-```sql ward_yoy
-    WITH unique_ward AS (
+```sql period_comp_ward
+    WITH 
+        report_date_range AS (
+            SELECT
+                CASE 
+                    WHEN '${inputs.date_range.end}' = CURRENT_DATE THEN 
+                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                    ELSE 
+                        '${inputs.date_range.end}'::DATE
+                END as end_date,
+                '${inputs.date_range.start}'::DATE as start_date
+        ),
+        date_info AS (
+            SELECT
+                start_date,
+                end_date,
+                LPAD(CAST(EXTRACT(MONTH FROM start_date) AS VARCHAR), 2, '0') || '/' ||
+                LPAD(CAST(EXTRACT(DAY FROM start_date) AS VARCHAR), 2, '0') || '/' ||
+                RIGHT(CAST(EXTRACT(YEAR FROM start_date) AS VARCHAR), 2) || ' - ' ||
+                LPAD(CAST(EXTRACT(MONTH FROM end_date) AS VARCHAR), 2, '0') || '/' ||
+                LPAD(CAST(EXTRACT(DAY FROM end_date) AS VARCHAR), 2, '0') || '/' ||
+                RIGHT(CAST(EXTRACT(YEAR FROM end_date) AS VARCHAR), 2) as date_range_label,
+                (end_date - start_date) as date_range_days
+            FROM report_date_range
+        ),
+        unique_ward AS (
+            SELECT 
+                WARD_ID AS WARD 
+            FROM 
+                wards.wards_2022
+            GROUP BY 
+                WARD_ID
+        ),
+        current_period AS (
+            SELECT 
+                crashes.WARD, 
+                SUM(crashes.COUNT) AS sum_count
+            FROM 
+                crashes.crashes 
+            JOIN 
+                unique_ward ua 
+            ON crashes.WARD = ua.WARD
+            WHERE 
+                crashes.SEVERITY IN ${inputs.multi_severity.value} 
+                AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+                AND crashes.REPORTDATE >= (SELECT start_date FROM date_info)
+                AND crashes.REPORTDATE <= (SELECT end_date FROM date_info)
+            GROUP BY 
+                crashes.WARD
+        ), 
+        prior_period AS (
+            SELECT 
+                crashes.WARD, 
+                SUM(crashes.COUNT) AS sum_count
+            FROM 
+                crashes.crashes 
+            JOIN 
+                unique_ward ua 
+            ON crashes.WARD = ua.WARD
+            WHERE 
+                crashes.SEVERITY IN ${inputs.multi_severity.value} 
+                AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+                AND crashes.REPORTDATE >= ((SELECT start_date FROM date_info) - INTERVAL '1 year')
+                AND crashes.REPORTDATE <= ((SELECT end_date FROM date_info) - INTERVAL '1 year')
+            GROUP BY 
+                crashes.WARD
+        ),
+        prior_date_info AS (
+            SELECT
+                (SELECT start_date FROM date_info) - INTERVAL '1 year' as prior_start_date,
+                (SELECT end_date FROM date_info) - INTERVAL '1 year' as prior_end_date
+        ),
+        prior_date_label AS (
+            SELECT
+                LPAD(CAST(EXTRACT(MONTH FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
+                LPAD(CAST(EXTRACT(DAY FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
+                RIGHT(CAST(EXTRACT(YEAR FROM prior_start_date) AS VARCHAR), 2) || ' - ' ||
+                LPAD(CAST(EXTRACT(MONTH FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
+                LPAD(CAST(EXTRACT(DAY FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
+                RIGHT(CAST(EXTRACT(YEAR FROM prior_end_date) AS VARCHAR), 2) as prior_date_range_label
+            FROM prior_date_info
+        ),
+        totals AS (
+            SELECT 
+                SUM(COALESCE(cp.sum_count, 0)) AS current_period_total,
+                SUM(COALESCE(pp.sum_count, 0)) AS prior_period_total
+            FROM 
+                unique_ward mas
+            LEFT JOIN 
+                current_period cp 
+            ON mas.WARD = cp.WARD
+            LEFT JOIN 
+                prior_period pp 
+            ON mas.WARD = pp.WARD
+        )
         SELECT 
-            WARD_ID AS WARD 
-        FROM 
-            wards.wards_2022
-        GROUP BY 
-            WARD_ID
-    ),
-    current_year AS (
-        SELECT 
-            crashes.WARD, 
-            SUM(crashes.COUNT) AS sum_count,
-            EXTRACT(YEAR FROM current_date) AS current_year
-        FROM 
-            crashes.crashes 
-        JOIN 
-            unique_ward ua 
-        ON crashes.WARD = ua.WARD
-        WHERE 
-            crashes.SEVERITY IN ${inputs.multi_severity.value} 
-            AND crashes.MODE IN ${inputs.multi_mode_dd.value}
-            AND crashes.REPORTDATE >= DATE_TRUNC('year', current_date)
-        GROUP BY 
-            crashes.WARD
-    ), 
-    prior_year AS (
-        SELECT 
-            crashes.WARD, 
-            SUM(crashes.COUNT) AS sum_count
-        FROM 
-            crashes.crashes 
-        JOIN 
-            unique_ward ua 
-        ON crashes.WARD = ua.WARD
-        WHERE 
-            crashes.SEVERITY IN ${inputs.multi_severity.value} 
-            AND crashes.MODE IN ${inputs.multi_mode_dd.value}
-            AND crashes.REPORTDATE >= (DATE_TRUNC('year', current_date) - INTERVAL '1 year')
-            AND crashes.REPORTDATE < (current_date - INTERVAL '1 year')
-        GROUP BY 
-            crashes.WARD
-    ),
-    totals AS (
-        SELECT 
-            SUM(COALESCE(cy.sum_count, 0)) AS current_year_total,
-            SUM(COALESCE(py.sum_count, 0)) AS prior_year_total
+            mas.WARD,
+            COALESCE(cp.sum_count, 0) AS current_period_sum, 
+            COALESCE(pp.sum_count, 0) AS prior_period_sum, 
+            COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0) AS difference,
+            CASE 
+                WHEN COALESCE(cp.sum_count, 0) = 0 THEN NULL
+                WHEN COALESCE(pp.sum_count, 0) != 0 THEN ((COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0)) / COALESCE(pp.sum_count, 0)) 
+                WHEN COALESCE(pp.sum_count, 0) != 0 AND COALESCE(cp.sum_count, 0) = 0 THEN -1
+                ELSE NULL 
+            END AS percentage_change,
+            (SELECT date_range_label FROM date_info) as current_period_range,
+            (SELECT prior_date_range_label FROM prior_date_label) as prior_period_range,
+            CASE 
+                WHEN totals.prior_period_total != 0 THEN (
+                    (totals.current_period_total - totals.prior_period_total) / totals.prior_period_total
+                )
+                ELSE NULL
+            END AS total_percentage_change
         FROM 
             unique_ward mas
         LEFT JOIN 
-            current_year cy 
-        ON mas.WARD = cy.WARD
+            current_period cp ON mas.WARD = cp.WARD
         LEFT JOIN 
-            prior_year py 
-        ON mas.WARD = py.WARD
-    )
-    SELECT 
-        mas.WARD,
-        --CAST(mas.WARD AS INTEGER) AS link,
-        COALESCE(cy.sum_count, 0) AS current_year_sum, 
-        COALESCE(py.sum_count, 0) AS prior_year_sum, 
-        COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0) AS difference,
-        CASE 
-            WHEN COALESCE(cy.sum_count, 0) = 0 THEN NULL
-            WHEN COALESCE(py.sum_count, 0) != 0 THEN ((COALESCE(cy.sum_count, 0) - COALESCE(py.sum_count, 0)) / COALESCE(py.sum_count, 0)) 
-            WHEN COALESCE(py.sum_count, 0) != 0 AND COALESCE(cy.sum_count, 0) = 0 THEN -1
-            ELSE NULL 
-        END AS percentage_change,
-        EXTRACT(YEAR FROM current_date) AS current_year,
-        CASE 
-            WHEN totals.prior_year_total != 0 THEN (
-                (totals.current_year_total - totals.prior_year_total) / totals.prior_year_total
-            )
-            ELSE NULL
-        END AS total_percentage_change
-    FROM 
-        unique_ward mas
-    LEFT JOIN 
-        current_year cy ON mas.WARD = cy.WARD
-    LEFT JOIN 
-        prior_year py ON mas.WARD = py.WARD
-    CROSS JOIN 
-        totals;
+            prior_period pp ON mas.WARD = pp.WARD
+        CROSS JOIN 
+            totals;
 ```
 
 ```sql mode_severity_selection
@@ -206,15 +245,15 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         </Note>
     </Group>
     <Group>
-        <DataTable data={ward_yoy} sort="current_year_sum desc" title="Year Over Year Difference" totalRow=true wrapTitles=true rowShading=true>
+        <DataTable data={period_comp_ward} sort="current_period_sum desc" title="Selected Period Comparison" totalRow=true wrapTitles=true rowShading=true>
             <Column id=WARD title="Ward" totalAgg="Total"/>
-            <Column id=current_year_sum title={`${ward_yoy[0].current_year} YTD`} />
-            <Column id=prior_year_sum title={`${ward_yoy[0].current_year - 1} YTD`}  />
+            <Column id=current_period_sum title={`${period_comp_ward[0].current_period_range}`} />
+            <Column id=prior_period_sum title={`${period_comp_ward[0].prior_period_range}`}  />
             <Column id=difference title="Diff" contentType=delta downIsGood=True />
-            <Column id=percentage_change fmt=pct title="% Diff" totalAgg={ward_yoy[0].total_percentage_change} totalFmt=pct/> 
+            <Column id=percentage_change fmt=pct title="% Diff" totalAgg={period_comp_ward[0].total_percentage_change} totalFmt=pct/> 
         </DataTable>
         <Note>
-            The table is sorted in descending order by default based on the <Value data={ward_yoy} column="current_year" fmt='####'/> YTD injuries.
+            The table is sorted in descending order by default based on the count of injuries for the selected period.
          </Note>
     </Group>
 </Grid>
