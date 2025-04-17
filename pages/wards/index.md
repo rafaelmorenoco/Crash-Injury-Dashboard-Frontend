@@ -223,7 +223,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
 <Grid cols=2>
     <Group>
         <BaseMap
-            height=470
+            height=450
             startingZoom=11
             title="Wards"
         >

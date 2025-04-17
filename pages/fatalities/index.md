@@ -50,6 +50,13 @@ from hin.hin
 group by all
 ```
 
+```sql unique_dc
+select 
+    CITY_NAME
+from dc_boundary.dc_boundary
+group by 1
+```
+
 ```sql yoy_text_fatal
     WITH date_params AS (
         SELECT 
@@ -162,7 +169,7 @@ The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SE
             Use Mode and Time Period filters above the table to further refine the data.
         </Note>
         <BaseMap
-            height=470
+            height=450
             startingZoom=11
         >
             <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=SEVERITY colorPalette={['#ff5a53']} link=link ignoreZoom=true
@@ -172,10 +179,12 @@ The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SE
                 {id:'ADDRESS', showColumnName:false, fmt:'id'}
             ]}
             />
-            <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ 
+            <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true borderWidth=1.2
             tooltip={[
                 {id: 'ROUTENAME'}
             ]}
+            />
+            <Areas data={unique_dc} geoJsonUrl='/dc_boundary.geojson' geoId=CITY_NAME areaCol=CITY_NAME opacity=0.5 borderColor=#000000 color=#1C00ff00/ 
             />
         </BaseMap>
         <Note>
