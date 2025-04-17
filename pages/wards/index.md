@@ -73,7 +73,7 @@ group by all
                 end_date,
                 LPAD(CAST(EXTRACT(MONTH FROM start_date) AS VARCHAR), 2, '0') || '/' ||
                 LPAD(CAST(EXTRACT(DAY FROM start_date) AS VARCHAR), 2, '0') || '/' ||
-                RIGHT(CAST(EXTRACT(YEAR FROM start_date) AS VARCHAR), 2) || ' - ' ||
+                RIGHT(CAST(EXTRACT(YEAR FROM start_date) AS VARCHAR), 2) || '-' ||
                 LPAD(CAST(EXTRACT(MONTH FROM end_date) AS VARCHAR), 2, '0') || '/' ||
                 LPAD(CAST(EXTRACT(DAY FROM end_date) AS VARCHAR), 2, '0') || '/' ||
                 RIGHT(CAST(EXTRACT(YEAR FROM end_date) AS VARCHAR), 2) as date_range_label,
@@ -131,7 +131,7 @@ group by all
             SELECT
                 LPAD(CAST(EXTRACT(MONTH FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
                 LPAD(CAST(EXTRACT(DAY FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
-                RIGHT(CAST(EXTRACT(YEAR FROM prior_start_date) AS VARCHAR), 2) || ' - ' ||
+                RIGHT(CAST(EXTRACT(YEAR FROM prior_start_date) AS VARCHAR), 2) || '-' ||
                 LPAD(CAST(EXTRACT(MONTH FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
                 LPAD(CAST(EXTRACT(DAY FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
                 RIGHT(CAST(EXTRACT(YEAR FROM prior_end_date) AS VARCHAR), 2) as prior_date_range_label
@@ -194,10 +194,9 @@ group by all
   start='2018-01-01'
   title="Select Time Period"
   name=date_range
-  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Today','Last Year','All Time']}
+  presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
   defaultValue={'Year to Today'}
 />
-
 <Dropdown
     data={unique_severity} 
     name=multi_severity

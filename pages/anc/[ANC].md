@@ -193,7 +193,7 @@ group by 1
   start='2018-01-01'
   title="Select Time Period"
   name=date_range
-  presetRanges={['Last 7 Days','Last 30 Days','Last 90 Days','Last 3 Months','Last 6 Months','Year to Today','Last Year','All Time']}
+  presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
   defaultValue={'Year to Today'}
 />
 
