@@ -135,29 +135,26 @@ group by 1
         MODE IN ${inputs.multi_mode_dd.value};
 ```
 
-<Grid cols=2>
-    <Group>
-        As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_text_fatal} column="has_have"/> been <Value data={yoy_text_fatal} column="current_year_sum" agg=sum/> <Value data={yoy_text_fatal} column="fatality"/> for all modes in <Value data={yoy_text_fatal} column="current_year" fmt='####","'/>   <Value data={yoy_text_fatal} column="difference" agg=sum fmt='####' /> <Value data={yoy_text_fatal} column="difference_text"/> (<Delta data={yoy_text_fatal} column="percentage_change" fmt="+0%;-0%;0%" downIsGood=True neutralMin=-0.00 neutralMax=0.00/>) compared to the same period in <Value data={yoy_text_fatal} column="year_prior" fmt="####."/>
-    </Group>
-    <Group>
-        <DateRange
-            start='2018-01-01'
-            title="Select Time Period"
-            name=date_range
-            presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
-            defaultValue={'Year to Today'}
-        />
-        <Dropdown
-            data={unique_mode} 
-            name=multi_mode_dd
-            value=MODE
-            title="Select Mode"
-            multiple=true
-            selectAllByDefault=true
-            description="*Only fatal"
-        />
-    </Group>
-</Grid>
+
+As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_text_fatal} column="has_have"/> been <Value data={yoy_text_fatal} column="current_year_sum" agg=sum/> <Value data={yoy_text_fatal} column="fatality"/> for all modes in <Value data={yoy_text_fatal} column="current_year" fmt='####","'/>   <Value data={yoy_text_fatal} column="difference" agg=sum fmt='####' /> <Value data={yoy_text_fatal} column="difference_text"/> (<Delta data={yoy_text_fatal} column="percentage_change" fmt="+0%;-0%;0%" downIsGood=True neutralMin=-0.00 neutralMax=0.00/>) compared to the same period in <Value data={yoy_text_fatal} column="year_prior" fmt="####."/>
+
+<DateRange
+    start='2018-01-01'
+    title="Select Time Period"
+    name=date_range
+    presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
+    defaultValue={'Year to Today'}
+/>
+
+<Dropdown
+    data={unique_mode} 
+    name=multi_mode_dd
+    value=MODE
+    title="Select Mode"
+    multiple=true
+    selectAllByDefault=true
+    description="*Only fatal"
+/>
 
 <Alert status="info">
 The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
