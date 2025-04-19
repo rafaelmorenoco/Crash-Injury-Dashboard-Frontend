@@ -201,23 +201,27 @@ The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SE
 </Alert>
 
 <Grid cols=2>
-    <BaseMap
-      height=445
-      title="Fatality Location"
-      startingZoom=17
-      >
-      <Points data={incidents} lat=LATITUDE long=LONGITUDE value=MODE pointName=MODE colorPalette={['#ff5a53']}/>
-      <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true 
-      tooltip={[
-        {id: 'ROUTENAME'}
-      ]}
-      />
-    </BaseMap>
-    <DataTable data={pivot_table} rows=all wrapTitles=true rowShading=true>
-      <Column id=column_name title="Fatality Details" wrap=true/>
-      <Column id=column_value title=" " wrap=true/>
-    </DataTable>
-    </Grid>
-    <Note>
-      The purple lines represent DC's High Injury Network
-    </Note>
+    <Group>
+      <BaseMap
+        height=445
+        title="Fatality Location"
+        startingZoom=17
+        >
+        <Points data={incidents} lat=LATITUDE long=LONGITUDE value=MODE pointName=MODE colorPalette={['#ff5a53']}/>
+        <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true 
+        tooltip={[
+          {id: 'ROUTENAME'}
+        ]}
+        />
+      </BaseMap>
+      <Note>
+        The purple lines represent DC's High Injury Network
+      </Note>
+    </Group>
+    <Group>
+      <DataTable data={pivot_table} rows=all wrapTitles=true rowShading=true>
+        <Column id=column_name title="Fatality Details" wrap=true/>
+        <Column id=column_value title=" " wrap=true/>
+      </DataTable>
+    </Group>
+</Grid>
