@@ -66,10 +66,18 @@ group by all
 ```
 
 ```sql intersection_list
-    SELECT 
-        COALESCE(GROUP_CONCAT(INTERSECTIONNAME), 'There are no intersections within the hexagon') AS result
+    SELECT INTERSECTIONNAME
     FROM intersections.intersections
-    WHERE GRID_ID = '${params.GRID_ID}';
+    WHERE GRID_ID = '${params.GRID_ID}'
+
+    UNION ALL
+
+    SELECT 'There are no intersections within the hexagon'
+    WHERE NOT EXISTS (
+        SELECT 1 
+        FROM intersections.intersections 
+        WHERE GRID_ID = '${params.GRID_ID}'
+    );
 ```
 
 ```sql intersections_table
@@ -97,7 +105,7 @@ group by all
 <Grid cols=2>
     <Group>
         <DataTable data={intersection_list}>
-                <Column id=result title='Intersections Within {params.GRID_ID}' wrap=true/>
+                <Column id=INTERSECTIONNAME title='Intersections Within {params.GRID_ID}' wrap=true/>
         </DataTable>
     </Group>
     <Group>
@@ -156,8 +164,8 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         </Note>
     </Group>    
     <Group>
-        <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 subtitle='Injury Table' rowShading=true>
-          <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total"/>
+        <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 title='Injury Table' rowShading=true>
+          <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total" wrap=true description="24-Hour Format"/>
           <Column id=SEVERITY totalAgg="-"/>
           <Column id=MODE totalAgg='{inputs.multi_mode}'/>
           <Column id=ADDRESS wrap=true/>
@@ -179,7 +187,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
     </Group>
 </Grid>
 
-<Details title="Having trouble with the search? Tap here for solutions.">
+<Details title="Having trouble with the search? Tap/click here for solutions.">
 
 ### Tips:
 - For numbered streets, keep the ordinal attached directly to the number without spaces (e.g., "14TH ST NW" is correct, while "14 TH ST NW" is not).
