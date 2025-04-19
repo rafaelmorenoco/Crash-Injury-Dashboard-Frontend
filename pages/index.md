@@ -92,12 +92,19 @@ group by all
             SELECT
                 start_date,
                 end_date,
-                LPAD(CAST(EXTRACT(MONTH FROM start_date) AS VARCHAR), 2, '0') || '/' ||
-                LPAD(CAST(EXTRACT(DAY FROM start_date) AS VARCHAR), 2, '0') || '/' ||
-                RIGHT(CAST(EXTRACT(YEAR FROM start_date) AS VARCHAR), 2) || '-' ||
-                LPAD(CAST(EXTRACT(MONTH FROM end_date) AS VARCHAR), 2, '0') || '/' ||
-                LPAD(CAST(EXTRACT(DAY FROM end_date) AS VARCHAR), 2, '0') || '/' ||
-                RIGHT(CAST(EXTRACT(YEAR FROM end_date) AS VARCHAR), 2) as date_range_label,
+                -- Modified to check for YTD condition
+                CASE 
+                    WHEN start_date = DATE_TRUNC('year', end_date) AND 
+                        end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
+                        EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
+                    ELSE
+                        LPAD(CAST(EXTRACT(MONTH FROM start_date) AS VARCHAR), 2, '0') || '/' ||
+                        LPAD(CAST(EXTRACT(DAY FROM start_date) AS VARCHAR), 2, '0') || '/' ||
+                        RIGHT(CAST(EXTRACT(YEAR FROM start_date) AS VARCHAR), 2) || '-' ||
+                        LPAD(CAST(EXTRACT(MONTH FROM end_date) AS VARCHAR), 2, '0') || '/' ||
+                        LPAD(CAST(EXTRACT(DAY FROM end_date) AS VARCHAR), 2, '0') || '/' ||
+                        RIGHT(CAST(EXTRACT(YEAR FROM end_date) AS VARCHAR), 2)
+                END as date_range_label,
                 (end_date - start_date) as date_range_days
             FROM report_date_range
         ),
@@ -151,12 +158,19 @@ group by all
         ),
         prior_date_label AS (
             SELECT
-                LPAD(CAST(EXTRACT(MONTH FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
-                LPAD(CAST(EXTRACT(DAY FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
-                RIGHT(CAST(EXTRACT(YEAR FROM prior_start_date) AS VARCHAR), 2) || '-' ||
-                LPAD(CAST(EXTRACT(MONTH FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
-                LPAD(CAST(EXTRACT(DAY FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
-                RIGHT(CAST(EXTRACT(YEAR FROM prior_end_date) AS VARCHAR), 2) as prior_date_range_label
+                -- Modified to check for YTD condition for prior period
+                CASE 
+                    WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info)) AND
+                        (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
+                        EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
+                    ELSE
+                        LPAD(CAST(EXTRACT(MONTH FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
+                        LPAD(CAST(EXTRACT(DAY FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
+                        RIGHT(CAST(EXTRACT(YEAR FROM prior_start_date) AS VARCHAR), 2) || '-' ||
+                        LPAD(CAST(EXTRACT(MONTH FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
+                        LPAD(CAST(EXTRACT(DAY FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
+                        RIGHT(CAST(EXTRACT(YEAR FROM prior_end_date) AS VARCHAR), 2)
+                END as prior_date_range_label
             FROM prior_date_info
         )
         SELECT 
@@ -204,12 +218,19 @@ group by all
             SELECT
                 start_date,
                 end_date,
-                LPAD(CAST(EXTRACT(MONTH FROM start_date) AS VARCHAR), 2, '0') || '/' ||
-                LPAD(CAST(EXTRACT(DAY FROM start_date) AS VARCHAR), 2, '0') || '/' ||
-                RIGHT(CAST(EXTRACT(YEAR FROM start_date) AS VARCHAR), 2) || '-' ||
-                LPAD(CAST(EXTRACT(MONTH FROM end_date) AS VARCHAR), 2, '0') || '/' ||
-                LPAD(CAST(EXTRACT(DAY FROM end_date) AS VARCHAR), 2, '0') || '/' ||
-                RIGHT(CAST(EXTRACT(YEAR FROM end_date) AS VARCHAR), 2) as date_range_label,
+                -- Modified to check for YTD condition
+                CASE 
+                    WHEN start_date = DATE_TRUNC('year', end_date) AND 
+                        end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
+                        EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
+                    ELSE
+                        LPAD(CAST(EXTRACT(MONTH FROM start_date) AS VARCHAR), 2, '0') || '/' ||
+                        LPAD(CAST(EXTRACT(DAY FROM start_date) AS VARCHAR), 2, '0') || '/' ||
+                        RIGHT(CAST(EXTRACT(YEAR FROM start_date) AS VARCHAR), 2) || '-' ||
+                        LPAD(CAST(EXTRACT(MONTH FROM end_date) AS VARCHAR), 2, '0') || '/' ||
+                        LPAD(CAST(EXTRACT(DAY FROM end_date) AS VARCHAR), 2, '0') || '/' ||
+                        RIGHT(CAST(EXTRACT(YEAR FROM end_date) AS VARCHAR), 2)
+                END as date_range_label,
                 (end_date - start_date) as date_range_days
             FROM report_date_range
         ),
@@ -265,12 +286,19 @@ group by all
         ),
         prior_date_label AS (
             SELECT
-                LPAD(CAST(EXTRACT(MONTH FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
-                LPAD(CAST(EXTRACT(DAY FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
-                RIGHT(CAST(EXTRACT(YEAR FROM prior_start_date) AS VARCHAR), 2) || '-' ||
-                LPAD(CAST(EXTRACT(MONTH FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
-                LPAD(CAST(EXTRACT(DAY FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
-                RIGHT(CAST(EXTRACT(YEAR FROM prior_end_date) AS VARCHAR), 2) as prior_date_range_label
+                -- Modified to check for YTD condition for prior period
+                CASE 
+                    WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info)) AND
+                        (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
+                        EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
+                    ELSE
+                        LPAD(CAST(EXTRACT(MONTH FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
+                        LPAD(CAST(EXTRACT(DAY FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
+                        RIGHT(CAST(EXTRACT(YEAR FROM prior_start_date) AS VARCHAR), 2) || '-' ||
+                        LPAD(CAST(EXTRACT(MONTH FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
+                        LPAD(CAST(EXTRACT(DAY FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
+                        RIGHT(CAST(EXTRACT(YEAR FROM prior_end_date) AS VARCHAR), 2)
+                END as prior_date_range_label
             FROM prior_date_info
         )
         SELECT 
@@ -477,7 +505,7 @@ The slection for <b>Severity</b> is: <b><Value data={severity_selection} column=
             <Column id=percentage_change fmt=pct title="% Diff" totalAgg={period_comp_severity[0].total_percentage_change} totalFmt=pct /> 
         </DataTable>
         <Note>
-            The results for both tables will depend on your severity selection above; by default, it displays "Major" and "Fatal" severity.
+            By default, the data is two days behind the latest updated date, and this lag factors into prior period comparisons.
         </Note>
         <Note>
             *Fatal only.
