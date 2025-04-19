@@ -40,6 +40,7 @@ group by all
       REPORTDATE,
       SEVERITY,
       MODE,
+      ADDRESS,
       sum(COUNT) as Count
   from crashes.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
@@ -64,6 +65,13 @@ group by all
   group by all
 ```
 
+```sql intersection_list
+    SELECT 
+        COALESCE(GROUP_CONCAT(INTERSECTIONNAME), 'There are no intersections within the hexagon') AS result
+    FROM intersections.intersections
+    WHERE GRID_ID = '${params.GRID_ID}';
+```
+
 ```sql intersections_table
     SELECT
         INTERSECTIONNAME,
@@ -86,32 +94,39 @@ group by all
         AND SEVERITY IN ${inputs.multi_severity.value};
 ```
 
-<DateRange
-  start='2018-01-01'
-  title="Select Time Period"
-  name=date_range
-  presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
-  defaultValue={'Year to Today'}
-/>
-
-<Dropdown
-    data={unique_severity} 
-    name=multi_severity
-    value=SEVERITY
-    title="Select Severity"
-    multiple=true
-    defaultValue={["Major","Fatal"]}
-/>
-
-<Dropdown
-    data={unique_mode} 
-    name=multi_mode_dd
-    value=MODE
-    title="Select Mode"
-    multiple=true
-    selectAllByDefault=true
-    description="*Only fatal"
-/>
+<Grid cols=2>
+    <Group>
+        <DataTable data={intersection_list}>
+                <Column id=result title='Intersections Within {params.GRID_ID}' wrap=true/>
+        </DataTable>
+    </Group>
+    <Group>
+        <DateRange
+        start='2018-01-01'
+        title="Select Time Period"
+        name=date_range
+        presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
+        defaultValue={'Year to Today'}
+        />
+        <Dropdown
+            data={unique_severity} 
+            name=multi_severity
+            value=SEVERITY
+            title="Select Severity"
+            multiple=true
+            defaultValue={["Major","Fatal"]}
+        />
+        <Dropdown
+            data={unique_mode} 
+            name=multi_mode_dd
+            value=MODE
+            title="Select Mode"
+            multiple=true
+            selectAllByDefault=true
+            description="*Only fatal"
+        />
+    </Group>
+</Grid>
 
 <Alert status="info">
 The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Mode</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
@@ -145,6 +160,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
           <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total"/>
           <Column id=SEVERITY totalAgg="-"/>
           <Column id=MODE totalAgg='{inputs.multi_mode}'/>
+          <Column id=ADDRESS wrap=true/>
           <Column id=Count totalAgg=sum/>
         </DataTable>
         <Alert status="info">
