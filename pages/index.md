@@ -92,7 +92,6 @@ group by all
             SELECT
                 start_date,
                 end_date,
-                -- Modified to check for YTD condition
                 CASE 
                     WHEN start_date = DATE_TRUNC('year', end_date) AND 
                         end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
@@ -158,7 +157,6 @@ group by all
         ),
         prior_date_label AS (
             SELECT
-                -- Modified to check for YTD condition for prior period
                 CASE 
                     WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info)) AND
                         (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
@@ -218,7 +216,6 @@ group by all
             SELECT
                 start_date,
                 end_date,
-                -- Modified to check for YTD condition
                 CASE 
                     WHEN start_date = DATE_TRUNC('year', end_date) AND 
                         end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
@@ -505,10 +502,10 @@ The slection for <b>Severity</b> is: <b><Value data={severity_selection} column=
             <Column id=percentage_change fmt=pct title="% Diff" totalAgg={period_comp_severity[0].total_percentage_change} totalFmt=pct /> 
         </DataTable>
         <Note>
-            By default, the data is two days behind the latest updated date, and this lag factors into prior period comparisons.
+            *Fatal only.
         </Note>
         <Note>
-            *Fatal only.
+            The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons.
         </Note>
     </Group>
 </Grid>
@@ -536,8 +533,4 @@ All data comes from MPD.
     - Crashes in DC (Open Data): https://opendata.dc.gov/datasets/crashes-in-dc
     - Crash Details (Open Data): https://opendata.dc.gov/datasets/crash-details-table
 
-</Details>
-
-<Details title="Last data update">
-    The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs.
 </Details>
