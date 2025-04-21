@@ -197,5 +197,9 @@ The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SE
             <Column id=MODE title="Mode" wrap=true/>
             <Column id=ADDRESS wrap=true/>
         </DataTable>
+        <Note>
+            The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs.
+        </Note>
     </Group>
-</Grid>    
+</Grid>
+
