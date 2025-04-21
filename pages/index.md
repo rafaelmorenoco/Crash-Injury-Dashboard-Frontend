@@ -85,16 +85,16 @@ group by all
                         (SELECT MAX(REPORTDATE) FROM crashes.crashes)
                     ELSE 
                         '${inputs.date_range.end}'::DATE
-                END as end_date,
-                '${inputs.date_range.start}'::DATE as start_date
+                END AS end_date,
+                '${inputs.date_range.start}'::DATE AS start_date
         ),
         date_info AS (
             SELECT
                 start_date,
                 end_date,
                 CASE 
-                    WHEN start_date = DATE_TRUNC('year', end_date) AND 
-                        end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
+                    WHEN start_date = DATE_TRUNC('year', end_date)
+                        AND end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
                         EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
                     ELSE
                         LPAD(CAST(EXTRACT(MONTH FROM start_date) AS VARCHAR), 2, '0') || '/' ||
@@ -103,9 +103,23 @@ group by all
                         LPAD(CAST(EXTRACT(MONTH FROM end_date) AS VARCHAR), 2, '0') || '/' ||
                         LPAD(CAST(EXTRACT(DAY FROM end_date) AS VARCHAR), 2, '0') || '/' ||
                         RIGHT(CAST(EXTRACT(YEAR FROM end_date) AS VARCHAR), 2)
-                END as date_range_label,
-                (end_date - start_date) as date_range_days
+                END AS date_range_label,
+                (end_date - start_date) AS date_range_days
             FROM report_date_range
+        ),
+        offset_period AS (
+            SELECT
+                start_date,
+                end_date,
+                CASE 
+                    WHEN end_date > start_date + INTERVAL '5 year' THEN (SELECT 1/0) -- Force error if more than 5 years
+                    WHEN end_date > start_date + INTERVAL '4 year' THEN INTERVAL '5 year'
+                    WHEN end_date > start_date + INTERVAL '3 year' THEN INTERVAL '4 year'
+                    WHEN end_date > start_date + INTERVAL '2 year' THEN INTERVAL '3 year'
+                    WHEN end_date > start_date + INTERVAL '1 year' THEN INTERVAL '2 year'
+                    ELSE INTERVAL '1 year'
+                END AS interval_offset
+            FROM date_info
         ),
         modes_and_severities AS (
             SELECT DISTINCT 
@@ -116,7 +130,7 @@ group by all
         current_period AS (
             SELECT 
                 MODE,
-                SUM(COUNT) as sum_count
+                SUM(COUNT) AS sum_count
             FROM 
                 crashes.crashes 
             WHERE 
@@ -129,13 +143,17 @@ group by all
         prior_period AS (
             SELECT 
                 MODE,
-                SUM(COUNT) as sum_count
+                SUM(COUNT) AS sum_count
             FROM 
                 crashes.crashes 
             WHERE 
                 SEVERITY IN ${inputs.multi_severity.value} 
-                AND REPORTDATE >= ((SELECT start_date FROM date_info) - INTERVAL '1 year')
-                AND REPORTDATE <= ((SELECT end_date FROM date_info) - INTERVAL '1 year')
+                AND REPORTDATE >= (
+                    (SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period)
+                )
+                AND REPORTDATE <= (
+                    (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period)
+                )
             GROUP BY 
                 MODE
         ), 
@@ -147,19 +165,18 @@ group by all
                 current_period cp
             FULL JOIN 
                 prior_period pp 
-            ON 
-                cp.MODE = pp.MODE
+            ON cp.MODE = pp.MODE
         ),
         prior_date_info AS (
             SELECT
-                (SELECT start_date FROM date_info) - INTERVAL '1 year' as prior_start_date,
-                (SELECT end_date FROM date_info) - INTERVAL '1 year' as prior_end_date
+                (SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_start_date,
+                (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_end_date
         ),
         prior_date_label AS (
             SELECT
                 CASE 
-                    WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info)) AND
-                        (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
+                    WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info))
+                        AND (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
                         EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
                     ELSE
                         LPAD(CAST(EXTRACT(MONTH FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
@@ -168,36 +185,32 @@ group by all
                         LPAD(CAST(EXTRACT(MONTH FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
                         LPAD(CAST(EXTRACT(DAY FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
                         RIGHT(CAST(EXTRACT(YEAR FROM prior_end_date) AS VARCHAR), 2)
-                END as prior_date_range_label
+                END AS prior_date_range_label
             FROM prior_date_info
         )
-        SELECT 
-            mas.MODE,
-            COALESCE(cp.sum_count, 0) as current_period_sum, 
-            COALESCE(pp.sum_count, 0) as prior_period_sum, 
-            COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0) as difference,
-            CASE 
-                WHEN COALESCE(cp.sum_count, 0) = 0 THEN 
-                    NULL 
-                WHEN COALESCE(pp.sum_count, 0) != 0 THEN 
-                    ((COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0)) / COALESCE(pp.sum_count, 0)) 
-                ELSE 
-                    NULL 
-            END as percentage_change,
-            (SELECT date_range_label FROM date_info) as current_period_range,
-            (SELECT prior_date_range_label FROM prior_date_label) as prior_period_range,
-            (total_current_period - total_prior_period) / NULLIF(total_prior_period, 0) AS total_percentage_change
-        FROM 
-            modes_and_severities mas
-        LEFT JOIN 
-            current_period cp 
-        ON 
-            mas.MODE = cp.MODE
-        LEFT JOIN 
-            prior_period pp
-        ON 
-            mas.MODE = pp.MODE,
-        total_counts
+    SELECT 
+        mas.MODE,
+        COALESCE(cp.sum_count, 0) AS current_period_sum, 
+        COALESCE(pp.sum_count, 0) AS prior_period_sum, 
+        COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0) AS difference,
+        CASE 
+            WHEN COALESCE(cp.sum_count, 0) = 0 THEN 
+                NULL 
+            WHEN COALESCE(pp.sum_count, 0) != 0 THEN 
+                ((COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0)) / COALESCE(pp.sum_count, 0)) 
+            ELSE 
+                NULL 
+        END AS percentage_change,
+        (SELECT date_range_label FROM date_info) AS current_period_range,
+        (SELECT prior_date_range_label FROM prior_date_label) AS prior_period_range,
+        (total_current_period - total_prior_period) / NULLIF(total_prior_period, 0) AS total_percentage_change
+    FROM 
+        modes_and_severities mas
+    LEFT JOIN 
+        current_period cp ON mas.MODE = cp.MODE
+    LEFT JOIN 
+        prior_period pp ON mas.MODE = pp.MODE,
+        total_counts;
 ```
 
 ```sql period_comp_severity
@@ -209,16 +222,16 @@ group by all
                         (SELECT MAX(REPORTDATE) FROM crashes.crashes)
                     ELSE 
                         '${inputs.date_range.end}'::DATE
-                END as end_date,
-                '${inputs.date_range.start}'::DATE as start_date
+                END AS end_date,
+                '${inputs.date_range.start}'::DATE AS start_date
         ),
         date_info AS (
             SELECT
                 start_date,
                 end_date,
                 CASE 
-                    WHEN start_date = DATE_TRUNC('year', end_date) AND 
-                        end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
+                    WHEN start_date = DATE_TRUNC('year', end_date)
+                        AND end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
                         EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
                     ELSE
                         LPAD(CAST(EXTRACT(MONTH FROM start_date) AS VARCHAR), 2, '0') || '/' ||
@@ -227,9 +240,23 @@ group by all
                         LPAD(CAST(EXTRACT(MONTH FROM end_date) AS VARCHAR), 2, '0') || '/' ||
                         LPAD(CAST(EXTRACT(DAY FROM end_date) AS VARCHAR), 2, '0') || '/' ||
                         RIGHT(CAST(EXTRACT(YEAR FROM end_date) AS VARCHAR), 2)
-                END as date_range_label,
-                (end_date - start_date) as date_range_days
+                END AS date_range_label,
+                (end_date - start_date) AS date_range_days
             FROM report_date_range
+        ),
+        offset_period AS (
+            SELECT
+                start_date,
+                end_date,
+                CASE 
+                    WHEN end_date > start_date + INTERVAL '5 year' THEN (SELECT 1/0) -- Force error if more than 5 years
+                    WHEN end_date > start_date + INTERVAL '4 year' THEN INTERVAL '5 year'
+                    WHEN end_date > start_date + INTERVAL '3 year' THEN INTERVAL '4 year'
+                    WHEN end_date > start_date + INTERVAL '2 year' THEN INTERVAL '3 year'
+                    WHEN end_date > start_date + INTERVAL '1 year' THEN INTERVAL '2 year'
+                    ELSE INTERVAL '1 year'
+                END AS interval_offset
+            FROM date_info
         ),
         severities AS (
             SELECT DISTINCT 
@@ -242,7 +269,7 @@ group by all
         current_period AS (
             SELECT 
                 SEVERITY,
-                SUM(COUNT) as sum_count
+                SUM(COUNT) AS sum_count
             FROM 
                 crashes.crashes 
             WHERE 
@@ -255,13 +282,17 @@ group by all
         prior_period AS (
             SELECT 
                 SEVERITY,
-                SUM(COUNT) as sum_count
+                SUM(COUNT) AS sum_count
             FROM 
                 crashes.crashes 
             WHERE 
                 SEVERITY IN ${inputs.multi_severity.value} 
-                AND REPORTDATE >= ((SELECT start_date FROM date_info) - INTERVAL '1 year')
-                AND REPORTDATE <= ((SELECT end_date FROM date_info) - INTERVAL '1 year')
+                AND REPORTDATE >= (
+                    (SELECT start_date FROM offset_period) - (SELECT interval_offset FROM offset_period)
+                )
+                AND REPORTDATE <= (
+                    (SELECT end_date FROM offset_period) - (SELECT interval_offset FROM offset_period)
+                )
             GROUP BY 
                 SEVERITY
         ), 
@@ -273,20 +304,18 @@ group by all
                 current_period cp
             FULL JOIN 
                 prior_period pp 
-            ON 
-                cp.SEVERITY = pp.SEVERITY
+            ON cp.SEVERITY = pp.SEVERITY
         ),
         prior_date_info AS (
             SELECT
-                (SELECT start_date FROM date_info) - INTERVAL '1 year' as prior_start_date,
-                (SELECT end_date FROM date_info) - INTERVAL '1 year' as prior_end_date
+                (SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_start_date,
+                (SELECT end_date FROM date_info)   - (SELECT interval_offset FROM offset_period) AS prior_end_date
         ),
         prior_date_label AS (
             SELECT
-                -- Modified to check for YTD condition for prior period
                 CASE 
-                    WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info)) AND
-                        (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
+                    WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info))
+                        AND (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
                         EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
                     ELSE
                         LPAD(CAST(EXTRACT(MONTH FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
@@ -295,36 +324,32 @@ group by all
                         LPAD(CAST(EXTRACT(MONTH FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
                         LPAD(CAST(EXTRACT(DAY FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
                         RIGHT(CAST(EXTRACT(YEAR FROM prior_end_date) AS VARCHAR), 2)
-                END as prior_date_range_label
+                END AS prior_date_range_label
             FROM prior_date_info
         )
-        SELECT 
-            s.SEVERITY,
-            COALESCE(cp.sum_count, 0) as current_period_sum, 
-            COALESCE(pp.sum_count, 0) as prior_period_sum, 
-            COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0) as difference,
-            CASE 
-                WHEN COALESCE(cp.sum_count, 0) = 0 THEN 
-                    NULL 
-                WHEN COALESCE(pp.sum_count, 0) != 0 THEN 
-                    ((COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0)) / COALESCE(pp.sum_count, 0)) 
-                ELSE 
-                    NULL 
-            END as percentage_change,
-            (SELECT date_range_label FROM date_info) as current_period_range,
-            (SELECT prior_date_range_label FROM prior_date_label) as prior_period_range,
-            (total_current_period - total_prior_period) / NULLIF(total_prior_period, 0) AS total_percentage_change
-        FROM 
-            severities s
-        LEFT JOIN 
-            current_period cp 
-        ON 
-            s.SEVERITY = cp.SEVERITY
-        LEFT JOIN 
-            prior_period pp
-        ON 
-            s.SEVERITY = pp.SEVERITY,
-        total_counts
+    SELECT 
+        s.SEVERITY,
+        COALESCE(cp.sum_count, 0) AS current_period_sum, 
+        COALESCE(pp.sum_count, 0) AS prior_period_sum, 
+        COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0) AS difference,
+        CASE 
+            WHEN COALESCE(cp.sum_count, 0) = 0 THEN 
+                NULL 
+            WHEN COALESCE(pp.sum_count, 0) != 0 THEN 
+                ((COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0)) / COALESCE(pp.sum_count, 0)) 
+            ELSE 
+                NULL 
+        END AS percentage_change,
+        (SELECT date_range_label FROM date_info) AS current_period_range,
+        (SELECT prior_date_range_label FROM prior_date_label) AS prior_period_range,
+        (total_current_period - total_prior_period) / NULLIF(total_prior_period, 0) AS total_percentage_change
+    FROM 
+        severities s
+    LEFT JOIN 
+        current_period cp ON s.SEVERITY = cp.SEVERITY
+    LEFT JOIN 
+        prior_period pp ON s.SEVERITY = pp.SEVERITY,
+        total_counts;
 ```
 
 ```sql yoy_text_fatal
@@ -505,7 +530,7 @@ The slection for <b>Severity</b> is: <b><Value data={severity_selection} column=
             *Fatal only.
         </Note>
         <Note>
-            The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons.
+            The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
         </Note>
     </Group>
 </Grid>

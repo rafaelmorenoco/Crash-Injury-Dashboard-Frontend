@@ -49,6 +49,21 @@ from smd.smd_2023
 group by 1
 ```
 
+```sql last_record
+    SELECT
+        LPAD(CAST(DATE_PART('month', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
+        LPAD(CAST(DATE_PART('day', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
+        RIGHT(CAST(DATE_PART('year', LAST_RECORD) AS VARCHAR), 2) || ',' AS latest_record,
+        LPAD(CAST(DATE_PART('month', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
+        LPAD(CAST(DATE_PART('day', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
+        RIGHT(CAST(DATE_PART('year', LAST_UPDATE) AS VARCHAR), 2) || ' at ' ||
+        LPAD(CAST(DATE_PART('hour', LAST_UPDATE) AS VARCHAR), 2, '0') || ':' ||
+        LPAD(CAST(DATE_PART('minute', LAST_UPDATE) AS VARCHAR), 2, '0') AS latest_update
+    FROM crashes.crashes
+    ORDER BY LAST_RECORD DESC
+    LIMIT 1;
+```
+
 ```sql smd_map
     SELECT 
         smd_2023.SMD,
@@ -252,7 +267,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             <Column id=percentage_change fmt=pct0 title="% Diff" totalAgg={smd_yoy[0].total_percentage_change} totalFmt=pct0/> 
         </DataTable>
         <Note>
-            The table is sorted in descending order by default based on the <Value data={smd_yoy} column="current_year" fmt='####'/> YTD injuries.
+            The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
         </Note>
     </Group>
 </Grid>
