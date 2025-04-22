@@ -47,7 +47,6 @@ from dc_boundary.dc_boundary
 group by 1
 ```
 
-
 ```sql inc_map
     WITH latest AS (
         SELECT date_trunc('day', MAX(REPORTDATE)) AS end_date
@@ -57,8 +56,7 @@ group by 1
         date_trunc('day', c.REPORTDATE) AS day,
         c.LATITUDE,
         c.LONGITUDE,
-        c.MODE,
-        c.SEVERITY,
+        SUBSTRING(c.MODE, 1, 3) || '-' || SUBSTRING(c.SEVERITY, 1) AS MODESEV,
         c.ADDRESS,
         c.GRID_ID,
         c.REPORTDATE,
@@ -137,8 +135,8 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
     </Group>
     <Group>
         <DataTable data={inc_map} wrapTitles=true rowShading=true groupBy=WEEKDAY subtotals=true sort="WEEKDAY desc" totalRow=true accordionRowColor="#D3D3D3">
-            <Column id=REPORTDATE title="Date" fmt='mm/dd/yy hh:mm' wrap=true totalAgg="Total"/>
-            <Column id=MODE title="Mode" wrap=true/>
+            <Column id=REPORTDATE title="Date" fmt='hh:mm' wrap=true totalAgg="Total"/>
+            <Column id=MODESEV title="Mode-Sev" wrap=true/>
             <Column id=AGE title="Age" wrap=true totalAgg="-"/>
             <Column id=ADDRESS wrap=true/>
             <Column id=COUNT title="#" wrap=true/>
