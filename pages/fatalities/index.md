@@ -163,7 +163,7 @@ The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SE
 <Grid cols=2>
     <Group>
         <Note>
-            Use Mode and Time Period filters above the table to further refine the data.
+            Each point on the map represents an fatality. Fatality incidents can overlap in the same spot.
         </Note>
         <BaseMap
             height=450
