@@ -58,28 +58,29 @@ group by 1
 ```
 
 ```sql yoy_text_fatal
-    WITH date_params AS (
+    WITH params AS (
         SELECT 
-            date_trunc('year', current_date) AS current_year_start,
-            current_date AS current_year_end,
-            date_trunc('year', current_date - interval '1 year') AS prior_year_start,
-            current_date - interval '1 year' AS prior_year_end,
-            extract(year FROM current_date) AS current_year,
-            extract(year FROM current_date - interval '1 year') AS year_prior
+            date_trunc('year', (SELECT MAX(REPORTDATE) FROM crashes.crashes)) AS current_year_start,
+            (SELECT MAX(REPORTDATE) FROM crashes.crashes) AS current_year_end,
+            date_trunc('year', (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year') AS prior_year_start,
+            (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year' AS prior_year_end,
+            extract(year FROM (SELECT MAX(REPORTDATE) FROM crashes.crashes)) AS current_year,
+            extract(year FROM (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year') AS year_prior
     ),
     yearly_counts AS (
         SELECT
-            SUM(CASE WHEN cr.REPORTDATE >= dp.current_year_start 
-                    AND cr.REPORTDATE <= dp.current_year_end THEN cr.COUNT ELSE 0 END) AS current_year_sum,
-            SUM(CASE WHEN cr.REPORTDATE >= dp.prior_year_start 
-                    AND cr.REPORTDATE <= dp.prior_year_end THEN cr.COUNT ELSE 0 END) AS prior_year_sum
+            SUM(CASE 
+                WHEN cr.REPORTDATE BETWEEN p.current_year_start AND p.current_year_end 
+                THEN cr.COUNT ELSE 0 END) AS current_year_sum,
+            SUM(CASE 
+                WHEN cr.REPORTDATE BETWEEN p.prior_year_start AND p.prior_year_end 
+                THEN cr.COUNT ELSE 0 END) AS prior_year_sum
         FROM 
             crashes.crashes AS cr
-            CROSS JOIN date_params dp
+            CROSS JOIN params p
         WHERE 
             cr.SEVERITY = 'Fatal'
-            AND cr.REPORTDATE >= dp.prior_year_start
-            AND cr.REPORTDATE <= dp.current_year_end
+            AND cr.REPORTDATE BETWEEN p.prior_year_start AND p.current_year_end
     )
     SELECT 
         'Fatal' AS severity,
@@ -87,8 +88,8 @@ group by 1
         yc.prior_year_sum,
         ABS(yc.current_year_sum - yc.prior_year_sum) AS difference,
         CASE 
-            WHEN yc.prior_year_sum != 0 
-            THEN NULLIF((yc.current_year_sum - yc.prior_year_sum)::numeric / yc.prior_year_sum, 0)
+            WHEN yc.prior_year_sum <> 0 
+            THEN ((yc.current_year_sum - yc.prior_year_sum)::numeric / yc.prior_year_sum)
             ELSE NULL 
         END AS percentage_change,
         CASE 
@@ -101,13 +102,13 @@ group by 1
             WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'fewer'
             ELSE 'no change'
         END AS difference_text,
-        dp.current_year,
-        dp.year_prior,
+        p.current_year,
+        p.year_prior,
         CASE WHEN yc.current_year_sum = 1 THEN 'has' ELSE 'have' END AS has_have,
         CASE WHEN yc.current_year_sum = 1 THEN 'fatality' ELSE 'fatalities' END AS fatality
     FROM 
         yearly_counts yc
-        CROSS JOIN date_params dp;
+        CROSS JOIN params p;
 ```
 
 ```sql inc_map

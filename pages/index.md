@@ -355,12 +355,12 @@ group by all
 ```sql yoy_text_fatal
     WITH params AS (
         SELECT 
-            date_trunc('year', current_date) AS current_year_start,
-            current_date AS current_year_end,
-            date_trunc('year', current_date - interval '1 year') AS prior_year_start,
-            current_date - interval '1 year' AS prior_year_end,
-            extract(year FROM current_date) AS current_year,
-            extract(year FROM current_date - interval '1 year') AS year_prior
+            date_trunc('year', (SELECT MAX(REPORTDATE) FROM crashes.crashes)) AS current_year_start,
+            (SELECT MAX(REPORTDATE) FROM crashes.crashes) AS current_year_end,
+            date_trunc('year', (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year') AS prior_year_start,
+            (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year' AS prior_year_end,
+            extract(year FROM (SELECT MAX(REPORTDATE) FROM crashes.crashes)) AS current_year,
+            extract(year FROM (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year') AS year_prior
     ),
     yearly_counts AS (
         SELECT
@@ -409,12 +409,12 @@ group by all
 ```sql yoy_text_major_injury
     WITH params AS (
         SELECT 
-            date_trunc('year', current_date) AS current_year_start,
-            current_date AS current_year_end,
-            date_trunc('year', current_date - interval '1 year') AS prior_year_start,
-            current_date - interval '1 year' AS prior_year_end,
-            extract(year FROM current_date) AS current_year,
-            extract(year FROM current_date - interval '1 year') AS year_prior
+            date_trunc('year', (SELECT MAX(REPORTDATE) FROM crashes.crashes)) AS current_year_start,
+            (SELECT MAX(REPORTDATE) FROM crashes.crashes) AS current_year_end,
+            date_trunc('year', (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year') AS prior_year_start,
+            (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year' AS prior_year_end,
+            extract(year FROM (SELECT MAX(REPORTDATE) FROM crashes.crashes)) AS current_year,
+            extract(year FROM (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year') AS year_prior
     ),
     yearly_counts AS (
         SELECT
