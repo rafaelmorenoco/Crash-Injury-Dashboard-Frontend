@@ -51,29 +51,39 @@ group by all
 ```
 
 ```sql barchart_mode
-    WITH combinations AS (
-        SELECT DISTINCT
-            MODE,
-            SEVERITY
-        FROM crashes.crashes
-    ),
-    counts AS (
+    WITH report_date_range AS (
+            SELECT
+                CASE
+                    WHEN '${inputs.date_range.end}' = CURRENT_DATE THEN
+                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                    ELSE
+                        '${inputs.date_range.end}'::DATE
+                END AS end_date,
+                '${inputs.date_range.start}'::DATE AS start_date
+        ),
+        combinations AS (
+            SELECT DISTINCT
+                MODE,
+                SEVERITY
+            FROM crashes.crashes
+        ),
+        counts AS (
+            SELECT
+                MODE,
+                SEVERITY,
+                SUM(COUNT) AS sum_count
+            FROM crashes.crashes
+            WHERE SEVERITY IN ${inputs.multi_severity.value}
+            AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+            GROUP BY MODE, SEVERITY
+        )
         SELECT
-            MODE,
-            SEVERITY,
-            SUM(COUNT) AS sum_count
-        FROM crashes.crashes
-        WHERE SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
-        GROUP BY MODE, SEVERITY
-    )
-    SELECT
-        c.MODE,
-        c.SEVERITY,
-        COALESCE(cnt.sum_count, 0) AS sum_count
-    FROM combinations c
-    LEFT JOIN counts cnt
-    ON c.MODE = cnt.MODE AND c.SEVERITY = cnt.SEVERITY;
+            c.MODE,
+            c.SEVERITY,
+            COALESCE(cnt.sum_count, 0) AS sum_count
+        FROM combinations c
+        LEFT JOIN counts cnt
+        ON c.MODE = cnt.MODE AND c.SEVERITY = cnt.SEVERITY;
 ```
 
 ```sql period_comp_mode
@@ -353,46 +363,55 @@ group by all
 ```
 
 ```sql yoy_text_fatal
-    WITH params AS (
-        SELECT 
-            date_trunc('year', (SELECT MAX(REPORTDATE) FROM crashes.crashes)) AS current_year_start,
-            (SELECT MAX(REPORTDATE) FROM crashes.crashes) AS current_year_end,
-            date_trunc('year', (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year') AS prior_year_start,
-            (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year' AS prior_year_end,
-            extract(year FROM (SELECT MAX(REPORTDATE) FROM crashes.crashes)) AS current_year,
-            extract(year FROM (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year') AS year_prior
+    WITH date_range AS (
+        SELECT
+            MAX(REPORTDATE) AS max_report_date
+        FROM
+            crashes.crashes
+    ),
+    params AS (
+        SELECT
+            date_trunc('year', dr.max_report_date) AS current_year_start,
+            dr.max_report_date AS current_year_end,
+            date_trunc('year', dr.max_report_date - interval '1 year') AS prior_year_start,
+            dr.max_report_date - interval '1 year' AS prior_year_end,
+            extract(year FROM dr.max_report_date) AS current_year,
+            extract(year FROM dr.max_report_date - interval '1 year') AS year_prior
+        FROM
+            date_range dr
     ),
     yearly_counts AS (
         SELECT
-            SUM(CASE 
-                WHEN cr.REPORTDATE BETWEEN p.current_year_start AND p.current_year_end 
+            SUM(CASE
+                WHEN cr.REPORTDATE BETWEEN p.current_year_start AND p.current_year_end
                 THEN cr.COUNT ELSE 0 END) AS current_year_sum,
-            SUM(CASE 
-                WHEN cr.REPORTDATE BETWEEN p.prior_year_start AND p.prior_year_end 
+            SUM(CASE
+                WHEN cr.REPORTDATE BETWEEN p.prior_year_start AND p.prior_year_end
                 THEN cr.COUNT ELSE 0 END) AS prior_year_sum
-        FROM 
+        FROM
             crashes.crashes AS cr
             CROSS JOIN params p
-        WHERE 
+        WHERE
             cr.SEVERITY = 'Fatal'
-            AND cr.REPORTDATE BETWEEN p.prior_year_start AND p.current_year_end
+            AND cr.REPORTDATE >= p.prior_year_start -- More efficient date filtering
+            AND cr.REPORTDATE <= p.current_year_end
     )
-    SELECT 
+    SELECT
         'Fatal' AS severity,
         yc.current_year_sum,
         yc.prior_year_sum,
         ABS(yc.current_year_sum - yc.prior_year_sum) AS difference,
-        CASE 
-            WHEN yc.prior_year_sum <> 0 
+        CASE
+            WHEN yc.prior_year_sum <> 0
             THEN ((yc.current_year_sum - yc.prior_year_sum)::numeric / yc.prior_year_sum)
-            ELSE NULL 
+            ELSE NULL
         END AS percentage_change,
-        CASE 
+        CASE
             WHEN (yc.current_year_sum - yc.prior_year_sum) > 0 THEN 'an increase of'
             WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'a decrease of'
-            ELSE NULL 
+            ELSE NULL
         END AS percentage_change_text,
-        CASE 
+        CASE
             WHEN (yc.current_year_sum - yc.prior_year_sum) > 0 THEN 'more'
             WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'fewer'
             ELSE 'no change'
@@ -401,48 +420,61 @@ group by all
         p.year_prior,
         CASE WHEN yc.current_year_sum = 1 THEN 'has' ELSE 'have' END AS has_have,
         CASE WHEN yc.current_year_sum = 1 THEN 'fatality' ELSE 'fatalities' END AS fatality
-    FROM 
+    FROM
         yearly_counts yc
         CROSS JOIN params p;
 ```
 
 ```sql yoy_text_major_injury
-    WITH params AS (
-        SELECT 
-            date_trunc('year', (SELECT MAX(REPORTDATE) FROM crashes.crashes)) AS current_year_start,
-            (SELECT MAX(REPORTDATE) FROM crashes.crashes) AS current_year_end,
-            date_trunc('year', (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year') AS prior_year_start,
-            (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year' AS prior_year_end,
-            extract(year FROM (SELECT MAX(REPORTDATE) FROM crashes.crashes)) AS current_year,
-            extract(year FROM (SELECT MAX(REPORTDATE) FROM crashes.crashes) - interval '1 year') AS year_prior
+    WITH date_range AS (
+        SELECT
+            MAX(REPORTDATE) AS max_report_date
+        FROM
+            crashes.crashes
+    ),
+    params AS (
+        SELECT
+            date_trunc('year', dr.max_report_date) AS current_year_start,
+            dr.max_report_date AS current_year_end,
+            date_trunc('year', dr.max_report_date - interval '1 year') AS prior_year_start,
+            dr.max_report_date - interval '1 year' AS prior_year_end,
+            extract(year FROM dr.max_report_date) AS current_year,
+            extract(year FROM dr.max_report_date - interval '1 year') AS year_prior
+        FROM
+            date_range dr
     ),
     yearly_counts AS (
         SELECT
-            SUM(CASE WHEN cr.REPORTDATE BETWEEN p.current_year_start AND p.current_year_end 
-                    THEN cr.COUNT ELSE 0 END) AS current_year_sum,
-            SUM(CASE WHEN cr.REPORTDATE BETWEEN p.prior_year_start AND p.prior_year_end 
-                    THEN cr.COUNT ELSE 0 END) AS prior_year_sum
-        FROM crashes.crashes AS cr
-        CROSS JOIN params p
-        WHERE cr.SEVERITY = 'Major'
-        AND cr.REPORTDATE BETWEEN p.prior_year_start AND p.current_year_end
+            SUM(CASE
+                WHEN cr.REPORTDATE BETWEEN p.current_year_start AND p.current_year_end
+                THEN cr.COUNT ELSE 0 END) AS current_year_sum,
+            SUM(CASE
+                WHEN cr.REPORTDATE BETWEEN p.prior_year_start AND p.prior_year_end
+                THEN cr.COUNT ELSE 0 END) AS prior_year_sum
+        FROM
+            crashes.crashes AS cr
+            CROSS JOIN params p
+        WHERE
+            cr.SEVERITY = 'Major'
+            AND cr.REPORTDATE >= p.prior_year_start -- More efficient date filtering
+            AND cr.REPORTDATE <= p.current_year_end
     )
-    SELECT 
+    SELECT
         'Major' AS severity,
         yc.current_year_sum,
         yc.prior_year_sum,
         ABS(yc.current_year_sum - yc.prior_year_sum) AS difference,
-        CASE 
-            WHEN yc.prior_year_sum <> 0 
+        CASE
+            WHEN yc.prior_year_sum <> 0
             THEN ((yc.current_year_sum - yc.prior_year_sum)::numeric / yc.prior_year_sum)
-            ELSE NULL 
+            ELSE NULL
         END AS percentage_change,
-        CASE 
+        CASE
             WHEN (yc.current_year_sum - yc.prior_year_sum) > 0 THEN 'an increase of'
             WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'a decrease of'
-            ELSE NULL 
+            ELSE NULL
         END AS percentage_change_text,
-        CASE 
+        CASE
             WHEN (yc.current_year_sum - yc.prior_year_sum) > 0 THEN 'more'
             WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'fewer'
             ELSE 'no change'
@@ -451,8 +483,9 @@ group by all
         p.year_prior,
         CASE WHEN yc.current_year_sum = 1 THEN 'has' ELSE 'have' END AS has_have,
         CASE WHEN yc.current_year_sum = 1 THEN 'major injury' ELSE 'major injuries' END AS major_injury
-    FROM yearly_counts yc
-    CROSS JOIN params p;
+    FROM
+        yearly_counts yc
+        CROSS JOIN params p;
 ```
 
 ```sql severity_selection

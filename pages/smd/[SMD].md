@@ -51,6 +51,7 @@ group by 1
       REPORTDATE,
       SEVERITY,
       MODE,
+      ADDRESS,
       sum(COUNT) as Count
   from crashes.crashes
   where MODE IN ${inputs.multi_mode_dd.value}
@@ -210,10 +211,11 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         </Note>
     </Group>    
     <Group>
-        <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 subtitle='Injury Table' rowShading=true>
-          <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total"/>
+        <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 subtitle='Injury Table' rowShading=true wrapTitles=true>
+          <Column id=REPORTDATE title='Date' wrap=true fmt='mm/dd/yy hh:mm' totalAgg="Total"/>
           <Column id=SEVERITY totalAgg="-"/>
           <Column id=MODE totalAgg='{inputs.multi_mode}'/>
+          <Column id=ADDRESS wrap=true totalAgg="-"/>
           <Column id=Count totalAgg=sum/>
         </DataTable>
         <Alert status="info">
