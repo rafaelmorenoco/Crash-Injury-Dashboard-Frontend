@@ -526,12 +526,15 @@ ORDER BY y.year DESC, m.month;
 -->
 
 <DateRange
-  start='2018-01-01'
+  start="2018-01-01"
+  end={new Date(new Date().setDate(new Date().getDate() - 2))
+    .toISOString()
+    .split('T')[0]}
   title="Select Time Period"
-  name=date_range
-  presetRanges={['Year to Today','Last Year','All Time']}
-  defaultValue={'All Time'}
-  description='By default, there is a two-day lag after the latest update'
+  name="date_range"
+  presetRanges={['Year to Today', 'Last Year', 'All Time']}
+  defaultValue="All Time"
+  description="By default, there is a two-day lag after the latest update"
 />
 
 <Dropdown
