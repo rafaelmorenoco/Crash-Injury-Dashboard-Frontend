@@ -1,5 +1,5 @@
 ---
-title: Multi-year Analysis
+title: Multi-Year Analysis
 sidebar_position: 7
 ---
 
@@ -529,8 +529,9 @@ ORDER BY y.year DESC, m.month;
   start='2018-01-01'
   title="Select Time Period"
   name=date_range
-  presetRanges={['Month to Today','Last Month','Year to Today','Last Year','All Time']}
+  presetRanges={['Year to Today','Last Year','All Time']}
   defaultValue={'All Time'}
+  description='By default, there is a two-day lag after the latest update'
 />
 
 <Dropdown
@@ -571,7 +572,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             labels={false}
             echartsOptions={{
                 legend: {
-                    data: ["2030","2029","2028","2027","2026","2025","2024","2023","2022","2021","2020","2019","2018"]
+                    data: ["2040","2039","2038","2037","2036","2035","2034","2033","2032","2031","2030","2030","2029","2028","2027","2026","2025","2024","2023","2022","2021","2020","2019","2018","2017","2016","2015"],
                 },
                 xAxis: {
                     type: 'category',
@@ -593,7 +594,6 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
                         let tooltipContent = `<strong>${monthLabel}</strong><br/>`;
                         params.forEach(item => {
                             const value = Array.isArray(item.value) ? item.value[1] : item.value;
-                            // Bold the year label (seriesName)
                             tooltipContent += `${item.marker} <strong>${item.seriesName}</strong>: ${value}<br/>`;
                         });
                         return tooltipContent;
@@ -621,9 +621,10 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <Note>
             *Fatal only.
         </Note>
-        <Note>
-            The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
-        </Note>
     -->
     </Group>
 </Grid>
+
+<Note>
+    The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
+</Note>
