@@ -52,14 +52,14 @@ group by all
 
 ```sql barchart_mode
     WITH report_date_range AS (
-            SELECT
-                CASE
-                    WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE
-                        '${inputs.date_range.end}'::DATE
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
+        SELECT
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
         ),
         combinations AS (
             SELECT DISTINCT
