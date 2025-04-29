@@ -57,10 +57,25 @@ group by all
             hr.hour_number
         FROM 
             (VALUES 
-                ('Sun', 0), ('Mon', 1), ('Tue', 2), 
-                ('Wed', 3), ('Thu', 4), ('Fri', 5), ('Sat', 6)
+                ('Sun', 0), 
+                ('Mon', 1), 
+                ('Tue', 2), 
+                ('Wed', 3), 
+                ('Thu', 4), 
+                ('Fri', 5), 
+                ('Sat', 6)
             ) AS dow(day_of_week, day_number),
             GENERATE_SERIES(0, 23) AS hr(hour_number)
+    ),
+    report_date_range AS (
+        SELECT
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
     ),
     count_data AS (
         SELECT
@@ -83,64 +98,91 @@ group by all
                 WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
             END AS day_number,
             LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
-            SUM(COUNT) AS Injuries
+            SUM("COUNT") AS Injuries
         FROM crashes.crashes
-        WHERE MODE IN ${inputs.multi_mode_dd.value}
-        AND SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
-        GROUP BY day_of_week, day_number, hour_number
+        WHERE 
+            MODE IN ${inputs.multi_mode_dd.value}
+            AND SEVERITY IN ${inputs.multi_severity.value}
+            AND REPORTDATE BETWEEN 
+                (SELECT start_date FROM report_date_range) 
+                AND (SELECT end_date FROM report_date_range)
+        GROUP BY 
+            day_of_week, day_number, hour_number
     )
-
     SELECT
         r.day_of_week,
         r.day_number,
-        LPAD(r.hour_number::TEXT, 2, '0') AS hour_number,
+        LPAD(CAST(r.hour_number AS VARCHAR), 2, '0') AS hour_number,
         COALESCE(cd.Injuries, 0) AS Injuries
     FROM reference r
     LEFT JOIN count_data cd
-    ON r.day_of_week = cd.day_of_week
-    AND r.hour_number = cd.hour_number
+        ON r.day_of_week = cd.day_of_week
+        AND LPAD(CAST(r.hour_number AS VARCHAR), 2, '0') = cd.hour_number
     ORDER BY r.day_number, r.hour_number;
 ```
 
 ```sql time
-    WITH reference AS (
+    WITH report_date_range AS (
         SELECT
-            hr.hour_number
-        FROM 
-            GENERATE_SERIES(0, 23) AS hr(hour_number)
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
+    ),
+    reference AS (
+        SELECT hr.hour_number
+        FROM GENERATE_SERIES(0, 23) AS hr(hour_number)
     ),
     count_data AS (
         SELECT
             LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
-            SUM(COUNT) AS Injuries
+            SUM("COUNT") AS Injuries
         FROM crashes.crashes
-        WHERE MODE IN ${inputs.multi_mode_dd.value}
-        AND SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+        WHERE 
+            MODE IN ${inputs.multi_mode_dd.value}
+            AND SEVERITY IN ${inputs.multi_severity.value}
+            AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
+                                AND (SELECT end_date FROM report_date_range)
         GROUP BY hour_number
     )
-
     SELECT
         'Total' AS Total,
-        LPAD(r.hour_number::TEXT, 2, '0') AS hour_number,
+        LPAD(CAST(r.hour_number AS VARCHAR), 2, '0') AS hour_number,
         COALESCE(cd.Injuries, 0) AS Injuries
     FROM reference r
     LEFT JOIN count_data cd
-    ON r.hour_number = cd.hour_number
+        ON LPAD(CAST(r.hour_number AS VARCHAR), 2, '0') = cd.hour_number
     ORDER BY r.hour_number;
 ```
 
 ```sql day
-    WITH reference AS (
+    WITH report_date_range AS (
+        SELECT
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
+    ),
+    reference AS (
         SELECT
             dow.day_of_week,
             dow.day_number,
             'Total' AS total
         FROM 
             (VALUES 
-                ('Sun', 0), ('Mon', 1), ('Tue', 2), 
-                ('Wed', 3), ('Thu', 4), ('Fri', 5), ('Sat', 6)
+                ('Sun', 0), 
+                ('Mon', 1), 
+                ('Tue', 2), 
+                ('Wed', 3), 
+                ('Thu', 4), 
+                ('Fri', 5), 
+                ('Sat', 6)
             ) AS dow(day_of_week, day_number)
     ),
     count_data AS (
@@ -163,11 +205,12 @@ group by all
                 WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 5
                 WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
             END AS day_number,
-            SUM(COUNT) AS Injuries
+            SUM("COUNT") AS Injuries
         FROM crashes.crashes
         WHERE MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+        AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
+                            AND (SELECT end_date FROM report_date_range)
         GROUP BY day_of_week, day_number
     )
 
@@ -178,11 +221,21 @@ group by all
         COALESCE(cd.Injuries, 0) AS Injuries
     FROM reference r
     LEFT JOIN count_data cd
-    ON r.day_of_week = cd.day_of_week
+        ON r.day_of_week = cd.day_of_week
     ORDER BY r.day_number;
 ```
 
 ```sql hex_map
+    WITH report_date_range AS (
+        SELECT
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
+    )
     SELECT
         h.GRID_ID,
         COALESCE(SUM(c.COUNT), 0) AS Injuries,
@@ -193,7 +246,7 @@ group by all
         crashes.crashes c ON h.GRID_ID = c.GRID_ID
         AND c.MODE IN ${inputs.multi_mode_dd.value}
         AND c.SEVERITY IN ${inputs.multi_severity.value}
-        AND c.REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+        AND c.REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
     GROUP BY
         h.GRID_ID
 ```
@@ -226,11 +279,15 @@ from ${hex}
 ```
 
 <DateRange
-  start='2018-01-01'
-  title="Select Time Period"
-  name=date_range
-  presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
-  defaultValue={'Year to Today'}
+    start='2018-01-01'
+    end={new Date(new Date().setDate(new Date().getDate() - 2))
+    .toISOString()
+    .split('T')[0]}
+    title="Select Time Period"
+    name=date_range
+    presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
+    defaultValue={'Year to Today'}
+    description="By default, there is a two-day lag after the latest update"
 />
 
 <Dropdown

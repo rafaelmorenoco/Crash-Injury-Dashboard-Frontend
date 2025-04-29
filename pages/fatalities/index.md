@@ -121,19 +121,29 @@ group by 1
 ```
 
 ```sql inc_map
-  select
-      REPORTDATE,
-      LATITUDE,
-      LONGITUDE,
-      MODE,
-      SEVERITY,
-      ADDRESS,
-      '/fatalities/' || OBJECTID AS link
-  from crashes.crashes
-  where MODE IN ${inputs.multi_mode_dd.value}
-  and SEVERITY = 'Fatal'
-  and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'
-  group by all
+    WITH report_date_range AS (
+        SELECT
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
+    )
+    SELECT
+        REPORTDATE,
+        LATITUDE,
+        LONGITUDE,
+        MODE,
+        SEVERITY,
+        ADDRESS,
+        '/fatalities/' || OBJECTID AS link
+    from crashes.crashes
+    where MODE IN ${inputs.multi_mode_dd.value}
+    and SEVERITY = 'Fatal'
+    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+    group by all
 ```
 
 ```sql mode_selection
@@ -150,12 +160,15 @@ As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_
 
 <DateRange
     start='2018-01-01'
+    end={new Date(new Date().setDate(new Date().getDate() - 2))
+    .toISOString()
+    .split('T')[0]}
     title="Select Time Period"
     name=date_range
     presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
     defaultValue={'Year to Today'}
+    description="By default, there is a two-day lag after the latest update"
 />
-
 <Dropdown
     data={unique_mode} 
     name=multi_mode_dd

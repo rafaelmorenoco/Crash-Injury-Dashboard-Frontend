@@ -54,10 +54,10 @@ group by 1
         report_date_range AS (
             SELECT
                 CASE 
-                    WHEN '${inputs.date_range.end}' = CURRENT_DATE THEN 
+                    WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
                         (SELECT MAX(REPORTDATE) FROM crashes.crashes)
                     ELSE 
-                        '${inputs.date_range.end}'::DATE
+                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
                 END AS end_date,
                 '${inputs.date_range.start}'::DATE AS start_date
         ),
@@ -70,12 +70,7 @@ group by 1
                         AND end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes)
                     THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
                     ELSE
-                        LPAD(CAST(EXTRACT(MONTH FROM start_date) AS VARCHAR), 2, '0') || '/' ||
-                        LPAD(CAST(EXTRACT(DAY FROM start_date) AS VARCHAR), 2, '0') || '/' ||
-                        RIGHT(CAST(EXTRACT(YEAR FROM start_date) AS VARCHAR), 2) || '-' ||
-                        LPAD(CAST(EXTRACT(MONTH FROM end_date) AS VARCHAR), 2, '0') || '/' ||
-                        LPAD(CAST(EXTRACT(DAY FROM end_date) AS VARCHAR), 2, '0') || '/' ||
-                        RIGHT(CAST(EXTRACT(YEAR FROM end_date) AS VARCHAR), 2)
+                        strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date - INTERVAL '1 day', '%m/%d/%y')
                 END AS date_range_label,
                 (end_date - start_date) AS date_range_days
             FROM report_date_range
@@ -114,8 +109,8 @@ group by 1
             WHERE 
                 crashes.SEVERITY IN ${inputs.multi_severity.value} 
                 AND crashes.MODE IN ${inputs.multi_mode_dd.value}
-                AND crashes.REPORTDATE >= (SELECT start_date FROM date_info)
-                AND crashes.REPORTDATE <= (SELECT end_date FROM date_info)
+                AND crashes.REPORTDATE BETWEEN (SELECT start_date FROM date_info)
+                                            AND (SELECT end_date FROM date_info)
             GROUP BY 
                 crashes.SMD
         ), 
@@ -131,12 +126,11 @@ group by 1
             WHERE 
                 crashes.SEVERITY IN ${inputs.multi_severity.value} 
                 AND crashes.MODE IN ${inputs.multi_mode_dd.value}
-                AND crashes.REPORTDATE >= (
-                    (SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period)
-                )
-                AND crashes.REPORTDATE <= (
-                    (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period)
-                )
+                AND crashes.REPORTDATE BETWEEN (
+                        (SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period)
+                    ) AND (
+                        (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period)
+                    )
             GROUP BY 
                 crashes.SMD
         ),
@@ -152,12 +146,7 @@ group by 1
                         AND (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes)
                     THEN EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
                     ELSE
-                        LPAD(CAST(EXTRACT(MONTH FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
-                        LPAD(CAST(EXTRACT(DAY FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
-                        RIGHT(CAST(EXTRACT(YEAR FROM prior_start_date) AS VARCHAR), 2) || '-' ||
-                        LPAD(CAST(EXTRACT(MONTH FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
-                        LPAD(CAST(EXTRACT(DAY FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
-                        RIGHT(CAST(EXTRACT(YEAR FROM prior_end_date) AS VARCHAR), 2)
+                        strftime(prior_start_date, '%m/%d/%y') || '-' || strftime(prior_end_date - INTERVAL '1 day', '%m/%d/%y')
                 END AS prior_date_range_label
             FROM prior_date_info
         )
@@ -185,6 +174,16 @@ group by 1
 ```
 
 ```sql smd_map
+    WITH report_date_range AS (
+        SELECT
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
+    )
     SELECT
         a.SMD,
         COALESCE(SUM(c.COUNT), 0) AS Injuries,
@@ -195,7 +194,7 @@ group by 1
         crashes.crashes c ON a.SMD = c.SMD
         AND c.MODE IN ${inputs.multi_mode_dd.value}
         AND c.SEVERITY IN ${inputs.multi_severity.value}
-        AND c.REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+        AND c.REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
     GROUP BY
         a.SMD
 ```
@@ -212,11 +211,15 @@ group by 1
 ```
 
 <DateRange
-  start='2018-01-01'
-  title="Select Time Period"
-  name=date_range
-  presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
-  defaultValue={'Year to Today'}
+    start='2018-01-01'
+    end={new Date(new Date().setDate(new Date().getDate() - 2))
+    .toISOString()
+    .split('T')[0]}
+    title="Select Time Period"
+    name=date_range
+    presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
+    defaultValue={'Year to Today'}
+    description="By default, there is a two-day lag after the latest update"
 />
 
 <Dropdown
@@ -265,7 +268,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         </Note>
     </Group>    
     <Group>
-        <DataTable data={period_comp_smd} sort="current_period_sum desc" title="Selected Period Comparison" search=true wrapTitles=true rowShading=true link=link>
+        <DataTable data={period_comp_smd} sort="current_period_sum desc" title="Selected Period Comparison" search=true wrapTitles=true rowShading=true link=link totalRow=true>
             <Column id=SMD title="SMD"/>
             <Column id=current_period_sum title={`${period_comp_smd[0].current_period_range}`} />
             <Column id=prior_period_sum title={`${period_comp_smd[0].prior_period_range}`}  />

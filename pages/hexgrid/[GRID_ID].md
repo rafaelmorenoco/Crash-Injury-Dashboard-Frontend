@@ -36,33 +36,51 @@ group by all
 ```
 
 ```sql table_query
-  select
-      REPORTDATE,
-      SEVERITY,
-      MODE,
-      ADDRESS,
-      sum(COUNT) as Count
-  from crashes.crashes
-  where MODE IN ${inputs.multi_mode_dd.value}
-  and GRID_ID = '${params.GRID_ID}'
-  and SEVERITY IN ${inputs.multi_severity.value}
-  and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'
-  group by all
+    WITH report_date_range AS (
+        SELECT
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
+    )
+    SELECT
+        REPORTDATE,
+        SEVERITY,
+        MODE,
+        ADDRESS,
+        sum(COUNT) as Count
+    FROM crashes.crashes
+    WHERE MODE IN ${inputs.multi_mode_dd.value}
+    AND GRID_ID = '${params.GRID_ID}'
+    AND SEVERITY IN ${inputs.multi_severity.value}
+    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+    GROUP BY all
 ```
 
 ```sql incidents
-  select
-      --GRID_ID,
-      MODE,
-      SEVERITY,
-      LATITUDE,
-      LONGITUDE
-  from crashes.crashes
-  where MODE IN ${inputs.multi_mode_dd.value}
-  --and GRID_ID = '${params.GRID_ID}'
-  and SEVERITY IN ${inputs.multi_severity.value}
-  and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'
-  group by all
+    WITH report_date_range AS (
+        SELECT
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
+    )
+    SELECT
+        MODE,
+        SEVERITY,
+        LATITUDE,
+        LONGITUDE
+    FROM crashes.crashes
+    WHERE MODE IN ${inputs.multi_mode_dd.value}
+    AND SEVERITY IN ${inputs.multi_severity.value}
+    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+    GROUP BY all
 ```
 
 ```sql intersection_list
@@ -110,11 +128,15 @@ group by all
     </Group>
     <Group>
         <DateRange
-        start='2018-01-01'
-        title="Select Time Period"
-        name=date_range
-        presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
-        defaultValue={'Year to Today'}
+            start='2018-01-01'
+            end={new Date(new Date().setDate(new Date().getDate() - 2))
+            .toISOString()
+            .split('T')[0]}
+            title="Select Time Period"
+            name=date_range
+            presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
+            defaultValue={'Year to Today'}
+            description="By default, there is a two-day lag after the latest update"
         />
         <Dropdown
             data={unique_severity} 
