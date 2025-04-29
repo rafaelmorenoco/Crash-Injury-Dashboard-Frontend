@@ -1,5 +1,5 @@
 ---
-title: Multi-Year Analysis
+title: Multiyear Trend
 sidebar_position: 7
 ---
 
@@ -54,59 +54,69 @@ group by all
 ```
 
 ```sql linechart_month
-WITH months AS (
-    SELECT 1 AS month, 'Jan' AS month_name UNION ALL
-    SELECT 2, 'Feb' UNION ALL
-    SELECT 3, 'Mar' UNION ALL
-    SELECT 4, 'Apr' UNION ALL
-    SELECT 5, 'May' UNION ALL
-    SELECT 6, 'Jun' UNION ALL
-    SELECT 7, 'Jul' UNION ALL
-    SELECT 8, 'Aug' UNION ALL
-    SELECT 9, 'Sep' UNION ALL
-    SELECT 10, 'Oct' UNION ALL
-    SELECT 11, 'Nov' UNION ALL
-    SELECT 12, 'Dec'
-),
-monthly_counts AS (
+    WITH report_date_range AS (
+        SELECT
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
+    ),
+    months AS (
+        SELECT 1 AS month, 'Jan' AS month_name UNION ALL
+        SELECT 2, 'Feb' UNION ALL
+        SELECT 3, 'Mar' UNION ALL
+        SELECT 4, 'Apr' UNION ALL
+        SELECT 5, 'May' UNION ALL
+        SELECT 6, 'Jun' UNION ALL
+        SELECT 7, 'Jul' UNION ALL
+        SELECT 8, 'Aug' UNION ALL
+        SELECT 9, 'Sep' UNION ALL
+        SELECT 10, 'Oct' UNION ALL
+        SELECT 11, 'Nov' UNION ALL
+        SELECT 12, 'Dec'
+    ),
+    monthly_counts AS (
+        SELECT 
+            EXTRACT(YEAR FROM REPORTDATE) AS year,
+            EXTRACT(MONTH FROM REPORTDATE) AS month,
+            SUM("COUNT") AS monthly_total
+        FROM crashes.crashes
+        WHERE 
+            MODE IN ${inputs.multi_mode_dd.value}
+            AND SEVERITY IN ${inputs.multi_severity.value}
+            AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
+                            AND (SELECT end_date FROM report_date_range)
+        GROUP BY 
+            EXTRACT(YEAR FROM REPORTDATE), 
+            EXTRACT(MONTH FROM REPORTDATE)
+    ),
+    max_year_cte AS (
+        SELECT MAX(year) AS max_year
+        FROM monthly_counts
+    ),
+    max_month_cte AS (
+        SELECT MAX(month) AS max_month
+        FROM monthly_counts
+        WHERE year = (SELECT max_year FROM max_year_cte)
+    )
     SELECT 
-        EXTRACT(YEAR FROM REPORTDATE) AS year,
-        EXTRACT(MONTH FROM REPORTDATE) AS month,
-        SUM("COUNT") AS monthly_total
-    FROM crashes.crashes
-    WHERE 
-        MODE IN ${inputs.multi_mode_dd.value}
-        AND SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
-    GROUP BY 
-        EXTRACT(YEAR FROM REPORTDATE), 
-        EXTRACT(MONTH FROM REPORTDATE)
-),
-max_year_cte AS (
-    SELECT MAX(year) AS max_year
-    FROM monthly_counts
-),
-max_month_cte AS (
-    SELECT MAX(month) AS max_month
-    FROM monthly_counts
-    WHERE year = (SELECT max_year FROM max_year_cte)
-)
-SELECT 
-    y.year,
-    m.month,
-    m.month_name,
-    COALESCE(mc.monthly_total, 0) AS monthly_total,
-    SUM(COALESCE(mc.monthly_total, 0)) OVER (PARTITION BY y.year ORDER BY m.month ASC) AS cumulative_total
-FROM
-    (SELECT DISTINCT year FROM monthly_counts) y
-CROSS JOIN months m
-LEFT JOIN monthly_counts mc 
-    ON y.year = mc.year AND m.month = mc.month
-WHERE
-    y.year <> (SELECT max_year FROM max_year_cte)
-    OR m.month <= (SELECT max_month FROM max_month_cte)
-ORDER BY y.year DESC, m.month;
-
+        y.year,
+        m.month,
+        m.month_name,
+        COALESCE(mc.monthly_total, 0) AS monthly_total,
+        SUM(COALESCE(mc.monthly_total, 0)) OVER (PARTITION BY y.year ORDER BY m.month ASC) AS cumulative_total
+    FROM
+        (SELECT DISTINCT year FROM monthly_counts) y
+    CROSS JOIN months m
+    LEFT JOIN monthly_counts mc 
+        ON y.year = mc.year AND m.month = mc.month
+    WHERE
+        y.year <> (SELECT max_year FROM max_year_cte)
+        OR m.month <= (SELECT max_month FROM max_month_cte)
+    ORDER BY y.year DESC, m.month;
 ```
 
 ```sql period_comp_mode
@@ -254,7 +264,7 @@ ORDER BY y.year DESC, m.month;
                     WHEN '${inputs.date_range.end}' = CURRENT_DATE THEN 
                         (SELECT MAX(REPORTDATE) FROM crashes.crashes)
                     ELSE 
-                        '${inputs.date_range.end}'::DATE
+                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
                 END AS end_date,
                 '${inputs.date_range.start}'::DATE AS start_date
         ),
@@ -526,15 +536,15 @@ ORDER BY y.year DESC, m.month;
 -->
 
 <DateRange
-  start="2018-01-01"
-  end={new Date(new Date().setDate(new Date().getDate() - 2))
-    .toISOString()
-    .split('T')[0]}
-  title="Select Time Period"
-  name="date_range"
-  presetRanges={['Year to Today', 'Last Year', 'All Time']}
-  defaultValue="All Time"
-  description="By default, there is a two-day lag after the latest update"
+    start="2018-01-01"
+    end={new Date(new Date().setDate(new Date().getDate() - 2))
+        .toISOString()
+        .split('T')[0]}
+    title="Select Time Period"
+    name="date_range"
+    presetRanges={['Year to Today', 'Last Year', 'All Time']}
+    defaultValue="All Time"
+    description="By default, there is a two-day lag after the latest update"
 />
 
 <Dropdown
@@ -629,5 +639,5 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
 </Grid>
 
 <Note>
-    The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
+    The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons.
 </Note>

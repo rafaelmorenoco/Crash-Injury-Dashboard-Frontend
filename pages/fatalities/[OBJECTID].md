@@ -33,6 +33,16 @@ group by all
 ```
 
 ```sql Tittle
+  WITH report_date_range AS (
+      SELECT
+          '${inputs.date_range.start}'::DATE AS start_date,
+          CASE 
+              WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                  (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+              ELSE 
+                  '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+          END AS end_date
+  )
   SELECT 
     ADDRESS,
     CONCAT(
@@ -46,7 +56,7 @@ group by all
   WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND OBJECTID = '${params.OBJECTID}'
     AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
 ```
 
 ```sql pivot_table
@@ -60,114 +70,77 @@ group by all
           LPAD(EXTRACT(MINUTE FROM REPORTDATE)::TEXT, 2, '0')
       ) AS column_value
   FROM crashes.crashes
-  WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND OBJECTID = '${params.OBJECTID}'
-    AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+  WHERE OBJECTID = '${params.OBJECTID}'
 
   UNION ALL
 
   SELECT 'Mode', MODE::TEXT
   FROM crashes.crashes
-  WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND OBJECTID = '${params.OBJECTID}'
-    AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+  WHERE OBJECTID = '${params.OBJECTID}'
 
   UNION ALL
 
   SELECT 'CCN', CCN::TEXT
   FROM crashes.crashes
-  WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND OBJECTID = '${params.OBJECTID}'
-    AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+  WHERE OBJECTID = '${params.OBJECTID}'
 
   UNION ALL
 
   SELECT 'Address', ADDRESS
   FROM crashes.crashes
-  WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND OBJECTID = '${params.OBJECTID}'
-    AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+  WHERE OBJECTID = '${params.OBJECTID}'
 
   UNION ALL
 
   SELECT 'Ward', WARD
   FROM crashes.crashes
-  WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND OBJECTID = '${params.OBJECTID}'
-    AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+  WHERE OBJECTID = '${params.OBJECTID}'
 
   UNION ALL
 
   SELECT 'Striking Vehicle', StrinkingVehicle
   FROM crashes.crashes
-  WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND OBJECTID = '${params.OBJECTID}'
-    AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+  WHERE OBJECTID = '${params.OBJECTID}'
 
   UNION ALL
 
   SELECT 'Second Striking Vehicle/Object', SecondStrikingVehicleObject
   FROM crashes.crashes
-  WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND OBJECTID = '${params.OBJECTID}'
-    AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+  WHERE OBJECTID = '${params.OBJECTID}'
 
   UNION ALL
 
   SELECT 'Site Visit Status', SiteVisitStatus
   FROM crashes.crashes
-  WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND OBJECTID = '${params.OBJECTID}'
-    AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+  WHERE OBJECTID = '${params.OBJECTID}'
 
   UNION ALL
 
   SELECT 'Factors Discussed at Site Visit', FactorsDiscussedAtSiteVisit
   FROM crashes.crashes
-  WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND OBJECTID = '${params.OBJECTID}'
-    AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+  WHERE OBJECTID = '${params.OBJECTID}'
 
 UNION ALL
 
   SELECT 'Actions Planned and Completed', ActionsPlannedAndCompleted
   FROM crashes.crashes
-  WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND OBJECTID = '${params.OBJECTID}'
-    AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+  WHERE OBJECTID = '${params.OBJECTID}'
 
   UNION ALL
 
   SELECT 'Actions Under Consideration', ActionsUnderConsideration
   FROM crashes.crashes
-  WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND OBJECTID = '${params.OBJECTID}'
-    AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}';
+  WHERE OBJECTID = '${params.OBJECTID}';
 ```
 
 ```sql incidents
-  select
-      --OBJECTID,
+  SELECT
       MODE,
       LATITUDE,
       LONGITUDE
-  from crashes.crashes
-  where MODE IN ${inputs.multi_mode_dd.value}
-  and OBJECTID = '${params.OBJECTID}'
-  and SEVERITY = 'Fatal'
-  and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'
-  group by all
+  FROM crashes.crashes
+  WHERE OBJECTID = '${params.OBJECTID}'
+  GROUP BY all
 ```
 
 ```sql mode_selection
@@ -178,27 +151,6 @@ UNION ALL
     WHERE
         MODE IN ${inputs.multi_mode_dd.value};
 ```
-
-<DateRange
-  start='2018-01-01'
-  title="Select Time Period"
-  name=date_range
-  presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
-  defaultValue={'Year to Today'}
-/>
-
-<Dropdown
-    data={unique_mode} 
-    name=multi_mode_dd
-    value=MODE
-    title="Select Mode"
-    multiple=true
-    selectAllByDefault=true
-/>
-
-<Alert status="info">
-The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
-</Alert>
 
 <Grid cols=2>
     <Group>

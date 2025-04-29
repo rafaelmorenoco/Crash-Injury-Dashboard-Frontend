@@ -82,6 +82,8 @@ group by 1
         AND SEVERITY IN ${inputs.multi_severity.value};
 ```
 
+The last 7 days with available data range from <Value data={inc_map} column="WEEKDAY" agg="min"/> to <Value data={inc_map} column="WEEKDAY" agg="max" />
+
 <Dropdown
     data={unique_severity} 
     name=multi_severity
@@ -116,8 +118,8 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         >
             <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=WEEKDAY ignoreZoom=true colorPalette={['#595cff','#6b76ff','#7d90ff','#90aaff','#a2c4ff','#b4deff','#c6f8ff']}
             tooltip={[
-                {id:'MODE', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
-                {id:'day', showColumnName:false, fmt:'mm/dd/yy hh:mm'},
+                {id:'MODESEV', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
+                {id:'day', showColumnName:false, fmt:'mm/dd/yy'},
                 {id:'ADDRESS', showColumnName:false, fmt:'id'}
             ]}
             />

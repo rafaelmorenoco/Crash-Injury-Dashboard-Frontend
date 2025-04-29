@@ -54,7 +54,7 @@ group by all
     WITH report_date_range AS (
             SELECT
                 CASE
-                    WHEN '${inputs.date_range.end}' = CURRENT_DATE THEN
+                    WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN
                         (SELECT MAX(REPORTDATE) FROM crashes.crashes)
                     ELSE
                         '${inputs.date_range.end}'::DATE
@@ -91,10 +91,10 @@ group by all
         report_date_range AS (
             SELECT
                 CASE 
-                    WHEN '${inputs.date_range.end}' = CURRENT_DATE THEN 
+                    WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
                         (SELECT MAX(REPORTDATE) FROM crashes.crashes)
                     ELSE 
-                        '${inputs.date_range.end}'::DATE
+                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
                 END AS end_date,
                 '${inputs.date_range.start}'::DATE AS start_date
         ),
@@ -104,15 +104,12 @@ group by all
                 end_date,
                 CASE 
                     WHEN start_date = DATE_TRUNC('year', end_date)
-                        AND end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
+                        AND end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                    THEN
                         EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
                     ELSE
-                        LPAD(CAST(EXTRACT(MONTH FROM start_date) AS VARCHAR), 2, '0') || '/' ||
-                        LPAD(CAST(EXTRACT(DAY FROM start_date) AS VARCHAR), 2, '0') || '/' ||
-                        RIGHT(CAST(EXTRACT(YEAR FROM start_date) AS VARCHAR), 2) || '-' ||
-                        LPAD(CAST(EXTRACT(MONTH FROM end_date) AS VARCHAR), 2, '0') || '/' ||
-                        LPAD(CAST(EXTRACT(DAY FROM end_date) AS VARCHAR), 2, '0') || '/' ||
-                        RIGHT(CAST(EXTRACT(YEAR FROM end_date) AS VARCHAR), 2)
+                        strftime(start_date, '%m/%d/%y') || '-' ||
+                        strftime(end_date - INTERVAL '1 day', '%m/%d/%y')
                 END AS date_range_label,
                 (end_date - start_date) AS date_range_days
             FROM report_date_range
@@ -186,15 +183,12 @@ group by all
             SELECT
                 CASE 
                     WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info))
-                        AND (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
+                        AND (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                    THEN
                         EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
                     ELSE
-                        LPAD(CAST(EXTRACT(MONTH FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
-                        LPAD(CAST(EXTRACT(DAY FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
-                        RIGHT(CAST(EXTRACT(YEAR FROM prior_start_date) AS VARCHAR), 2) || '-' ||
-                        LPAD(CAST(EXTRACT(MONTH FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
-                        LPAD(CAST(EXTRACT(DAY FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
-                        RIGHT(CAST(EXTRACT(YEAR FROM prior_end_date) AS VARCHAR), 2)
+                        strftime(prior_start_date, '%m/%d/%y') || '-' ||
+                        strftime(prior_end_date - INTERVAL '1 day', '%m/%d/%y')
                 END AS prior_date_range_label
             FROM prior_date_info
         )
@@ -228,10 +222,10 @@ group by all
         report_date_range AS (
             SELECT
                 CASE 
-                    WHEN '${inputs.date_range.end}' = CURRENT_DATE THEN 
+                    WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
                         (SELECT MAX(REPORTDATE) FROM crashes.crashes)
                     ELSE 
-                        '${inputs.date_range.end}'::DATE
+                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
                 END AS end_date,
                 '${inputs.date_range.start}'::DATE AS start_date
         ),
@@ -241,15 +235,11 @@ group by all
                 end_date,
                 CASE 
                     WHEN start_date = DATE_TRUNC('year', end_date)
-                        AND end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
+                        AND end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                    THEN
                         EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
                     ELSE
-                        LPAD(CAST(EXTRACT(MONTH FROM start_date) AS VARCHAR), 2, '0') || '/' ||
-                        LPAD(CAST(EXTRACT(DAY FROM start_date) AS VARCHAR), 2, '0') || '/' ||
-                        RIGHT(CAST(EXTRACT(YEAR FROM start_date) AS VARCHAR), 2) || '-' ||
-                        LPAD(CAST(EXTRACT(MONTH FROM end_date) AS VARCHAR), 2, '0') || '/' ||
-                        LPAD(CAST(EXTRACT(DAY FROM end_date) AS VARCHAR), 2, '0') || '/' ||
-                        RIGHT(CAST(EXTRACT(YEAR FROM end_date) AS VARCHAR), 2)
+                        strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date - INTERVAL '1 day', '%m/%d/%y')
                 END AS date_range_label,
                 (end_date - start_date) AS date_range_days
             FROM report_date_range
@@ -273,8 +263,8 @@ group by all
                 SEVERITY
             FROM 
                 crashes.crashes
-            WHERE 
-                SEVERITY IN ${inputs.multi_severity.value}
+            WHERE
+                SEVERITY IN ${inputs.multi_severity.value}     
         ), 
         current_period AS (
             SELECT 
@@ -325,15 +315,11 @@ group by all
             SELECT
                 CASE 
                     WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info))
-                        AND (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes) THEN
+                        AND (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                    THEN
                         EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
                     ELSE
-                        LPAD(CAST(EXTRACT(MONTH FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
-                        LPAD(CAST(EXTRACT(DAY FROM prior_start_date) AS VARCHAR), 2, '0') || '/' ||
-                        RIGHT(CAST(EXTRACT(YEAR FROM prior_start_date) AS VARCHAR), 2) || '-' ||
-                        LPAD(CAST(EXTRACT(MONTH FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
-                        LPAD(CAST(EXTRACT(DAY FROM prior_end_date) AS VARCHAR), 2, '0') || '/' ||
-                        RIGHT(CAST(EXTRACT(YEAR FROM prior_end_date) AS VARCHAR), 2)
+                        strftime(prior_start_date, '%m/%d/%y') || '-' || strftime(prior_end_date - INTERVAL '1 day', '%m/%d/%y')
                 END AS prior_date_range_label
             FROM prior_date_info
         )
@@ -343,12 +329,9 @@ group by all
         COALESCE(pp.sum_count, 0) AS prior_period_sum, 
         COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0) AS difference,
         CASE 
-            WHEN COALESCE(cp.sum_count, 0) = 0 THEN 
-                NULL 
-            WHEN COALESCE(pp.sum_count, 0) != 0 THEN 
-                ((COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0)) / COALESCE(pp.sum_count, 0)) 
-            ELSE 
-                NULL 
+            WHEN COALESCE(cp.sum_count, 0) = 0 THEN NULL
+            WHEN COALESCE(pp.sum_count, 0) <> 0 THEN ((COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0)) / COALESCE(pp.sum_count, 0))
+            ELSE NULL
         END AS percentage_change,
         (SELECT date_range_label FROM date_info) AS current_period_range,
         (SELECT prior_date_range_label FROM prior_date_label) AS prior_period_range,
@@ -498,14 +481,19 @@ group by all
 ```
 
 <!--
+echartsOptions={{animation: false}}
 -->
 
 <DateRange
-  start='2018-01-01'
-  title="Select Time Period"
-  name=date_range
-  presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
-  defaultValue={'Year to Today'}
+    start='2018-01-01'
+    end={new Date(new Date().setDate(new Date().getDate() - 2))
+    .toISOString()
+    .split('T')[0]}
+    title="Select Time Period"
+    name=date_range
+    presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
+    defaultValue={'Year to Today'}
+    description="By default, there is a two-day lag after the latest update"
 />
 
 <Dropdown
@@ -538,7 +526,6 @@ The slection for <b>Severity</b> is: <b><Value data={severity_selection} column=
             labels=true
             leftPadding=10
             rightPadding=30
-            echartsOptions={{animation: false}}
         />
         <Note>
             *Fatal only.
@@ -562,11 +549,12 @@ The slection for <b>Severity</b> is: <b><Value data={severity_selection} column=
         <Note>
             *Fatal only.
         </Note>
-        <Note>
-            The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
-        </Note>
     </Group>
 </Grid>
+
+<Note>
+    The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
+</Note>
 
 <Details title="About the data">
 

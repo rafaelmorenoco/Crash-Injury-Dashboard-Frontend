@@ -47,51 +47,66 @@ group by 1
 ```
 
 ```sql table_query
-  select
-      REPORTDATE,
-      SEVERITY,
-      MODE,
-      ADDRESS,
-      sum(COUNT) as Count
-  from crashes.crashes
-  where MODE IN ${inputs.multi_mode_dd.value}
-  and SMD = '${params.SMD}'
-  and SEVERITY IN ${inputs.multi_severity.value}
-  and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'
-  group by all
+    WITH report_date_range AS (
+        SELECT
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
+    )
+    SELECT
+        REPORTDATE,
+        SEVERITY,
+        MODE,
+        ADDRESS,
+        sum(COUNT) as Count
+    FROM crashes.crashes
+    WHERE MODE IN ${inputs.multi_mode_dd.value}
+    AND SMD = '${params.SMD}'
+    AND SEVERITY IN ${inputs.multi_severity.value}
+    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+    GROUP BY all
 ```
 
 ```sql incidents
-  select
-      --SMD,
-      MODE,
-      SEVERITY,
-      LATITUDE,
-      LONGITUDE,
-      REPORTDATE,
-      ADDRESS
-  from crashes.crashes
-  where MODE IN ${inputs.multi_mode_dd.value}
-  --and SMD = '${params.SMD}'
-  and SEVERITY IN ${inputs.multi_severity.value}
-  and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'
-  group by all
-```
-
-```sql smd_map
-  select
-      SMD,
-      sum(COUNT) as Incident_Per_Hex,
-      '/smd/' || SMD as link
-  from crashes.crashes
-  where MODE IN ${inputs.multi_mode_dd.value}
-  and SEVERITY IN ${inputs.multi_severity.value}
-  and REPORTDATE between '${inputs.date_range.start}' and '${inputs.date_range.end}'
-  and SMD is not null
-  group by all
+    WITH report_date_range AS (
+        SELECT
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
+    )
+    SELECT 
+        MODE,
+        SEVERITY,
+        LATITUDE,
+        LONGITUDE,
+        REPORTDATE,
+        ADDRESS,
+    FROM crashes.crashes
+    WHERE MODE IN ${inputs.multi_mode_dd.value}
+    AND SEVERITY IN ${inputs.multi_severity.value}
+    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+    GROUP BY all
 ```
 
 ```sql anc_map
+    WITH report_date_range AS (
+        SELECT
+            '${inputs.date_range.start}'::DATE AS start_date,
+            CASE 
+                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date
+    )
     SELECT 
         smd_2023.SMD,
         '/smd/' || smd_2023.SMD AS link,
@@ -115,7 +130,7 @@ group by 1
             GROUP BY 1)
             AND crashes.MODE IN ${inputs.multi_mode_dd.value}
             AND crashes.SEVERITY IN ${inputs.multi_severity.value}
-            AND crashes.REPORTDATE BETWEEN '${inputs.date_range.start}' AND '${inputs.date_range.end}'
+            AND crashes.REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
             AND crashes.SMD IS NOT NULL
         GROUP BY 
             crashes.SMD
@@ -152,11 +167,15 @@ group by 1
 ```
 
 <DateRange
-  start='2018-01-01'
-  title="Select Time Period"
-  name=date_range
-  presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
-  defaultValue={'Year to Today'}
+    start='2018-01-01'
+    end={new Date(new Date().setDate(new Date().getDate() - 2))
+    .toISOString()
+    .split('T')[0]}
+    title="Select Time Period"
+    name=date_range
+    presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
+    defaultValue={'Year to Today'}
+    description="By default, there is a two-day lag after the latest update"
 />
 
 <Dropdown
