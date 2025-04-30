@@ -33,16 +33,6 @@ group by all
 ```
 
 ```sql Tittle
-  WITH report_date_range AS (
-      SELECT
-          '${inputs.date_range.start}'::DATE AS start_date,
-          CASE 
-              WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
-                  (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-              ELSE 
-                  '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-          END AS end_date
-  )
   SELECT 
     ADDRESS,
     CONCAT(
@@ -53,10 +43,7 @@ group by all
           LPAD(EXTRACT(MINUTE FROM REPORTDATE)::TEXT, 2, '0')
     ) AS Date
   FROM crashes.crashes
-  WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND OBJECTID = '${params.OBJECTID}'
-    AND SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+  WHERE OBJECTID = '${params.OBJECTID}'
 ```
 
 ```sql pivot_table

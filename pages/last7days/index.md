@@ -51,24 +51,32 @@ group by 1
     WITH latest AS (
         SELECT date_trunc('day', MAX(REPORTDATE)) AS end_date
         FROM crashes.crashes
+    ),
+    dates AS (
+        SELECT day 
+        FROM generate_series(
+            (SELECT end_date FROM latest) - interval '6 day', 
+            (SELECT end_date FROM latest), 
+            interval '1 day'
+        ) AS t(day)
     )
     SELECT 
-        date_trunc('day', c.REPORTDATE) AS day,
-        c.LATITUDE,
-        c.LONGITUDE,
+        d.day,
+        COALESCE(c.REPORTDATE, d.day) AS REPORTDATE,
+        STRFTIME('%m/%d %a', d.day) AS WEEKDAY,
+        COALESCE(c.LATITUDE, 0) AS LATITUDE,
+        COALESCE(c.LONGITUDE, 0) AS LONGITUDE,
         SUBSTRING(c.MODE, 1, 3) || '-' || SUBSTRING(c.SEVERITY, 1) AS MODESEV,
         c.ADDRESS,
         c.GRID_ID,
-        c.REPORTDATE,
         c.AGE,
-        c.COUNT,
-        STRFTIME('%m/%d %a', date_trunc('day', c.REPORTDATE)) AS WEEKDAY
-    FROM crashes.crashes c
-    CROSS JOIN latest l
-    WHERE c.MODE IN ${inputs.multi_mode_dd.value}
-    AND c.SEVERITY IN ${inputs.multi_severity.value}
-    AND date_trunc('day', c.REPORTDATE) BETWEEN (l.end_date - 6) AND l.end_date
-    ORDER BY day DESC;
+        COALESCE(c.COUNT, 0) AS COUNT
+    FROM dates d
+    LEFT JOIN crashes.crashes c
+        ON date_trunc('day', c.REPORTDATE) = d.day
+        AND c.MODE IN ${inputs.multi_mode_dd.value}
+        AND c.SEVERITY IN ${inputs.multi_severity.value}
+    ORDER BY d.day DESC;
 ```
 
 ```sql mode_severity_selection
@@ -134,6 +142,9 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <Note>
             The purple lines represent DC's High Injury Network
         </Note>
+        <Note>
+            The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs.
+        </Note>
     </Group>
     <Group>
         <DataTable data={inc_map} wrapTitles=true rowShading=true groupBy=WEEKDAY subtotals=true sort="WEEKDAY desc" totalRow=true accordionRowColor="#D3D3D3">
@@ -143,8 +154,5 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             <Column id=ADDRESS wrap=true/>
             <Column id=COUNT title="#" wrap=true/>
         </DataTable>
-        <Note>
-            The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs.
-        </Note>
     </Group>
 </Grid>
