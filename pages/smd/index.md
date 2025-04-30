@@ -268,7 +268,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         </Note>
     </Group>    
     <Group>
-        <DataTable data={period_comp_smd} sort="current_period_sum desc" title="Selected Period Comparison" search=true wrapTitles=true rowShading=true link=link totalRow=true>
+        <DataTable data={period_comp_smd} sort="current_period_sum desc" title="Selected Period Comparison" search=true wrapTitles=true rowShading=true link=link>
             <Column id=SMD title="SMD"/>
             <Column id=current_period_sum title={`${period_comp_smd[0].current_period_range}`} />
             <Column id=prior_period_sum title={`${period_comp_smd[0].prior_period_range}`}  />
