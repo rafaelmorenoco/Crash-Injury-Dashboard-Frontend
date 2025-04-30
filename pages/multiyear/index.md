@@ -622,14 +622,14 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             <Column id=current_period_sum title={`${period_comp_mode[0].current_period_range}`} />
             <Column id=prior_period_sum title={`${period_comp_mode[0].prior_period_range}`} />
             <Column id=difference contentType=delta downIsGood=True title="Diff"/>
-            <Column id=percentage_change fmt=pct title="% Diff" totalAgg={period_comp_mode[0].total_percentage_change} totalFmt=pct/> 
+            <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_mode[0].total_percentage_change} totalFmt='pct0'/> 
         </DataTable>
         <DataTable data={period_comp_severity} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true>
             <Column id=SEVERITY wrap=true totalAgg="Total"/>
             <Column id=current_period_sum title={`${period_comp_severity[0].current_period_range}`} />
             <Column id=prior_period_sum title={`${period_comp_severity[0].prior_period_range}`}  />
             <Column id=difference contentType=delta downIsGood=True title="Diff"/>
-            <Column id=percentage_change fmt=pct title="% Diff" totalAgg={period_comp_severity[0].total_percentage_change} totalFmt=pct /> 
+            <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_severity[0].total_percentage_change} totalFmt='pct0' /> 
         </DataTable>
         <Note>
             *Fatal only.

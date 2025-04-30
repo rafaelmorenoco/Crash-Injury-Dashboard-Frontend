@@ -288,7 +288,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             <Column id=current_period_sum title={`${period_comp_ward[0].current_period_range}`} />
             <Column id=prior_period_sum title={`${period_comp_ward[0].prior_period_range}`}  />
             <Column id=difference title="Diff" contentType=delta downIsGood=True />
-            <Column id=percentage_change fmt=pct title="% Diff" totalAgg={period_comp_ward[0].total_percentage_change} totalFmt=pct/> 
+            <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_ward[0].total_percentage_change} totalFmt='pct0'/> 
         </DataTable>
         <Note>
             The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
