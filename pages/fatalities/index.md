@@ -192,7 +192,7 @@ The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SE
             height=450
             startingZoom=11
         >
-            <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=SEVERITY colorPalette={['#ff5a53']} link=link ignoreZoom=true
+            <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=SEVERITY colorPalette={['#ff5a53']} ignoreZoom=true
             tooltip={[
                 {id:'MODE', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
                 {id:'REPORTDATE', showColumnName:false, fmt:'mm/dd/yy hh:mm'},
@@ -213,7 +213,7 @@ The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SE
     </Group>
     <Group>
         <Note class='text-sm'>
-            Select a fatality in the table or map to see more details.
+            Select a fatality in the table to see more details.
         </Note>
         <DataTable data={inc_map} link=link wrapTitles=true rowShading=true rows=8>
             <Column id=REPORTDATE title="Date" fmt='mm/dd/yy hh:mm' wrap=true/>
