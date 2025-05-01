@@ -49,33 +49,48 @@ group by 1
 
 ```sql inc_map
     WITH latest AS (
-        SELECT date_trunc('day', MAX(REPORTDATE)) AS end_date
+        SELECT 
+            MAX(REPORTDATE) AS raw_end_date,
+            date_trunc('day', MAX(REPORTDATE)) AS end_date
         FROM crashes.crashes
+    ),
+    date_range AS (
+        SELECT 
+        (end_date - INTERVAL '6 day') AS start_date,
+        end_date,
+        (end_date + INTERVAL '1 day') AS end_date_exclusive
+        FROM latest
     ),
     dates AS (
         SELECT day 
-        FROM generate_series(
-            (SELECT end_date FROM latest) - interval '6 day', 
-            (SELECT end_date FROM latest), 
-            interval '1 day'
-        ) AS t(day)
+        FROM date_range,
+            generate_series(start_date, end_date, INTERVAL '1 day') AS t(day)
+    ),
+    filtered_crashes AS (
+        SELECT 
+            c.*,
+            date_trunc('day', c.REPORTDATE) AS crash_day
+        FROM crashes.crashes c
+        JOIN date_range d
+        ON c.REPORTDATE >= d.start_date 
+            AND c.REPORTDATE < d.end_date_exclusive
+        WHERE c.MODE IN ${inputs.multi_mode_dd.value}
+        AND c.SEVERITY IN ${inputs.multi_severity.value}
     )
     SELECT 
         d.day,
-        COALESCE(c.REPORTDATE, d.day) AS REPORTDATE,
+        COALESCE(fc.REPORTDATE, d.day) AS REPORTDATE,
         STRFTIME('%m/%d %a', d.day) AS WEEKDAY,
-        COALESCE(c.LATITUDE, 0) AS LATITUDE,
-        COALESCE(c.LONGITUDE, 0) AS LONGITUDE,
-        SUBSTRING(c.MODE, 1, 3) || '-' || SUBSTRING(c.SEVERITY, 1) AS MODESEV,
-        c.ADDRESS,
-        c.GRID_ID,
-        c.AGE,
-        COALESCE(c.COUNT, 0) AS COUNT
+        COALESCE(fc.LATITUDE, 0) AS LATITUDE,
+        COALESCE(fc.LONGITUDE, 0) AS LONGITUDE,
+        SUBSTRING(fc.MODE, 1, 3) || '-' || SUBSTRING(fc.SEVERITY, 1) AS MODESEV,
+        fc.ADDRESS,
+        fc.GRID_ID,
+        fc.AGE,
+        COALESCE(fc.COUNT, 0) AS COUNT
     FROM dates d
-    LEFT JOIN crashes.crashes c
-        ON date_trunc('day', c.REPORTDATE) = d.day
-        AND c.MODE IN ${inputs.multi_mode_dd.value}
-        AND c.SEVERITY IN ${inputs.multi_severity.value}
+    LEFT JOIN filtered_crashes fc
+        ON fc.crash_day = d.day
     ORDER BY d.day DESC;
 ```
 
