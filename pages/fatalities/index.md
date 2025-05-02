@@ -159,16 +159,22 @@ group by 1
 As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_text_fatal} column="has_have"/> been <Value data={yoy_text_fatal} column="current_year_sum" agg=sum/> <Value data={yoy_text_fatal} column="fatality"/> for all modes in <Value data={yoy_text_fatal} column="current_year" fmt='####","'/>   <Value data={yoy_text_fatal} column="difference" agg=sum fmt='####' /> <Value data={yoy_text_fatal} column="difference_text"/> (<Delta data={yoy_text_fatal} column="percentage_change" fmt="+0%;-0%;0%" downIsGood=True neutralMin=-0.00 neutralMax=0.00/>) compared to the same period in <Value data={yoy_text_fatal} column="year_prior" fmt="####."/>
 
 <DateRange
-    start='2018-01-01'
-    end={new Date(new Date().setDate(new Date().getDate() - 2))
-    .toISOString()
-    .split('T')[0]}
-    title="Select Time Period"
-    name=date_range
-    presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
-    defaultValue={'Year to Today'}
-    description="By default, there is a two-day lag after the latest update"
+  start="2018-01-01"
+  end={
+    (() => {
+      const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York'
+      }).format(twoDaysAgo);
+    })()
+  }
+  title="Select Time Period"
+  name="date_range"
+  presetRanges={['Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
+  defaultValue="Year to Today"
+  description="By default, there is a two-day lag after the latest update"
 />
+
 <Dropdown
     data={unique_mode} 
     name=multi_mode_dd
