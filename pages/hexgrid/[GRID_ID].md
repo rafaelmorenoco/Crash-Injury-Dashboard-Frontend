@@ -74,8 +74,11 @@ group by all
     SELECT
         MODE,
         SEVERITY,
+        ADDRESS,
+        REPORTDATE,
         LATITUDE,
-        LONGITUDE
+        LONGITUDE,
+        sum(COUNT) as Count
     FROM crashes.crashes
     WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND SEVERITY IN ${inputs.multi_severity.value}
@@ -173,7 +176,13 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
           height=400
           startingZoom=17
         >
-          <Points data={incidents} lat=LATITUDE long=LONGITUDE value=SEVERITY pointName=MODE opacity=1 colorPalette={['#ffdf00','#ff9412','#ff5a53']} ignoreZoom=true/>
+          <Points data={incidents} lat=LATITUDE long=LONGITUDE value=SEVERITY pointName=MODE opacity=1 colorPalette={['#ffdf00','#ff9412','#ff5a53']} ignoreZoom=true             
+          tooltip={[
+                {id:'MODE', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
+                {id:'REPORTDATE', showColumnName:false, fmt:'mm/dd/yy hh:mm'},
+                {id:'ADDRESS', showColumnName:false, fmt:'id'},
+                {id:'Count'}
+            ]}/>
           <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ borderWidth=1.5 ignoreZoom=true
           tooltip={[
                 {id: 'ROUTENAME'}
