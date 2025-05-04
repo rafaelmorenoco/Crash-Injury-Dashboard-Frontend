@@ -121,16 +121,17 @@ group by 1
 ```
 
 ```sql inc_map
-    WITH report_date_range AS (
-        SELECT
-            '${inputs.date_range.start}'::DATE AS start_date,
-            CASE 
-                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date
-    )
+    WITH 
+        report_date_range AS (
+            SELECT
+                CASE 
+                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                    ELSE 
+                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+                END AS end_date,
+                '${inputs.date_range.start}'::DATE AS start_date
+        )
     SELECT
         REPORTDATE,
         LATITUDE,
