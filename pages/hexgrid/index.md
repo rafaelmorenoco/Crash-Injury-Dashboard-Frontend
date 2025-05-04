@@ -69,13 +69,13 @@ group by all
     ),
     report_date_range AS (
         SELECT
-            '${inputs.date_range.start}'::DATE AS start_date,
             CASE 
-                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
                     (SELECT MAX(REPORTDATE) FROM crashes.crashes)
                 ELSE 
                     '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
     ),
     count_data AS (
         SELECT
@@ -122,16 +122,17 @@ group by all
 ```
 
 ```sql time
-    WITH report_date_range AS (
-        SELECT
-            '${inputs.date_range.start}'::DATE AS start_date,
-            CASE 
-                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date
-    ),
+    WITH 
+        report_date_range AS (
+            SELECT
+                CASE 
+                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                    ELSE 
+                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+                END AS end_date,
+                '${inputs.date_range.start}'::DATE AS start_date
+        ),
     reference AS (
         SELECT hr.hour_number
         FROM GENERATE_SERIES(0, 23) AS hr(hour_number)
@@ -159,16 +160,17 @@ group by all
 ```
 
 ```sql day
-    WITH report_date_range AS (
-        SELECT
-            '${inputs.date_range.start}'::DATE AS start_date,
-            CASE 
-                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date
-    ),
+    WITH 
+        report_date_range AS (
+            SELECT
+                CASE 
+                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                    ELSE 
+                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+                END AS end_date,
+                '${inputs.date_range.start}'::DATE AS start_date
+        ),
     reference AS (
         SELECT
             dow.day_of_week,
@@ -213,7 +215,6 @@ group by all
                             AND (SELECT end_date FROM report_date_range)
         GROUP BY day_of_week, day_number
     )
-
     SELECT
         r.day_of_week,
         r.day_number,
@@ -226,16 +227,17 @@ group by all
 ```
 
 ```sql hex_map
-    WITH report_date_range AS (
-        SELECT
-            '${inputs.date_range.start}'::DATE AS start_date,
-            CASE 
-                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date
-    )
+    WITH 
+        report_date_range AS (
+            SELECT
+                CASE 
+                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                    ELSE 
+                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+                END AS end_date,
+                '${inputs.date_range.start}'::DATE AS start_date
+        )
     SELECT
         h.GRID_ID,
         COALESCE(SUM(c.COUNT), 0) AS Injuries,
@@ -279,15 +281,20 @@ from ${hex}
 ```
 
 <DateRange
-    start='2018-01-01'
-    end={new Date(new Date().setDate(new Date().getDate() - 2))
-    .toISOString()
-    .split('T')[0]}
-    title="Select Time Period"
-    name=date_range
-    presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
-    defaultValue={'Year to Today'}
-    description="By default, there is a two-day lag after the latest update"
+  start="2018-01-01"
+  end={
+    (() => {
+      const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York'
+      }).format(twoDaysAgo);
+    })()
+  }
+  title="Select Time Period"
+  name="date_range"
+  presetRanges={['Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
+  defaultValue="Year to Today"
+  description="By default, there is a two-day lag after the latest update"
 />
 
 <Dropdown

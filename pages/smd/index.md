@@ -54,7 +54,7 @@ group by 1
         report_date_range AS (
             SELECT
                 CASE 
-                    WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
+                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
                         (SELECT MAX(REPORTDATE) FROM crashes.crashes)
                     ELSE 
                         '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
@@ -67,9 +67,11 @@ group by 1
                 end_date,
                 CASE 
                     WHEN start_date = DATE_TRUNC('year', end_date)
-                        AND end_date = (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
-                    ELSE
+                        AND '${inputs.date_range.end}'::DATE = (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+                        THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
+                    WHEN '${inputs.date_range.end}'::DATE > (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+                        THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
+                    ELSE 
                         strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date - INTERVAL '1 day', '%m/%d/%y')
                 END AS date_range_label,
                 (end_date - start_date) AS date_range_days
@@ -137,15 +139,17 @@ group by 1
         prior_date_info AS (
             SELECT
                 (SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_start_date,
-                (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_end_date
+                (SELECT end_date   FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_end_date
         ),
         prior_date_label AS (
             SELECT
                 CASE 
                     WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info))
-                        AND (SELECT end_date FROM date_info) = (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    THEN EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
-                    ELSE
+                        AND '${inputs.date_range.end}'::DATE = (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+                        THEN EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
+                    WHEN '${inputs.date_range.end}'::DATE > (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+                        THEN strftime(prior_start_date, '%m/%d/%y') || '-' || strftime(prior_end_date, '%m/%d/%y')
+                    ELSE 
                         strftime(prior_start_date, '%m/%d/%y') || '-' || strftime(prior_end_date - INTERVAL '1 day', '%m/%d/%y')
                 END AS prior_date_range_label
             FROM prior_date_info
@@ -174,16 +178,17 @@ group by 1
 ```
 
 ```sql smd_map
-    WITH report_date_range AS (
-        SELECT
-            '${inputs.date_range.start}'::DATE AS start_date,
-            CASE 
-                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date
-    )
+    WITH 
+        report_date_range AS (
+            SELECT
+                CASE 
+                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                    ELSE 
+                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+                END AS end_date,
+                '${inputs.date_range.start}'::DATE AS start_date
+        )
     SELECT
         a.SMD,
         COALESCE(SUM(c.COUNT), 0) AS Injuries,
@@ -211,15 +216,20 @@ group by 1
 ```
 
 <DateRange
-    start='2018-01-01'
-    end={new Date(new Date().setDate(new Date().getDate() - 2))
-    .toISOString()
-    .split('T')[0]}
-    title="Select Time Period"
-    name=date_range
-    presetRanges={['Month to Today','Last Month','Year to Today','Last Year']}
-    defaultValue={'Year to Today'}
-    description="By default, there is a two-day lag after the latest update"
+  start="2018-01-01"
+  end={
+    (() => {
+      const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York'
+      }).format(twoDaysAgo);
+    })()
+  }
+  title="Select Time Period"
+  name="date_range"
+  presetRanges={['Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
+  defaultValue="Year to Today"
+  description="By default, there is a two-day lag after the latest update"
 />
 
 <Dropdown

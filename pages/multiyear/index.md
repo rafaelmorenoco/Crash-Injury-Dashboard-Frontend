@@ -54,16 +54,17 @@ group by all
 ```
 
 ```sql linechart_month
-    WITH report_date_range AS (
-        SELECT
-            '${inputs.date_range.start}'::DATE AS start_date,
-            CASE 
-                WHEN '${inputs.date_range.end}' = CURRENT_DATE-2 THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date
-    ),
+    WITH 
+        report_date_range AS (
+            SELECT
+                CASE 
+                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                    ELSE 
+                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+                END AS end_date,
+                '${inputs.date_range.start}'::DATE AS start_date
+        ),
     months AS (
         SELECT 1 AS month, 'Jan' AS month_name UNION ALL
         SELECT 2, 'Feb' UNION ALL
@@ -325,15 +326,20 @@ ORDER BY yr.year;
 -->
 
 <DateRange
-    start="2018-01-01"
-    end={new Date(new Date().setDate(new Date().getDate() - 2))
-        .toISOString()
-        .split('T')[0]}
-    title="Select Time Period"
-    name="date_range"
-    presetRanges={['Year to Today', 'Last Year', 'All Time']}
-    defaultValue="All Time"
-    description="By default, there is a two-day lag after the latest update"
+  start="2018-01-01"
+  end={
+    (() => {
+      const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York'
+      }).format(twoDaysAgo);
+    })()
+  }
+  title="Select Time Period"
+  name="date_range"
+  presetRanges={['Year to Today', 'Last Year', 'All Time']}
+  defaultValue="All Time"
+  description="By default, there is a two-day lag after the latest update"
 />
 
 <Dropdown
