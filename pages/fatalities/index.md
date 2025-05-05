@@ -171,7 +171,7 @@ As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_
   }
   title="Select Time Period"
   name="date_range"
-  presetRanges={['Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
+  presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
   defaultValue="Year to Today"
   description="By default, there is a two-day lag after the latest update"
 />

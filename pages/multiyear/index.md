@@ -30,6 +30,24 @@ from crashes.crashes
 group by 1
 ```
 
+```sql unique_year
+SELECT DISTINCT strftime('%Y', REPORTDATE) AS year_string
+FROM crashes.crashes
+WHERE strftime('%Y', REPORTDATE) BETWEEN '2018' 
+    AND (SELECT strftime('%Y', MAX(REPORTDATE)) FROM crashes.crashes)
+ORDER BY year_string DESC;
+```
+
+```sql unique_cy
+SELECT DISTINCT CAST(DATE_PART('year', REPORTDATE) AS VARCHAR) AS year_string
+FROM crashes.crashes
+WHERE DATE_PART('year', REPORTDATE) BETWEEN 2018
+    AND (SELECT DATE_PART('year', MAX(REPORTDATE)) FROM crashes.crashes)
+    AND DATE_PART('year', REPORTDATE) <> DATE_PART('year', CURRENT_DATE)
+ORDER BY year_string DESC;
+
+```
+
 ```sql unique_hin
 select 
     GIS_ID,
@@ -54,17 +72,18 @@ group by all
 ```
 
 ```sql linechart_month
-    WITH 
-        report_date_range AS (
-            SELECT
-                CASE 
-                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE 
-                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
-        ),
+WITH 
+    report_date_range AS (
+        SELECT
+            CASE 
+                WHEN '${inputs.date_range_cumulative.end}'::DATE >= 
+                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range_cumulative.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range_cumulative.start}'::DATE AS start_date
+    ),
     months AS (
         SELECT 1 AS month, 'Jan' AS month_name UNION ALL
         SELECT 2, 'Feb' UNION ALL
@@ -89,35 +108,52 @@ group by all
             MODE IN ${inputs.multi_mode_dd.value}
             AND SEVERITY IN ${inputs.multi_severity.value}
             AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
-                            AND (SELECT end_date FROM report_date_range)
+                              AND (SELECT end_date FROM report_date_range)
         GROUP BY 
             EXTRACT(YEAR FROM REPORTDATE), 
             EXTRACT(MONTH FROM REPORTDATE)
     ),
+    -- get the last year in our data (often the current year)
     max_year_cte AS (
         SELECT MAX(year) AS max_year
         FROM monthly_counts
     ),
+    -- get the latest month with data for the max_year
     max_month_cte AS (
-        SELECT MAX(month) AS max_month
+        SELECT MAX(month) AS max_data_month
         FROM monthly_counts
         WHERE year = (SELECT max_year FROM max_year_cte)
+    ),
+    -- get the current month from the system
+    current_month_cte AS (
+        SELECT EXTRACT(MONTH FROM CURRENT_DATE) AS current_month
     )
-    SELECT 
-        y.year,
-        m.month,
-        m.month_name,
-        COALESCE(mc.monthly_total, 0) AS monthly_total,
-        SUM(COALESCE(mc.monthly_total, 0)) OVER (PARTITION BY y.year ORDER BY m.month ASC) AS cumulative_total
-    FROM
-        (SELECT DISTINCT year FROM monthly_counts) y
-    CROSS JOIN months m
-    LEFT JOIN monthly_counts mc 
-        ON y.year = mc.year AND m.month = mc.month
-    WHERE
-        y.year <> (SELECT max_year FROM max_year_cte)
-        OR m.month <= (SELECT max_month FROM max_month_cte)
-    ORDER BY y.year DESC, m.month;
+SELECT 
+    y.year,
+    m.month,
+    m.month_name,
+    COALESCE(mc.monthly_total, 0) AS monthly_total,
+    SUM(COALESCE(mc.monthly_total, 0)) OVER (PARTITION BY y.year ORDER BY m.month ASC) AS cumulative_total
+FROM
+    (SELECT DISTINCT year FROM monthly_counts) y
+CROSS JOIN months m
+LEFT JOIN monthly_counts mc 
+    ON y.year = mc.year AND m.month = mc.month
+WHERE
+    -- for years other than the max_year, show all months
+    y.year <> (SELECT max_year FROM max_year_cte)
+    OR
+    -- for the max_year, show months up to the effective month.
+    -- effective_max_month is the greater of the last data month and the current month.
+    m.month <= (
+        SELECT CASE 
+                 WHEN (SELECT current_month FROM current_month_cte) > max_data_month 
+                      THEN (SELECT current_month FROM current_month_cte)
+                 ELSE max_data_month
+               END
+        FROM max_month_cte
+    )
+ORDER BY y.year DESC, m.month;
 ```
 
 ```sql yoy_text_fatal
@@ -257,90 +293,157 @@ group by all
         AND SEVERITY IN ${inputs.multi_severity.value};
 ```
 
-<!--sql multiyear_table
+```sql ytd_table
 WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}' = CURRENT_DATE - 2 THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    ),
-    -- Use UNNEST on generate_series to produce a table of years.
-    years AS (
-        SELECT t.value AS year
-        FROM report_date_range r,
-             UNNEST(
-                generate_series(
-                    CAST(strftime(r.start_date, '%Y') AS INTEGER),
-                    CAST(strftime(r.end_date, '%Y') AS INTEGER)
-                )
-             ) AS t(value)
-    ),
-    -- For each year, determine its effective start and end dates.
-    year_range AS (
-        SELECT
-            y.year,
-            CASE 
-                WHEN y.year = CAST(strftime(r.start_date, '%Y') AS INTEGER)
-                THEN r.start_date
-                ELSE CAST(CAST(y.year AS VARCHAR) || '-01-01' AS DATE)
-            END AS effective_start,
-            CASE 
-                WHEN y.year = CAST(strftime(r.end_date, '%Y') AS INTEGER)
-                THEN r.end_date - INTERVAL '1 day'
-                ELSE CAST(CAST(y.year AS VARCHAR) || '-12-31' AS DATE)
-            END AS effective_end
-        FROM years y
-        CROSS JOIN report_date_range r
-    ),
-    -- Aggregate the crash counts by year using these effective boundaries.
-    crashes_by_year AS (
-        SELECT
-            yr.year,
-            SUM(c.COUNT) AS total_count
-        FROM year_range AS yr
-        JOIN crashes.crashes AS c 
-          ON c.REPORTDATE >= yr.effective_start
-         AND c.REPORTDATE <= yr.effective_end
-        GROUP BY yr.year
-    )
-SELECT
-    yr.year,
-    strftime(yr.effective_start, '%m/%d') || '-' || strftime(yr.effective_end, '%m/%d') AS date_range,
-    COALESCE(cby.total_count, 0) AS count,
-    COALESCE(cby.total_count, 0) - COALESCE(LAG(cby.total_count) OVER (ORDER BY yr.year), 0)
-         AS diff_from_year_prior,
-    CASE 
-        WHEN COALESCE(LAG(cby.total_count) OVER (ORDER BY yr.year), 0) = 0 THEN NULL
-        ELSE ((COALESCE(cby.total_count, 0) - LAG(cby.total_count) OVER (ORDER BY yr.year)) * 100.0)
-             / LAG(cby.total_count) OVER (ORDER BY yr.year)
-    END AS percentage_diff_from_year_prior
-FROM year_range AS yr
-LEFT JOIN crashes_by_year AS cby 
-  ON yr.year = cby.year
-ORDER BY yr.year;
--->
+  -- Determine the effective current date range based on input and the maximum available REPORTDATE.
+  report_date_range AS (
+    SELECT
+      CASE 
+          WHEN '${inputs.date_range.end}'::DATE >= 
+               (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) 
+            THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+          ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+      END AS current_end_date,
+      '${inputs.date_range.start}'::DATE AS current_start_date
+  ),
+  -- Extract month/day details, current year & build a date_range_label following your criteria.
+  date_info AS (
+    SELECT 
+      current_start_date AS start_date,
+      current_end_date AS end_date,
+      CASE 
+          WHEN current_start_date = DATE_TRUNC('year', current_end_date)
+               AND '${inputs.date_range.end}'::DATE = 
+                 (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+            THEN 'to Date'
+          WHEN '${inputs.date_range.end}'::DATE > 
+               (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+            THEN strftime(current_start_date, '%m/%d') 
+                 || '-' || strftime(current_end_date, '%m/%d')
+          ELSE 
+            strftime(current_start_date, '%m/%d') 
+                 || '-' || strftime(current_end_date - INTERVAL '1 day', '%m/%d')
+      END AS date_range_label,
+      (current_end_date - current_start_date) AS date_range_days,
+      strftime(current_start_date, '%m-%d') AS month_day_start,
+      strftime(current_end_date, '%m-%d') AS month_day_end,
+      EXTRACT(YEAR FROM current_end_date) AS current_year
+    FROM report_date_range
+  ),
+  -- Build the allowed list of years from the crashes table (as strings) within a lower bound and the max date,
+  -- then filter by the multi_year input.
+  years AS (
+    SELECT CAST(year_string AS INTEGER) AS yr
+    FROM (
+      SELECT DISTINCT strftime('%Y', REPORTDATE) AS year_string
+      FROM crashes.crashes
+      WHERE strftime('%Y', REPORTDATE) BETWEEN '2018' 
+            AND (SELECT strftime('%Y', MAX(REPORTDATE)) FROM crashes.crashes)
+    ) unique_years
+    WHERE year_string IN ${inputs.multi_year.value}
+    ORDER BY year_string DESC
+  ),
+  -- For each year in the allowed list, compute the incident count for the date range derived from date_info.
+  yearly_counts AS (
+    SELECT 
+      y.yr,
+      (
+        SELECT SUM("COUNT")
+        FROM crashes.crashes, date_info d
+        WHERE REPORTDATE >= CAST(y.yr || '-' || d.month_day_start AS DATE)
+          AND REPORTDATE < CAST(y.yr || '-' || d.month_day_end AS DATE) + INTERVAL '1 day'
+          AND crashes.SEVERITY IN ${inputs.multi_severity.value}
+          AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+      ) AS year_count
+    FROM years y
+  ),
+  -- Grab the current year count using the effective current year's period.
+  current_year_count AS (
+    SELECT year_count AS current_count
+    FROM yearly_counts, date_info
+    WHERE yr = current_year
+  )
+  
+-- Return the results, including an added column with the formatted date range.
+SELECT 
+  yc.yr AS Year,
+  COALESCE(yc.year_count, 0) AS Count,
+  COALESCE(cyc.current_count, 0) - COALESCE(yc.year_count, 0) AS Diff_from_current,
+  CASE 
+    WHEN COALESCE(yc.year_count, 0) = 0 THEN NULL
+    ELSE (COALESCE(cyc.current_count, 0) - COALESCE(yc.year_count, 0)) * 1.0 / yc.year_count
+  END AS Percent_Diff_from_current,
+  (SELECT date_range_label FROM date_info) AS Date_Range
+FROM yearly_counts yc
+CROSS JOIN current_year_count cyc
+ORDER BY yc.yr DESC;
+```
 
-<DateRange
-  start="2018-01-01"
-  end={
-    (() => {
-      const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
-      return new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/New_York'
-      }).format(twoDaysAgo);
-    })()
-  }
-  title="Select Time Period"
-  name="date_range"
-  presetRanges={['Year to Today', 'Last Year', 'All Time']}
-  defaultValue="All Time"
-  description="By default, there is a two-day lag after the latest update"
-/>
+```sql cy_table
+WITH 
+  -- Establish the effective boundaries from the cy input.
+  report_date_range_cy AS (
+    SELECT 
+      '${inputs.date_range_cy.start}'::DATE AS cy_start_date,
+      CASE 
+        WHEN '${inputs.date_range_cy.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+          THEN (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+        ELSE '${inputs.date_range_cy.end}'::DATE
+      END AS cy_end_date
+  ),
+  -- Prepare the month/day parts from the cy range.
+  date_info_cy AS (
+    SELECT 
+      cy_start_date,
+      cy_end_date,
+      strftime(cy_start_date, '%m-%d') AS start_md,
+      strftime(cy_end_date, '%m-%d') AS end_md,
+      EXTRACT(YEAR FROM cy_end_date) AS cy_year
+    FROM report_date_range_cy
+  ),
+  -- Define the allowed years (ensure the input list uses numbers that match your data).
+  allowed_years AS (
+    SELECT DISTINCT CAST(strftime('%Y', REPORTDATE) AS INTEGER) AS yr
+    FROM crashes.crashes
+    WHERE CAST(strftime('%Y', REPORTDATE) AS INTEGER)
+          BETWEEN 2018 AND (SELECT CAST(strftime('%Y', MAX(REPORTDATE)) AS INTEGER) FROM crashes.crashes)
+      AND CAST(strftime('%Y', REPORTDATE) AS INTEGER) IN ${inputs.multi_cy.value}
+  ),
+  -- For each allowed year compute the sum of counts using the cy date boundaries.
+  yearly_counts AS (
+    SELECT 
+      ay.yr,
+      (
+        SELECT SUM("COUNT")
+        FROM crashes.crashes c, date_info_cy d
+        WHERE c.REPORTDATE >= CAST(ay.yr || '-' || d.start_md AS DATE)
+          AND c.REPORTDATE < CAST(ay.yr || '-' || d.end_md AS DATE) + INTERVAL '1 day'
+          AND c.SEVERITY IN ${inputs.multi_severity.value}
+          AND c.MODE IN ${inputs.multi_mode_dd.value}
+      ) AS year_count
+    FROM allowed_years ay
+  )
+  
+SELECT 
+  yc.yr AS Year,
+  COALESCE(yc.year_count, 0) AS Count,
+  CASE 
+    WHEN LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) IS NULL 
+      THEN 0
+    ELSE LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) - COALESCE(yc.year_count, 0)
+  END AS Diff_from_previous,
+  CASE 
+    WHEN LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) IS NULL 
+         OR LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) = 0
+      THEN 0
+    ELSE (LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) - COALESCE(yc.year_count, 0)) * 1.0 
+         / LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC)
+  END AS Percent_Diff_from_previous,
+  (SELECT strftime(cy_start_date, '%m/%d') || '-' || strftime(cy_end_date, '%m/%d') 
+   FROM report_date_range_cy) AS Date_Range
+FROM yearly_counts yc
+ORDER BY yc.yr DESC;
+```
 
 <Dropdown
     data={unique_severity} 
@@ -365,13 +468,27 @@ ORDER BY yr.year;
 The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Mode</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
-### Injuries by Mode and Severity
-
 <Grid cols=2>
     <Group>
+        <DateRange
+        start='2018-01-01'
+        end={
+            (() => {
+            const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/New_York'
+            }).format(twoDaysAgo);
+            })()
+        }
+        title="Select Time Period"
+        name="date_range_cumulative"
+        presetRanges={['All Time']}
+        defaultValue='All Time'
+        description="By default, there is a two-day lag after the latest update"
+        />
         <LineChart 
             title="Yearly Cumulative"
-            chartAreaHeight={350}
+            chartAreaHeight={450}
             subtitle="Injuries"
             data={linechart_month}
             x="month"
@@ -411,25 +528,86 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         />
     </Group>
     <Group>
-        <!--
-        <DataTable data={period_comp_mode} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true title="Selected Period Comparison">
-            <Column id=MODE wrap=true totalAgg="Total"/>
-            <Column id=current_period_sum title={`${period_comp_mode[0].current_period_range}`} />
-            <Column id=prior_period_sum title={`${period_comp_mode[0].prior_period_range}`} />
-            <Column id=difference contentType=delta downIsGood=True title="Diff"/>
-            <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_mode[0].total_percentage_change} totalFmt='pct0'/> 
+        <DateRange
+        start={
+            (() => {
+            const beginningOfYear = new Date(new Date().getFullYear(), 0, 1);
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/New_York'
+            }).format(beginningOfYear);
+            })()
+        }
+        end={
+            (() => {
+            const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/New_York'
+            }).format(twoDaysAgo);
+            })()
+        }
+        title="Select Time Period"
+        name="date_range"
+        presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today']}
+        defaultValue="Year to Today"
+        description="By default, there is a two-day lag after the latest update"
+        />
+        <Dropdown
+            data={unique_year} 
+            name=multi_year
+            value=year_string
+            title="Select Year"
+            multiple=true
+            selectAllByDefault=true
+        />
+        <DataTable data={ytd_table} wrapTitles=true rowShading=true title="{ytd_table[0].Year} {ytd_table[0].Date_Range} vs Prior Years {ytd_table[0].Date_Range}">
+            <Column id=Year wrap=true/>
+            <Column id=Count title="Injured"/>
+            <Column id=Diff_from_current contentType=delta downIsGood=True title="Diff From {ytd_table[0].Year}"/>
+            <Column id=Percent_Diff_from_current fmt='pct0' title="% Diff From {ytd_table[0].Year}"/> 
         </DataTable>
-        <DataTable data={period_comp_severity} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true>
-            <Column id=SEVERITY wrap=true totalAgg="Total"/>
-            <Column id=current_period_sum title={`${period_comp_severity[0].current_period_range}`} />
-            <Column id=prior_period_sum title={`${period_comp_severity[0].prior_period_range}`}  />
-            <Column id=difference contentType=delta downIsGood=True title="Diff"/>
-            <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_severity[0].total_percentage_change} totalFmt='pct0' /> 
+            <DateRange
+                start={
+                    (() => {
+                    // Get the previous year
+                    const priorYear = new Date().getFullYear() - 1;
+                    // January is month 0
+                    const priorYearStart = new Date(priorYear, 0, 1);
+                    return new Intl.DateTimeFormat('en-CA', {
+                        timeZone: 'America/New_York'
+                    }).format(priorYearStart);
+                    })()
+                }
+                end={
+                    (() => {
+                    // Get the previous year
+                    const priorYear = new Date().getFullYear() - 1;
+                    // December is month 11
+                    const priorYearEnd = new Date(priorYear, 11, 31);
+                    return new Intl.DateTimeFormat('en-CA', {
+                        timeZone: 'America/New_York'
+                    }).format(priorYearEnd);
+                    })()
+                }
+                title="Select Time Period"
+                name="date_range_cy"
+                presetRanges={['All Time']}
+                defaultValue="All Time"
+                description="Date range set to the entirety of the previous year"
+            />
+            <Dropdown
+                data={unique_cy} 
+                name=multi_cy
+                value=year_string
+                title="Select Year"
+                multiple=true
+                selectAllByDefault=true
+            />
+            <DataTable data={cy_table} wrapTitles=true rowShading=true title="Comparison of Prior Years from {cy_table[0].Date_Range}">
+                <Column id=Year wrap=true/>
+                <Column id=Count title="Injured"/>
+                <Column id=Diff_from_previous contentType=delta downIsGood=True title="Diff From Prior Year"/>
+                <Column id=Percent_Diff_from_previous fmt='pct0' title="% Diff From Prior Year"/> 
         </DataTable>
-        <Note>
-            *Fatal only.
-        </Note>
-    -->
     </Group>
 </Grid>
 
