@@ -48,61 +48,61 @@ group by 1
 ```
 
 ```sql inc_map
-    WITH latest AS (
-        SELECT 
-            MAX(REPORTDATE) AS raw_end_date,
-            date_trunc('day', MAX(REPORTDATE)) AS end_date
-        FROM crashes.crashes
-    ),
-    date_range AS (
-        SELECT 
-        (end_date - INTERVAL '6 day') AS start_date,
-        end_date,
-        (end_date + INTERVAL '1 day') AS end_date_exclusive
-        FROM latest
-    ),
-    dates AS (
-        SELECT day 
-        FROM date_range,
-            generate_series(start_date, end_date, INTERVAL '1 day') AS t(day)
-    ),
-    filtered_crashes AS (
-        SELECT 
-            c.*,
-            date_trunc('day', c.REPORTDATE) AS crash_day
-        FROM crashes.crashes c
-        JOIN date_range d
-        ON c.REPORTDATE >= d.start_date 
-            AND c.REPORTDATE < d.end_date_exclusive
-        WHERE c.MODE IN ${inputs.multi_mode_dd.value}
-        AND c.SEVERITY IN ${inputs.multi_severity.value}
-    )
+WITH latest AS (
     SELECT 
-        d.day,
-        COALESCE(fc.REPORTDATE, d.day) AS REPORTDATE,
-        STRFTIME('%m/%d %a', d.day) AS WEEKDAY,
-        COALESCE(fc.LATITUDE, 0) AS LATITUDE,
-        COALESCE(fc.LONGITUDE, 0) AS LONGITUDE,
-        SUBSTRING(fc.MODE, 1, 3) || '-' || SUBSTRING(fc.SEVERITY, 1) AS MODESEV,
-        fc.ADDRESS,
-        fc.GRID_ID,
-        fc.AGE,
-        COALESCE(fc.COUNT, 0) AS COUNT
-    FROM dates d
-    LEFT JOIN filtered_crashes fc
-        ON fc.crash_day = d.day
-    ORDER BY d.day DESC;
+        MAX(REPORTDATE) AS raw_end_date,
+        date_trunc('day', MAX(REPORTDATE)) AS end_date
+    FROM crashes.crashes
+),
+date_range AS (
+    SELECT 
+    (end_date - INTERVAL '6 day') AS start_date,
+    end_date,
+    (end_date + INTERVAL '1 day') AS end_date_exclusive
+    FROM latest
+),
+dates AS (
+    SELECT day 
+    FROM date_range,
+        generate_series(start_date, end_date, INTERVAL '1 day') AS t(day)
+),
+filtered_crashes AS (
+    SELECT 
+        c.*,
+        date_trunc('day', c.REPORTDATE) AS crash_day
+    FROM crashes.crashes c
+    JOIN date_range d
+    ON c.REPORTDATE >= d.start_date 
+        AND c.REPORTDATE < d.end_date_exclusive
+    WHERE c.MODE IN ${inputs.multi_mode_dd.value}
+    AND c.SEVERITY IN ${inputs.multi_severity.value}
+)
+SELECT 
+    d.day,
+    COALESCE(fc.REPORTDATE, d.day) AS REPORTDATE,
+    STRFTIME('%m/%d %a', d.day) AS WEEKDAY,
+    COALESCE(fc.LATITUDE, 0) AS LATITUDE,
+    COALESCE(fc.LONGITUDE, 0) AS LONGITUDE,
+    SUBSTRING(fc.MODE, 1, 3) || '-' || SUBSTRING(fc.SEVERITY, 1) AS MODESEV,
+    fc.ADDRESS,
+    fc.GRID_ID,
+    fc.AGE,
+    COALESCE(fc.COUNT, 0) AS COUNT
+FROM dates d
+LEFT JOIN filtered_crashes fc
+    ON fc.crash_day = d.day
+ORDER BY d.day DESC;
 ```
 
 ```sql mode_severity_selection
-    SELECT
-        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
-        STRING_AGG(DISTINCT SEVERITY, ', ' ORDER BY SEVERITY ASC) AS SEVERITY_SELECTION
-    FROM
-        crashes.crashes
-    WHERE
-        MODE IN ${inputs.multi_mode_dd.value}
-        AND SEVERITY IN ${inputs.multi_severity.value};
+SELECT
+    STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
+    STRING_AGG(DISTINCT SEVERITY, ', ' ORDER BY SEVERITY ASC) AS SEVERITY_SELECTION
+FROM
+    crashes.crashes
+WHERE
+    MODE IN ${inputs.multi_mode_dd.value}
+    AND SEVERITY IN ${inputs.multi_severity.value};
 ```
 
 The last 7 days with available data range from <Value data={inc_map} column="WEEKDAY" agg="min"/> to <Value data={inc_map} column="WEEKDAY" agg="max" />
@@ -120,14 +120,14 @@ The last 7 days with available data range from <Value data={inc_map} column="WEE
     data={unique_mode} 
     name=multi_mode_dd
     value=MODE
-    title="Select Mode"
+    title="Select Road User"
     multiple=true
     selectAllByDefault=true
     description="*Only fatal"
 />
 
 <Alert status="info">
-The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Mode</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
+The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 <Grid cols=2>
@@ -164,7 +164,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
     <Group>
         <DataTable data={inc_map} wrapTitles=true rowShading=true groupBy=WEEKDAY subtotals=true sort="WEEKDAY desc" totalRow=true accordionRowColor="#D3D3D3">
             <Column id=REPORTDATE title="Date" fmt='hh:mm' wrap=true totalAgg="Total"/>
-            <Column id=MODESEV title="Mode-Sev" wrap=true/>
+            <Column id=MODESEV title="Road User - Sev" wrap=true/>
             <Column id=AGE title="Age" wrap=true totalAgg="-"/>
             <Column id=ADDRESS wrap=true/>
             <Column id=COUNT title="#" wrap=true/>

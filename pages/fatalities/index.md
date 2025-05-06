@@ -58,106 +58,122 @@ group by 1
 ```
 
 ```sql yoy_text_fatal
-    WITH date_range AS (
-        SELECT
-            MAX(REPORTDATE) AS max_report_date
-        FROM
-            crashes.crashes
-    ),
-    params AS (
-        SELECT
-            date_trunc('year', dr.max_report_date) AS current_year_start,
-            dr.max_report_date AS current_year_end,
-            date_trunc('year', dr.max_report_date - interval '1 year') AS prior_year_start,
-            dr.max_report_date - interval '1 year' AS prior_year_end,
-            extract(year FROM dr.max_report_date) AS current_year,
-            extract(year FROM dr.max_report_date - interval '1 year') AS year_prior
-        FROM
-            date_range dr
-    ),
-    yearly_counts AS (
-        SELECT
-            SUM(CASE
-                WHEN cr.REPORTDATE BETWEEN p.current_year_start AND p.current_year_end
-                THEN cr.COUNT ELSE 0 END) AS current_year_sum,
-            SUM(CASE
-                WHEN cr.REPORTDATE BETWEEN p.prior_year_start AND p.prior_year_end
-                THEN cr.COUNT ELSE 0 END) AS prior_year_sum
-        FROM
-            crashes.crashes AS cr
-            CROSS JOIN params p
-        WHERE
-            cr.SEVERITY = 'Fatal'
-            AND cr.REPORTDATE >= p.prior_year_start -- More efficient date filtering
-            AND cr.REPORTDATE <= p.current_year_end
-    )
+WITH date_range AS (
     SELECT
-        'Fatal' AS severity,
-        yc.current_year_sum,
-        yc.prior_year_sum,
-        ABS(yc.current_year_sum - yc.prior_year_sum) AS difference,
-        CASE
-            WHEN yc.prior_year_sum <> 0
-            THEN ((yc.current_year_sum - yc.prior_year_sum)::numeric / yc.prior_year_sum)
-            ELSE NULL
-        END AS percentage_change,
-        CASE
-            WHEN (yc.current_year_sum - yc.prior_year_sum) > 0 THEN 'an increase of'
-            WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'a decrease of'
-            ELSE NULL
-        END AS percentage_change_text,
-        CASE
-            WHEN (yc.current_year_sum - yc.prior_year_sum) > 0 THEN 'more'
-            WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'fewer'
-            ELSE 'no change'
-        END AS difference_text,
-        p.current_year,
-        p.year_prior,
-        CASE WHEN yc.current_year_sum = 1 THEN 'has' ELSE 'have' END AS has_have,
-        CASE WHEN yc.current_year_sum = 1 THEN 'fatality' ELSE 'fatalities' END AS fatality
+        MAX(REPORTDATE) AS max_report_date
     FROM
-        yearly_counts yc
-        CROSS JOIN params p;
+        crashes.crashes
+),
+params AS (
+    SELECT
+        date_trunc('year', dr.max_report_date) AS current_year_start,
+        dr.max_report_date AS current_year_end,
+        date_trunc('year', dr.max_report_date - interval '1 year') AS prior_year_start,
+        dr.max_report_date - interval '1 year' AS prior_year_end,
+        extract(year FROM dr.max_report_date) AS current_year,
+        extract(year FROM dr.max_report_date - interval '1 year') AS year_prior
+    FROM
+        date_range dr
+),
+yearly_counts AS (
+    SELECT
+        SUM(CASE
+            WHEN cr.REPORTDATE BETWEEN p.current_year_start AND p.current_year_end
+            THEN cr.COUNT ELSE 0 END) AS current_year_sum,
+        SUM(CASE
+            WHEN cr.REPORTDATE BETWEEN p.prior_year_start AND p.prior_year_end
+            THEN cr.COUNT ELSE 0 END) AS prior_year_sum
+    FROM
+        crashes.crashes AS cr
+        CROSS JOIN params p
+    WHERE
+        cr.SEVERITY = 'Fatal'
+        AND cr.REPORTDATE >= p.prior_year_start -- More efficient date filtering
+        AND cr.REPORTDATE <= p.current_year_end
+)
+SELECT
+    'Fatal' AS severity,
+    yc.current_year_sum,
+    yc.prior_year_sum,
+    ABS(yc.current_year_sum - yc.prior_year_sum) AS difference,
+    CASE
+        WHEN yc.prior_year_sum <> 0
+        THEN ((yc.current_year_sum - yc.prior_year_sum)::numeric / yc.prior_year_sum)
+        ELSE NULL
+    END AS percentage_change,
+    CASE
+        WHEN (yc.current_year_sum - yc.prior_year_sum) > 0 THEN 'an increase of'
+        WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'a decrease of'
+        ELSE NULL
+    END AS percentage_change_text,
+    CASE
+        WHEN (yc.current_year_sum - yc.prior_year_sum) > 0 THEN 'more'
+        WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'fewer'
+        ELSE 'no change'
+    END AS difference_text,
+    p.current_year,
+    p.year_prior,
+    CASE WHEN yc.current_year_sum = 1 THEN 'has' ELSE 'have' END AS has_have,
+    CASE WHEN yc.current_year_sum = 1 THEN 'fatality' ELSE 'fatalities' END AS fatality
+FROM
+    yearly_counts yc
+    CROSS JOIN params p;
 ```
 
 ```sql inc_map
-    WITH 
-        report_date_range AS (
-            SELECT
-                CASE 
-                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE 
-                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
-        )
-    SELECT
-        REPORTDATE,
-        LATITUDE,
-        LONGITUDE,
-        MODE,
-        SEVERITY,
-        ADDRESS,
-        '/fatalities/' || OBJECTID AS link
-    from crashes.crashes
-    where MODE IN ${inputs.multi_mode_dd.value}
-    and SEVERITY = 'Fatal'
-    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
-    group by all
+WITH 
+    report_date_range AS (
+        SELECT
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE >= 
+                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+                THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
+    ),
+    date_info AS (
+        SELECT
+            start_date,
+            end_date,
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE
+                    THEN strftime(start_date, '%m/%d/%y')
+                         || '-' || strftime(end_date, '%m/%d/%y')
+                ELSE 
+                    ''  -- Return a blank string if the condition is not met
+            END AS date_range_label,
+            (end_date - start_date) AS date_range_days
+        FROM report_date_range
+    )
+SELECT
+    REPORTDATE,
+    LATITUDE,
+    LONGITUDE,
+    MODE,
+    SEVERITY,
+    ADDRESS,
+    '/fatalities/' || OBJECTID AS link,
+    di.date_range_label
+FROM crashes.crashes
+CROSS JOIN date_info di
+WHERE MODE IN ${inputs.multi_mode_dd.value}
+  AND SEVERITY = 'Fatal'
+  AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
+                      AND (SELECT end_date FROM report_date_range)
+GROUP BY all;
 ```
 
 ```sql mode_selection
-    SELECT
-        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION
-    FROM
-        crashes.crashes
-    WHERE
-        MODE IN ${inputs.multi_mode_dd.value};
+SELECT
+    STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION
+FROM
+    crashes.crashes
+WHERE
+    MODE IN ${inputs.multi_mode_dd.value};
 ```
 
-
-As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_text_fatal} column="has_have"/> been <Value data={yoy_text_fatal} column="current_year_sum" agg=sum/> <Value data={yoy_text_fatal} column="fatality"/> for all modes in <Value data={yoy_text_fatal} column="current_year" fmt='####","'/>   <Value data={yoy_text_fatal} column="difference" agg=sum fmt='####' /> <Value data={yoy_text_fatal} column="difference_text"/> (<Delta data={yoy_text_fatal} column="percentage_change" fmt="+0%;-0%;0%" downIsGood=True neutralMin=-0.00 neutralMax=0.00/>) compared to the same period in <Value data={yoy_text_fatal} column="year_prior" fmt="####."/>
+As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_text_fatal} column="has_have"/> been <Value data={yoy_text_fatal} column="current_year_sum" agg=sum/> <Value data={yoy_text_fatal} column="fatality"/> among all road users in <Value data={yoy_text_fatal} column="current_year" fmt='####","'/>   <Value data={yoy_text_fatal} column="difference" agg=sum fmt='####' /> <Value data={yoy_text_fatal} column="difference_text"/> (<Delta data={yoy_text_fatal} column="percentage_change" fmt="+0%;-0%;0%" downIsGood=True neutralMin=-0.00 neutralMax=0.00/>) compared to the same period in <Value data={yoy_text_fatal} column="year_prior" fmt="####."/>
 
 <DateRange
   start="2018-01-01"
@@ -187,7 +203,7 @@ As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_
 />
 
 <Alert status="info">
-The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
+The slection for <b>Road User</b> is: <b><Value data={mode_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 <Grid cols=2>
@@ -198,6 +214,7 @@ The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SE
         <BaseMap
             height=450
             startingZoom=11
+            title="{`${inc_map[0].date_range_label}`}"
         >
             <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=SEVERITY colorPalette={['#ff5a53']} ignoreZoom=true
             tooltip={[
@@ -224,7 +241,7 @@ The slection for <b>Mode</b> is: <b><Value data={mode_selection} column="MODE_SE
         </Note>
         <DataTable data={inc_map} link=link wrapTitles=true rowShading=true rows=8>
             <Column id=REPORTDATE title="Date" fmt='mm/dd/yy hh:mm' wrap=true/>
-            <Column id=MODE title="Mode" wrap=true/>
+            <Column id=MODE title="Road User" wrap=true/>
             <Column id=ADDRESS wrap=true/>
         </DataTable>
         <Note>
