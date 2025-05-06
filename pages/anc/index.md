@@ -42,184 +42,200 @@ group by 1
 ```
 
 ```sql last_record
-    SELECT
-        LPAD(CAST(DATE_PART('month', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
-        LPAD(CAST(DATE_PART('day', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
-        RIGHT(CAST(DATE_PART('year', LAST_RECORD) AS VARCHAR), 2) || ',' AS latest_record,
-        LPAD(CAST(DATE_PART('month', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
-        LPAD(CAST(DATE_PART('day', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
-        RIGHT(CAST(DATE_PART('year', LAST_UPDATE) AS VARCHAR), 2) || ' at ' ||
-        LPAD(CAST(DATE_PART('hour', LAST_UPDATE) AS VARCHAR), 2, '0') || ':' ||
-        LPAD(CAST(DATE_PART('minute', LAST_UPDATE) AS VARCHAR), 2, '0') AS latest_update
-    FROM crashes.crashes
-    ORDER BY LAST_RECORD DESC
-    LIMIT 1;
+SELECT
+    LPAD(CAST(DATE_PART('month', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
+    LPAD(CAST(DATE_PART('day', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
+    RIGHT(CAST(DATE_PART('year', LAST_RECORD) AS VARCHAR), 2) || ',' AS latest_record,
+    LPAD(CAST(DATE_PART('month', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
+    LPAD(CAST(DATE_PART('day', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
+    RIGHT(CAST(DATE_PART('year', LAST_UPDATE) AS VARCHAR), 2) || ' at ' ||
+    LPAD(CAST(DATE_PART('hour', LAST_UPDATE) AS VARCHAR), 2, '0') || ':' ||
+    LPAD(CAST(DATE_PART('minute', LAST_UPDATE) AS VARCHAR), 2, '0') AS latest_update
+FROM crashes.crashes
+ORDER BY LAST_RECORD DESC
+LIMIT 1;
 ```
 
 ```sql anc_map
-    WITH 
-        report_date_range AS (
-            SELECT
-                CASE 
-                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE 
-                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
-        )
-    SELECT
-        a.ANC,
-        COALESCE(SUM(c.COUNT), 0) AS Injuries,
-        '/anc/' || a.ANC AS link
-    FROM
-        anc.anc_2023 a
-    LEFT JOIN
-        crashes.crashes c ON a.ANC = c.ANC
-        AND c.MODE IN ${inputs.multi_mode_dd.value}
-        AND c.SEVERITY IN ${inputs.multi_severity.value}
-        AND c.REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
-    GROUP BY
-        a.ANC
+WITH 
+    report_date_range AS (
+        SELECT
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE >= 
+                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+                THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
+    ),
+    date_info AS (
+        SELECT
+            start_date,
+            end_date,
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE
+                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
+                ELSE 
+                    ''  -- Return a blank string instead of any other value
+            END AS date_range_label,
+            (end_date - start_date) AS date_range_days
+        FROM report_date_range
+    )
+SELECT
+    a.ANC,
+    COALESCE(SUM(c.COUNT), 0) AS Injuries,
+    '/anc/' || a.ANC AS link,
+    di.date_range_label  -- Added date range label column
+FROM anc.anc_2023 a
+LEFT JOIN crashes.crashes c 
+    ON a.ANC = c.ANC
+    AND c.MODE IN ${inputs.multi_mode_dd.value}
+    AND c.SEVERITY IN ${inputs.multi_severity.value}
+    AND c.REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
+                         AND (SELECT end_date FROM report_date_range)
+CROSS JOIN date_info di  -- Attach the single-row date_info result to every row
+GROUP BY
+    a.ANC,
+    di.date_range_label;
 ```
 
 ```sql period_comp_anc
-    WITH 
-        report_date_range AS (
-            SELECT
-                CASE 
-                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE 
-                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
-        ),
-        date_info AS (
-            SELECT
-                start_date,
-                end_date,
-                CASE 
-                    WHEN start_date = DATE_TRUNC('year', end_date)
-                        AND '${inputs.date_range.end}'::DATE = (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-                        THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
-                    WHEN '${inputs.date_range.end}'::DATE > (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-                        THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
-                    ELSE 
-                        strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date - INTERVAL '1 day', '%m/%d/%y')
-                END AS date_range_label,
-                (end_date - start_date) AS date_range_days
-            FROM report_date_range
-        ),
-        offset_period AS (
-            SELECT
-                start_date,
-                end_date,
-                CASE 
-                    WHEN end_date > start_date + INTERVAL '5 year' THEN (SELECT 1/0) -- Fail if > 5 years
-                    WHEN end_date > start_date + INTERVAL '4 year' THEN INTERVAL '5 year'
-                    WHEN end_date > start_date + INTERVAL '3 year' THEN INTERVAL '4 year'
-                    WHEN end_date > start_date + INTERVAL '2 year' THEN INTERVAL '3 year'
-                    WHEN end_date > start_date + INTERVAL '1 year' THEN INTERVAL '2 year'
-                    ELSE INTERVAL '1 year'
-                END AS interval_offset
-            FROM date_info
-        ),
-        unique_anc AS (
-            SELECT 
-                ANC 
-            FROM 
-                anc.anc_2023 
-            GROUP BY 
-                ANC
-        ),
-        current_period AS (
-            SELECT 
-                crashes.ANC, 
-                SUM(crashes.COUNT) AS sum_count
-            FROM 
-                crashes.crashes 
-            JOIN 
-                unique_anc ua 
-                ON crashes.ANC = ua.ANC
-            WHERE 
-                crashes.SEVERITY IN ${inputs.multi_severity.value} 
-                AND crashes.MODE IN ${inputs.multi_mode_dd.value}
-                AND crashes.REPORTDATE BETWEEN (SELECT start_date FROM date_info) 
-                                            AND (SELECT end_date FROM date_info)
-            GROUP BY 
-                crashes.ANC
-        ), 
-        prior_period AS (
-            SELECT 
-                crashes.ANC, 
-                SUM(crashes.COUNT) AS sum_count
-            FROM 
-                crashes.crashes 
-            JOIN 
-                unique_anc ua 
-                ON crashes.ANC = ua.ANC
-            WHERE 
-                crashes.SEVERITY IN ${inputs.multi_severity.value} 
-                AND crashes.MODE IN ${inputs.multi_mode_dd.value}
-                AND crashes.REPORTDATE BETWEEN (
-                        (SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period)
-                    ) AND (
-                        (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period)
-                    )
-            GROUP BY 
-                crashes.ANC
-        ),
-        prior_date_info AS (
-            SELECT
-                (SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_start_date,
-                (SELECT end_date   FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_end_date
-        ),
-        prior_date_label AS (
-            SELECT
-                CASE 
-                    WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info))
-                        AND '${inputs.date_range.end}'::DATE = (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-                        THEN EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
-                    WHEN '${inputs.date_range.end}'::DATE > (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-                        THEN strftime(prior_start_date, '%m/%d/%y') || '-' || strftime(prior_end_date, '%m/%d/%y')
-                    ELSE 
-                        strftime(prior_start_date, '%m/%d/%y') || '-' || strftime(prior_end_date - INTERVAL '1 day', '%m/%d/%y')
-                END AS prior_date_range_label
-            FROM prior_date_info
-        )
-    SELECT 
-        mas.ANC,
-        '/anc/' || mas.ANC AS link,
-        COALESCE(cp.sum_count, 0) AS current_period_sum, 
-        COALESCE(pp.sum_count, 0) AS prior_period_sum, 
-        COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0) AS difference,
-        CASE 
-            WHEN COALESCE(cp.sum_count, 0) = 0 THEN NULL
-            WHEN COALESCE(pp.sum_count, 0) != 0 THEN 
-                ((COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0)) / COALESCE(pp.sum_count, 0))
-            WHEN COALESCE(pp.sum_count, 0) != 0 AND COALESCE(cp.sum_count, 0) = 0 THEN -1
-            ELSE NULL 
-        END AS percentage_change,
-        (SELECT date_range_label FROM date_info) AS current_period_range,
-        (SELECT prior_date_range_label FROM prior_date_label) AS prior_period_range
-    FROM 
-        unique_anc mas
-    LEFT JOIN 
-        current_period cp ON mas.ANC = cp.ANC
-    LEFT JOIN 
-        prior_period pp ON mas.ANC = pp.ANC;
+WITH 
+    report_date_range AS (
+        SELECT
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
+    ),
+    date_info AS (
+        SELECT
+            start_date,
+            end_date,
+            CASE 
+                WHEN start_date = DATE_TRUNC('year', end_date)
+                    AND '${inputs.date_range.end}'::DATE = end_date::DATE
+                    THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
+                WHEN '${inputs.date_range.end}'::DATE > end_date
+                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
+                ELSE 
+                    strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date - INTERVAL '1 day', '%m/%d/%y')
+            END AS date_range_label,
+            (end_date - start_date) AS date_range_days
+        FROM report_date_range
+    ),
+    offset_period AS (
+        SELECT
+            start_date,
+            end_date,
+            CASE 
+                WHEN end_date > start_date + INTERVAL '5 year' THEN (SELECT 1/0) -- Fail if > 5 years
+                WHEN end_date > start_date + INTERVAL '4 year' THEN INTERVAL '5 year'
+                WHEN end_date > start_date + INTERVAL '3 year' THEN INTERVAL '4 year'
+                WHEN end_date > start_date + INTERVAL '2 year' THEN INTERVAL '3 year'
+                WHEN end_date > start_date + INTERVAL '1 year' THEN INTERVAL '2 year'
+                ELSE INTERVAL '1 year'
+            END AS interval_offset
+        FROM date_info
+    ),
+    unique_anc AS (
+        SELECT 
+            ANC 
+        FROM 
+            anc.anc_2023 
+        GROUP BY 
+            ANC
+    ),
+    current_period AS (
+        SELECT 
+            crashes.ANC, 
+            SUM(crashes.COUNT) AS sum_count
+        FROM 
+            crashes.crashes 
+        JOIN 
+            unique_anc ua 
+            ON crashes.ANC = ua.ANC
+        WHERE 
+            crashes.SEVERITY IN ${inputs.multi_severity.value} 
+            AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+            AND crashes.REPORTDATE BETWEEN (SELECT start_date FROM date_info) 
+                                        AND (SELECT end_date FROM date_info)
+        GROUP BY 
+            crashes.ANC
+    ), 
+    prior_period AS (
+        SELECT 
+            crashes.ANC, 
+            SUM(crashes.COUNT) AS sum_count
+        FROM 
+            crashes.crashes 
+        JOIN 
+            unique_anc ua 
+            ON crashes.ANC = ua.ANC
+        WHERE 
+            crashes.SEVERITY IN ${inputs.multi_severity.value} 
+            AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+            AND crashes.REPORTDATE BETWEEN (
+                    (SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period)
+                ) AND (
+                    (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period)
+                )
+        GROUP BY 
+            crashes.ANC
+    ),
+    prior_date_info AS (
+        SELECT
+            (SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_start_date,
+            (SELECT end_date   FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_end_date
+    ),
+    prior_date_label AS (
+        SELECT
+            CASE 
+                WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info))
+                    AND '${inputs.date_range.end}'::DATE = (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+                    THEN EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
+                WHEN '${inputs.date_range.end}'::DATE > (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+                    THEN strftime(prior_start_date, '%m/%d/%y') || '-' || strftime(prior_end_date, '%m/%d/%y')
+                ELSE 
+                    strftime(prior_start_date, '%m/%d/%y') || '-' || strftime(prior_end_date - INTERVAL '1 day', '%m/%d/%y')
+            END AS prior_date_range_label
+        FROM prior_date_info
+    )
+SELECT 
+    mas.ANC,
+    '/anc/' || mas.ANC AS link,
+    COALESCE(cp.sum_count, 0) AS current_period_sum, 
+    COALESCE(pp.sum_count, 0) AS prior_period_sum, 
+    COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0) AS difference,
+    CASE 
+        WHEN COALESCE(cp.sum_count, 0) = 0 THEN NULL
+        WHEN COALESCE(pp.sum_count, 0) != 0 THEN 
+            ((COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0)) / COALESCE(pp.sum_count, 0))
+        WHEN COALESCE(pp.sum_count, 0) != 0 AND COALESCE(cp.sum_count, 0) = 0 THEN -1
+        ELSE NULL 
+    END AS percentage_change,
+    (SELECT date_range_label FROM date_info) AS current_period_range,
+    (SELECT prior_date_range_label FROM prior_date_label) AS prior_period_range
+FROM 
+    unique_anc mas
+LEFT JOIN 
+    current_period cp ON mas.ANC = cp.ANC
+LEFT JOIN 
+    prior_period pp ON mas.ANC = pp.ANC;
 ```
 
 ```sql mode_severity_selection
-    SELECT
-        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
-        STRING_AGG(DISTINCT SEVERITY, ', ' ORDER BY SEVERITY ASC) AS SEVERITY_SELECTION
-    FROM
-        crashes.crashes
-    WHERE
-        MODE IN ${inputs.multi_mode_dd.value}
-        AND SEVERITY IN ${inputs.multi_severity.value};
+SELECT
+    STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
+    STRING_AGG(DISTINCT SEVERITY, ', ' ORDER BY SEVERITY ASC) AS SEVERITY_SELECTION
+FROM
+    crashes.crashes
+WHERE
+    MODE IN ${inputs.multi_mode_dd.value}
+    AND SEVERITY IN ${inputs.multi_severity.value};
 ```
 
 <DateRange
@@ -252,14 +268,14 @@ group by 1
     data={unique_mode} 
     name=multi_mode_dd
     value=MODE
-    title="Select Mode"
+    title="Select Road User"
     multiple=true
     selectAllByDefault=true
     description="*Only fatal"
 />
 
 <Alert status="info">
-The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Mode</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
+The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 <Note>
@@ -270,7 +286,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <BaseMap
             height=450
             startingZoom=11
-            title="ANC"
+            title="ANC {`${anc_map[0].date_range_label}`}"
         >
         <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true
             tooltip={[

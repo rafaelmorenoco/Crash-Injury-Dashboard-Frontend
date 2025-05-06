@@ -61,7 +61,7 @@ group by all
 
   UNION ALL
 
-  SELECT 'Mode', MODE::TEXT
+  SELECT 'Road User', MODE::TEXT
   FROM crashes.crashes
   WHERE OBJECTID = '${params.OBJECTID}'
 

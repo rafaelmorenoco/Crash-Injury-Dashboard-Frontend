@@ -36,93 +36,116 @@ group by all
 ```
 
 ```sql table_query
-    WITH 
-        report_date_range AS (
-            SELECT
-                CASE 
-                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE 
-                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
-        )
-    SELECT
-        REPORTDATE,
-        SEVERITY,
-        MODE,
-        ADDRESS,
-        sum(COUNT) as Count
-    FROM crashes.crashes
-    WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND GRID_ID = '${params.GRID_ID}'
-    AND SEVERITY IN ${inputs.multi_severity.value}
-    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
-    GROUP BY all
+WITH 
+    report_date_range AS (
+        SELECT
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
+    )
+SELECT
+    REPORTDATE,
+    SEVERITY,
+    MODE,
+    ADDRESS,
+    sum(COUNT) as Count
+FROM crashes.crashes
+WHERE MODE IN ${inputs.multi_mode_dd.value}
+AND GRID_ID = '${params.GRID_ID}'
+AND SEVERITY IN ${inputs.multi_severity.value}
+AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+GROUP BY all
 ```
 
 ```sql incidents
-    WITH 
-        report_date_range AS (
-            SELECT
-                CASE 
-                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE 
-                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
-        )
-    SELECT
-        MODE,
-        SEVERITY,
-        ADDRESS,
-        REPORTDATE,
-        LATITUDE,
-        LONGITUDE,
-        sum(COUNT) as Count
-    FROM crashes.crashes
-    WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND SEVERITY IN ${inputs.multi_severity.value}
-    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
-    GROUP BY all
+WITH 
+    report_date_range AS (
+        SELECT
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE >= 
+                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+                THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
+    ),
+    date_info AS (
+        SELECT
+            start_date,
+            end_date,
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE
+                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
+                ELSE 
+                    ''  -- Return a blank string instead of any other value
+            END AS date_range_label,
+            (end_date - start_date) AS date_range_days
+        FROM report_date_range
+    )
+SELECT
+    MODE,
+    SEVERITY,
+    ADDRESS,
+    REPORTDATE,
+    LATITUDE,
+    LONGITUDE,
+    SUM(COUNT) AS Count,
+    di.date_range_label
+FROM crashes.crashes
+CROSS JOIN date_info di
+WHERE MODE IN ${inputs.multi_mode_dd.value}
+  AND SEVERITY IN ${inputs.multi_severity.value}
+  AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
+                     AND (SELECT end_date FROM report_date_range)
+GROUP BY
+    MODE,
+    SEVERITY,
+    ADDRESS,
+    REPORTDATE,
+    LATITUDE,
+    LONGITUDE,
+    di.date_range_label;
 ```
 
 ```sql intersection_list
-    SELECT INTERSECTIONNAME
-    FROM intersections.intersections
+SELECT INTERSECTIONNAME
+FROM intersections.intersections
+WHERE GRID_ID = '${params.GRID_ID}'
+
+UNION ALL
+
+SELECT 'There are no intersections within the hexagon'
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM intersections.intersections 
     WHERE GRID_ID = '${params.GRID_ID}'
-
-    UNION ALL
-
-    SELECT 'There are no intersections within the hexagon'
-    WHERE NOT EXISTS (
-        SELECT 1 
-        FROM intersections.intersections 
-        WHERE GRID_ID = '${params.GRID_ID}'
-    );
+);
 ```
 
 ```sql intersections_table
-    SELECT
-        INTERSECTIONNAME,
-        '/hexgrid/' || GRID_ID AS link
-    FROM
-        intersections.intersections
-    WHERE
-        INTERSECTIONNAME ILIKE '%' || '${inputs.intersection_search}' || '%'
-    LIMIT 5;
+SELECT
+    INTERSECTIONNAME,
+    '/hexgrid/' || GRID_ID AS link
+FROM
+    intersections.intersections
+WHERE
+    INTERSECTIONNAME ILIKE '%' || '${inputs.intersection_search}' || '%'
+LIMIT 5;
 ```
 
 ```sql mode_severity_selection
-    SELECT
-        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
-        STRING_AGG(DISTINCT SEVERITY, ', ' ORDER BY SEVERITY ASC) AS SEVERITY_SELECTION
-    FROM
-        crashes.crashes
-    WHERE
-        MODE IN ${inputs.multi_mode_dd.value}
-        AND SEVERITY IN ${inputs.multi_severity.value};
+SELECT
+    STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
+    STRING_AGG(DISTINCT SEVERITY, ', ' ORDER BY SEVERITY ASC) AS SEVERITY_SELECTION
+FROM
+    crashes.crashes
+WHERE
+    MODE IN ${inputs.multi_mode_dd.value}
+    AND SEVERITY IN ${inputs.multi_severity.value};
 ```
 
 <Grid cols=2>
@@ -160,7 +183,7 @@ group by all
             data={unique_mode} 
             name=multi_mode_dd
             value=MODE
-            title="Select Mode"
+            title="Select Road User"
             multiple=true
             selectAllByDefault=true
             description="*Only fatal"
@@ -169,7 +192,7 @@ group by all
 </Grid>
 
 <Alert status="info">
-The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Mode</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
+The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 ### Selected Hexagon
@@ -182,6 +205,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <BaseMap
           height=400
           startingZoom=17
+          title="{`${incidents[0].date_range_label}`}"
         >
           <Points data={incidents} lat=LATITUDE long=LONGITUDE value=SEVERITY pointName=MODE opacity=1 colorPalette={['#ffdf00','#ff9412','#ff5a53']} ignoreZoom=true             
           tooltip={[
@@ -205,7 +229,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 title='Injury Table' rowShading=true>
           <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total" wrap=true description="24-Hour Format"/>
           <Column id=SEVERITY totalAgg="-"/>
-          <Column id=MODE totalAgg='{inputs.multi_mode}'/>
+          <Column id=MODE title='Road User' totalAgg='{inputs.multi_mode}'/>
           <Column id=ADDRESS wrap=true/>
           <Column id=Count totalAgg=sum/>
         </DataTable>

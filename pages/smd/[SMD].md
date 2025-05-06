@@ -47,103 +47,100 @@ group by 1
 ```
 
 ```sql table_query
-    WITH 
-        report_date_range AS (
-            SELECT
-                CASE 
-                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE 
-                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
-        )
-    SELECT
-        REPORTDATE,
-        SEVERITY,
-        MODE,
-        ADDRESS,
-        sum(COUNT) as Count
-    FROM crashes.crashes
-    WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND SMD = '${params.SMD}'
-    AND SEVERITY IN ${inputs.multi_severity.value}
-    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
-    GROUP BY all
+WITH 
+    report_date_range AS (
+        SELECT
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
+    )
+SELECT
+    REPORTDATE,
+    SEVERITY,
+    MODE,
+    ADDRESS,
+    sum(COUNT) as Count
+FROM crashes.crashes
+WHERE MODE IN ${inputs.multi_mode_dd.value}
+AND SMD = '${params.SMD}'
+AND SEVERITY IN ${inputs.multi_severity.value}
+AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+GROUP BY all
 ```
 
 ```sql incidents
-    WITH 
-        report_date_range AS (
-            SELECT
-                CASE 
-                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE 
-                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
-        )
-    SELECT 
-        MODE,
-        SEVERITY,
-        LATITUDE,
-        LONGITUDE,
-        REPORTDATE,
-        ADDRESS,
-    FROM crashes.crashes
-    WHERE MODE IN ${inputs.multi_mode_dd.value}
-    AND SEVERITY IN ${inputs.multi_severity.value}
-    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
-    GROUP BY all
+WITH 
+    report_date_range AS (
+        SELECT
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE >= 
+                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+                THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
+    ),
+    date_info AS (
+        SELECT
+            start_date,
+            end_date,
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE
+                    THEN strftime(start_date, '%m/%d/%y') 
+                         || '-' || strftime(end_date, '%m/%d/%y')
+                ELSE 
+                    ''  -- Return a blank string instead of any other value
+            END AS date_range_label,
+            (end_date - start_date) AS date_range_days
+        FROM report_date_range
+    )
+SELECT 
+    MODE,
+    SEVERITY,
+    LATITUDE,
+    LONGITUDE,
+    REPORTDATE,
+    ADDRESS,
+    di.date_range_label
+FROM crashes.crashes
+CROSS JOIN date_info di
+WHERE MODE IN ${inputs.multi_mode_dd.value}
+  AND SEVERITY IN ${inputs.multi_severity.value}
+  AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) 
+                      AND (SELECT end_date FROM report_date_range)
+GROUP BY all;
 ```
 
 ```sql anc_map
-    WITH 
-        report_date_range AS (
-            SELECT
-                CASE 
-                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE 
-                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
-        )
-    SELECT 
-        smd_2023.SMD,
-        '/smd/' || smd_2023.SMD AS link,
-        COALESCE(subquery.Injuries, 0) AS Injuries
-    FROM 
-        smd.smd_2023 AS smd_2023
-    LEFT JOIN (
+WITH 
+    report_date_range AS (
         SELECT
-            crashes.SMD,
-            SUM(COUNT) AS Injuries
-        FROM 
-            crashes.crashes AS crashes
-        WHERE 
-            ANC = (SELECT 
-                CASE 
-                    WHEN smd_2023.SMD LIKE '3-4G%' THEN '3-4G'
-                    ELSE SUBSTRING(smd_2023.SMD, 1, 2)
-                END AS ANC
-            FROM smd.smd_2023 AS smd_2023
-            WHERE smd_2023.SMD = '${params.SMD}'
-            GROUP BY 1)
-            AND crashes.MODE IN ${inputs.multi_mode_dd.value}
-            AND crashes.SEVERITY IN ${inputs.multi_severity.value}
-            AND crashes.REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
-            AND crashes.SMD IS NOT NULL
-        GROUP BY 
-            crashes.SMD
-    ) AS subquery
-    ON 
-        smd_2023.SMD = subquery.SMD
-    JOIN (
-        SELECT DISTINCT crashes.SMD
-        FROM crashes.crashes AS crashes
-        WHERE ANC = (SELECT 
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
+    )
+SELECT 
+    smd_2023.SMD,
+    '/smd/' || smd_2023.SMD AS link,
+    COALESCE(subquery.Injuries, 0) AS Injuries
+FROM 
+    smd.smd_2023 AS smd_2023
+LEFT JOIN (
+    SELECT
+        crashes.SMD,
+        SUM(COUNT) AS Injuries
+    FROM 
+        crashes.crashes AS crashes
+    WHERE 
+        ANC = (SELECT 
             CASE 
                 WHEN smd_2023.SMD LIKE '3-4G%' THEN '3-4G'
                 ELSE SUBSTRING(smd_2023.SMD, 1, 2)
@@ -151,22 +148,42 @@ group by 1
         FROM smd.smd_2023 AS smd_2023
         WHERE smd_2023.SMD = '${params.SMD}'
         GROUP BY 1)
-    ) AS smd_anc
-    ON 
-        smd_2023.SMD = smd_anc.SMD
-    ORDER BY 
-        smd_2023.SMD;
+        AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+        AND crashes.SEVERITY IN ${inputs.multi_severity.value}
+        AND crashes.REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+        AND crashes.SMD IS NOT NULL
+    GROUP BY 
+        crashes.SMD
+) AS subquery
+ON 
+    smd_2023.SMD = subquery.SMD
+JOIN (
+    SELECT DISTINCT crashes.SMD
+    FROM crashes.crashes AS crashes
+    WHERE ANC = (SELECT 
+        CASE 
+            WHEN smd_2023.SMD LIKE '3-4G%' THEN '3-4G'
+            ELSE SUBSTRING(smd_2023.SMD, 1, 2)
+        END AS ANC
+    FROM smd.smd_2023 AS smd_2023
+    WHERE smd_2023.SMD = '${params.SMD}'
+    GROUP BY 1)
+) AS smd_anc
+ON 
+    smd_2023.SMD = smd_anc.SMD
+ORDER BY 
+    smd_2023.SMD;
 ```
 
 ```sql mode_severity_selection
-    SELECT
-        STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
-        STRING_AGG(DISTINCT SEVERITY, ', ' ORDER BY SEVERITY ASC) AS SEVERITY_SELECTION
-    FROM
-        crashes.crashes
-    WHERE
-        MODE IN ${inputs.multi_mode_dd.value}
-        AND SEVERITY IN ${inputs.multi_severity.value};
+SELECT
+    STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
+    STRING_AGG(DISTINCT SEVERITY, ', ' ORDER BY SEVERITY ASC) AS SEVERITY_SELECTION
+FROM
+    crashes.crashes
+WHERE
+    MODE IN ${inputs.multi_mode_dd.value}
+    AND SEVERITY IN ${inputs.multi_severity.value};
 ```
 
 <DateRange
@@ -199,14 +216,14 @@ group by 1
     data={unique_mode} 
     name=multi_mode_dd
     value=MODE
-    title="Select Mode"
+    title="Select Road User"
     multiple=true
     selectAllByDefault=true
     description="*Only fatal"
 />
 
 <Alert status="info">
-The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Mode</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
+The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 ### Selected SMD
@@ -219,6 +236,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <BaseMap
           height=500
           startingZoom=15
+          title="{`${incidents[0].date_range_label}`}"
         >
           <Points data={incidents} lat=LATITUDE long=LONGITUDE value=SEVERITY pointName=MODE opacity=1 colorPalette={['#ffdf00','#ff9412','#ff5a53']} ignoreZoom=true
             tooltip={[

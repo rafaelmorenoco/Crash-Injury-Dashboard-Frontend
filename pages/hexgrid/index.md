@@ -35,38 +35,94 @@ group by all
 ```
 
 ```sql last_record
-    SELECT
-        LPAD(CAST(DATE_PART('month', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
-        LPAD(CAST(DATE_PART('day', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
-        RIGHT(CAST(DATE_PART('year', LAST_RECORD) AS VARCHAR), 2) || ',' AS latest_record,
-        LPAD(CAST(DATE_PART('month', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
-        LPAD(CAST(DATE_PART('day', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
-        RIGHT(CAST(DATE_PART('year', LAST_UPDATE) AS VARCHAR), 2) || ' at ' ||
-        LPAD(CAST(DATE_PART('hour', LAST_UPDATE) AS VARCHAR), 2, '0') || ':' ||
-        LPAD(CAST(DATE_PART('minute', LAST_UPDATE) AS VARCHAR), 2, '0') AS latest_update
-    FROM crashes.crashes
-    ORDER BY LAST_RECORD DESC
-    LIMIT 1;
+SELECT
+    LPAD(CAST(DATE_PART('month', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
+    LPAD(CAST(DATE_PART('day', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
+    RIGHT(CAST(DATE_PART('year', LAST_RECORD) AS VARCHAR), 2) || ',' AS latest_record,
+    LPAD(CAST(DATE_PART('month', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
+    LPAD(CAST(DATE_PART('day', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
+    RIGHT(CAST(DATE_PART('year', LAST_UPDATE) AS VARCHAR), 2) || ' at ' ||
+    LPAD(CAST(DATE_PART('hour', LAST_UPDATE) AS VARCHAR), 2, '0') || ':' ||
+    LPAD(CAST(DATE_PART('minute', LAST_UPDATE) AS VARCHAR), 2, '0') AS latest_update
+FROM crashes.crashes
+ORDER BY LAST_RECORD DESC
+LIMIT 1;
 ```
 
 ```sql day_time
-    WITH reference AS (
-        SELECT
-            dow.day_of_week,
-            dow.day_number,
-            hr.hour_number
-        FROM 
-            (VALUES 
-                ('Sun', 0), 
-                ('Mon', 1), 
-                ('Tue', 2), 
-                ('Wed', 3), 
-                ('Thu', 4), 
-                ('Fri', 5), 
-                ('Sat', 6)
-            ) AS dow(day_of_week, day_number),
-            GENERATE_SERIES(0, 23) AS hr(hour_number)
-    ),
+WITH reference AS (
+    SELECT
+        dow.day_of_week,
+        dow.day_number,
+        hr.hour_number
+    FROM 
+        (VALUES 
+            ('Sun', 0), 
+            ('Mon', 1), 
+            ('Tue', 2), 
+            ('Wed', 3), 
+            ('Thu', 4), 
+            ('Fri', 5), 
+            ('Sat', 6)
+        ) AS dow(day_of_week, day_number),
+        GENERATE_SERIES(0, 23) AS hr(hour_number)
+),
+report_date_range AS (
+    SELECT
+        CASE 
+            WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+            ELSE 
+                '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+        END AS end_date,
+        '${inputs.date_range.start}'::DATE AS start_date
+),
+count_data AS (
+    SELECT
+        CASE
+            WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 'Sun'
+            WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 'Mon'
+            WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 'Tue'
+            WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 'Wed'
+            WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 'Thu'
+            WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 'Fri'
+            WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 'Sat'
+        END AS day_of_week,
+        CASE
+            WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 0
+            WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 1
+            WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 2
+            WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 3
+            WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 4
+            WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 5
+            WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
+        END AS day_number,
+        LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
+        SUM("COUNT") AS Injuries
+    FROM crashes.crashes
+    WHERE 
+        MODE IN ${inputs.multi_mode_dd.value}
+        AND SEVERITY IN ${inputs.multi_severity.value}
+        AND REPORTDATE BETWEEN 
+            (SELECT start_date FROM report_date_range) 
+            AND (SELECT end_date FROM report_date_range)
+    GROUP BY 
+        day_of_week, day_number, hour_number
+)
+SELECT
+    r.day_of_week,
+    r.day_number,
+    LPAD(CAST(r.hour_number AS VARCHAR), 2, '0') AS hour_number,
+    COALESCE(cd.Injuries, 0) AS Injuries
+FROM reference r
+LEFT JOIN count_data cd
+    ON r.day_of_week = cd.day_of_week
+    AND LPAD(CAST(r.hour_number AS VARCHAR), 2, '0') = cd.hour_number
+ORDER BY r.day_number, r.hour_number;
+```
+
+```sql time
+WITH 
     report_date_range AS (
         SELECT
             CASE 
@@ -77,180 +133,138 @@ group by all
             END AS end_date,
             '${inputs.date_range.start}'::DATE AS start_date
     ),
-    count_data AS (
-        SELECT
-            CASE
-                WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 'Sun'
-                WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 'Mon'
-                WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 'Tue'
-                WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 'Wed'
-                WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 'Thu'
-                WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 'Fri'
-                WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 'Sat'
-            END AS day_of_week,
-            CASE
-                WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 0
-                WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 1
-                WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 2
-                WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 3
-                WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 4
-                WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 5
-                WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
-            END AS day_number,
-            LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
-            SUM("COUNT") AS Injuries
-        FROM crashes.crashes
-        WHERE 
-            MODE IN ${inputs.multi_mode_dd.value}
-            AND SEVERITY IN ${inputs.multi_severity.value}
-            AND REPORTDATE BETWEEN 
-                (SELECT start_date FROM report_date_range) 
-                AND (SELECT end_date FROM report_date_range)
-        GROUP BY 
-            day_of_week, day_number, hour_number
-    )
+reference AS (
+    SELECT hr.hour_number
+    FROM GENERATE_SERIES(0, 23) AS hr(hour_number)
+),
+count_data AS (
     SELECT
-        r.day_of_week,
-        r.day_number,
-        LPAD(CAST(r.hour_number AS VARCHAR), 2, '0') AS hour_number,
-        COALESCE(cd.Injuries, 0) AS Injuries
-    FROM reference r
-    LEFT JOIN count_data cd
-        ON r.day_of_week = cd.day_of_week
-        AND LPAD(CAST(r.hour_number AS VARCHAR), 2, '0') = cd.hour_number
-    ORDER BY r.day_number, r.hour_number;
-```
-
-```sql time
-    WITH 
-        report_date_range AS (
-            SELECT
-                CASE 
-                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE 
-                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
-        ),
-    reference AS (
-        SELECT hr.hour_number
-        FROM GENERATE_SERIES(0, 23) AS hr(hour_number)
-    ),
-    count_data AS (
-        SELECT
-            LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
-            SUM("COUNT") AS Injuries
-        FROM crashes.crashes
-        WHERE 
-            MODE IN ${inputs.multi_mode_dd.value}
-            AND SEVERITY IN ${inputs.multi_severity.value}
-            AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
-                                AND (SELECT end_date FROM report_date_range)
-        GROUP BY hour_number
-    )
-    SELECT
-        'Total' AS Total,
-        LPAD(CAST(r.hour_number AS VARCHAR), 2, '0') AS hour_number,
-        COALESCE(cd.Injuries, 0) AS Injuries
-    FROM reference r
-    LEFT JOIN count_data cd
-        ON LPAD(CAST(r.hour_number AS VARCHAR), 2, '0') = cd.hour_number
-    ORDER BY r.hour_number;
-```
-
-```sql day
-    WITH 
-        report_date_range AS (
-            SELECT
-                CASE 
-                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE 
-                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
-        ),
-    reference AS (
-        SELECT
-            dow.day_of_week,
-            dow.day_number,
-            'Total' AS total
-        FROM 
-            (VALUES 
-                ('Sun', 0), 
-                ('Mon', 1), 
-                ('Tue', 2), 
-                ('Wed', 3), 
-                ('Thu', 4), 
-                ('Fri', 5), 
-                ('Sat', 6)
-            ) AS dow(day_of_week, day_number)
-    ),
-    count_data AS (
-        SELECT
-            CASE
-                WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 'Sun'
-                WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 'Mon'
-                WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 'Tue'
-                WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 'Wed'
-                WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 'Thu'
-                WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 'Fri'
-                WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 'Sat'
-            END AS day_of_week,
-            CASE
-                WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 0
-                WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 1
-                WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 2
-                WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 3
-                WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 4
-                WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 5
-                WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
-            END AS day_number,
-            SUM("COUNT") AS Injuries
-        FROM crashes.crashes
-        WHERE MODE IN ${inputs.multi_mode_dd.value}
+        LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
+        SUM("COUNT") AS Injuries
+    FROM crashes.crashes
+    WHERE 
+        MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
         AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
                             AND (SELECT end_date FROM report_date_range)
-        GROUP BY day_of_week, day_number
-    )
+    GROUP BY hour_number
+)
+SELECT
+    'Total' AS Total,
+    LPAD(CAST(r.hour_number AS VARCHAR), 2, '0') AS hour_number,
+    COALESCE(cd.Injuries, 0) AS Injuries
+FROM reference r
+LEFT JOIN count_data cd
+    ON LPAD(CAST(r.hour_number AS VARCHAR), 2, '0') = cd.hour_number
+ORDER BY r.hour_number;
+```
+
+```sql day
+WITH 
+    report_date_range AS (
+        SELECT
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
+    ),
+reference AS (
     SELECT
-        r.day_of_week,
-        r.day_number,
-        r.total,
-        COALESCE(cd.Injuries, 0) AS Injuries
-    FROM reference r
-    LEFT JOIN count_data cd
-        ON r.day_of_week = cd.day_of_week
-    ORDER BY r.day_number;
+        dow.day_of_week,
+        dow.day_number,
+        'Total' AS total
+    FROM 
+        (VALUES 
+            ('Sun', 0), 
+            ('Mon', 1), 
+            ('Tue', 2), 
+            ('Wed', 3), 
+            ('Thu', 4), 
+            ('Fri', 5), 
+            ('Sat', 6)
+        ) AS dow(day_of_week, day_number)
+),
+count_data AS (
+    SELECT
+        CASE
+            WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 'Sun'
+            WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 'Mon'
+            WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 'Tue'
+            WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 'Wed'
+            WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 'Thu'
+            WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 'Fri'
+            WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 'Sat'
+        END AS day_of_week,
+        CASE
+            WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 0
+            WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 1
+            WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 2
+            WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 3
+            WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 4
+            WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 5
+            WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
+        END AS day_number,
+        SUM("COUNT") AS Injuries
+    FROM crashes.crashes
+    WHERE MODE IN ${inputs.multi_mode_dd.value}
+    AND SEVERITY IN ${inputs.multi_severity.value}
+    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
+                        AND (SELECT end_date FROM report_date_range)
+    GROUP BY day_of_week, day_number
+)
+SELECT
+    r.day_of_week,
+    r.day_number,
+    r.total,
+    COALESCE(cd.Injuries, 0) AS Injuries
+FROM reference r
+LEFT JOIN count_data cd
+    ON r.day_of_week = cd.day_of_week
+ORDER BY r.day_number;
 ```
 
 ```sql hex_map
-    WITH 
-        report_date_range AS (
-            SELECT
-                CASE 
-                    WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                        (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                    ELSE 
-                        '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-                END AS end_date,
-                '${inputs.date_range.start}'::DATE AS start_date
-        )
-    SELECT
-        h.GRID_ID,
-        COALESCE(SUM(c.COUNT), 0) AS Injuries,
-        '/hexgrid/' || h.GRID_ID AS link
-    FROM
-        hexgrid.crash_hexgrid h
-    LEFT JOIN
-        crashes.crashes c ON h.GRID_ID = c.GRID_ID
-        AND c.MODE IN ${inputs.multi_mode_dd.value}
-        AND c.SEVERITY IN ${inputs.multi_severity.value}
-        AND c.REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
-    GROUP BY
-        h.GRID_ID
+WITH 
+    report_date_range AS (
+        SELECT
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE >= 
+                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) 
+                THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
+    ),
+    date_info AS (
+        SELECT
+            start_date,
+            end_date,
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE
+                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
+                ELSE 
+                    ''  -- Return a blank string instead of any other value
+            END AS date_range_label,
+            (end_date - start_date) AS date_range_days
+        FROM report_date_range
+    )
+SELECT
+    h.GRID_ID,
+    COALESCE(SUM(c.COUNT), 0) AS Injuries,
+    '/hexgrid/' || h.GRID_ID AS link,
+    di.date_range_label  -- Added date range label column
+FROM hexgrid.crash_hexgrid h
+LEFT JOIN crashes.crashes c 
+    ON h.GRID_ID = c.GRID_ID
+    AND c.MODE IN ${inputs.multi_mode_dd.value}
+    AND c.SEVERITY IN ${inputs.multi_severity.value}
+    AND c.REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
+                         AND (SELECT end_date FROM report_date_range)
+CROSS JOIN date_info di  -- Attach the single-row date_info
+GROUP BY h.GRID_ID, di.date_range_label;
 ```
 
 ```sql hex_with_link
@@ -310,14 +324,14 @@ from ${hex}
     data={unique_mode} 
     name=multi_mode_dd
     value=MODE
-    title="Select Mode"
+    title="Select Road User"
     multiple=true
     selectAllByDefault=true
     description="*Only fatal"
 />
 
 <Alert status="info">
-The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Mode</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
+The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 <Grid cols=2>
@@ -328,6 +342,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <BaseMap
             height=560
             startingZoom=12
+            title="{`${hex_map[0].date_range_label}`}"
         >
             <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link min=0 opacity=0.7 />
             <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true 
