@@ -251,17 +251,24 @@ ORDER BY yc.yr DESC;
 
 ```sql cy_table
 WITH 
-  -- Establish the effective boundaries from the cy input.
+  -- Ensure the input dates are in the proper order.
+  report_date_range_cy_raw AS (
+    SELECT 
+      LEAST('${inputs.date_range_cy.start}'::DATE, '${inputs.date_range_cy.end}'::DATE) AS input_start_date,
+      GREATEST('${inputs.date_range_cy.start}'::DATE, '${inputs.date_range_cy.end}'::DATE) AS input_end_date
+  ),
+  -- Use the ordered dates and clamp the cycle end to the max available REPORTDATE.
   report_date_range_cy AS (
     SELECT 
-      '${inputs.date_range_cy.start}'::DATE AS cy_start_date,
+      input_start_date AS cy_start_date,
       CASE 
-        WHEN '${inputs.date_range_cy.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+        WHEN input_end_date > (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
           THEN (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-        ELSE '${inputs.date_range_cy.end}'::DATE
+        ELSE input_end_date
       END AS cy_end_date
+    FROM report_date_range_cy_raw
   ),
-  -- Extract numeric month and day parts from the cycle dates.
+  -- Extract month and day parts from our computed cycle boundaries.
   date_info_cy AS (
     SELECT 
       cy_start_date,
@@ -273,7 +280,7 @@ WITH
       EXTRACT(YEAR FROM cy_end_date) AS cy_year
     FROM report_date_range_cy
   ),
-  -- Define the allowed years. (Make sure the input list uses numbers.)
+  -- Define allowed years based on the REPORTDATE values.
   allowed_years AS (
     SELECT DISTINCT CAST(strftime('%Y', REPORTDATE) AS INTEGER) AS yr
     FROM crashes.crashes
@@ -281,15 +288,16 @@ WITH
           BETWEEN 2018 AND (SELECT CAST(strftime('%Y', MAX(REPORTDATE)) AS INTEGER) FROM crashes.crashes)
       AND CAST(strftime('%Y', REPORTDATE) AS INTEGER) IN ${inputs.multi_cy.value}
   ),
-  -- For each allowed year compute the sum of counts using our adjusted date boundaries.
+  -- Sum up counts for each allowed year using adjusted boundaries.
   yearly_counts AS (
     SELECT 
       ay.yr,
       (
         SELECT SUM("COUNT")
-        FROM crashes.crashes c, date_info_cy d
+        FROM crashes.crashes c,
+             date_info_cy d
         WHERE 
-          -- For the start date: if the cycle day is Feb 29 and the year is non-leap, use Feb 28.
+          -- Adjust for Feb 29 on the cycle start.
           c.REPORTDATE >= 
             CASE 
               WHEN d.start_month = 2 
@@ -298,7 +306,7 @@ WITH
               THEN make_date(ay.yr, 2, 28)
               ELSE make_date(ay.yr, d.start_month, d.start_day)
             END
-          -- Similarly for the end date.
+          -- Adjust for Feb 29 on the cycle end, and add one day for an inclusive range.
           AND c.REPORTDATE < 
             CASE 
               WHEN d.end_month = 2 
@@ -326,7 +334,8 @@ SELECT
     ELSE (LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) - COALESCE(yc.year_count, 0)) * 1.0 
          / LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC)
   END AS Percent_Diff_from_previous,
-  (SELECT strftime('%m/%d', cy_start_date) || '-' || strftime('%m/%d', cy_end_date)FROM report_date_range_cy) AS Date_Range
+  (SELECT strftime('%m/%d', cy_start_date) || '-' || strftime('%m/%d', cy_end_date) 
+   FROM report_date_range_cy) AS Date_Range
 FROM yearly_counts yc
 ORDER BY yc.yr DESC;
 ```
