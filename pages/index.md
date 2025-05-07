@@ -108,8 +108,8 @@ WITH
     report_date_range AS (
         SELECT
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
                 ELSE 
                     '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
@@ -121,9 +121,9 @@ WITH
             end_date,
             CASE 
                 WHEN start_date = DATE_TRUNC('year', end_date)
-                    AND '${inputs.date_range.end}'::DATE = end_date::DATE
-                    THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
-                WHEN '${inputs.date_range.end}'::DATE > end_date
+                    AND '${inputs.date_range.end}'::DATE = end_date::DATE - INTERVAL '1 day'
+                    THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD' 
+                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE  - INTERVAL '1 day'
                     THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
                 ELSE 
                     strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date - INTERVAL '1 day', '%m/%d/%y')
@@ -239,8 +239,8 @@ WITH
     report_date_range AS (
         SELECT
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
                 ELSE 
                     '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
@@ -252,9 +252,9 @@ WITH
             end_date,
             CASE 
                 WHEN start_date = DATE_TRUNC('year', end_date)
-                    AND '${inputs.date_range.end}'::DATE = end_date::DATE
-                    THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD'
-                WHEN '${inputs.date_range.end}'::DATE > end_date
+                    AND '${inputs.date_range.end}'::DATE = end_date::DATE - INTERVAL '1 day'
+                    THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD' 
+                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE  - INTERVAL '1 day'
                     THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
                 ELSE 
                     strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date - INTERVAL '1 day', '%m/%d/%y')
@@ -367,7 +367,7 @@ LEFT JOIN
 ```sql yoy_text_fatal
 WITH date_range AS (
     SELECT
-        MAX(REPORTDATE) AS max_report_date
+        MAX(REPORTDATE)::DATE + INTERVAL '1 day' AS max_report_date
     FROM
         crashes.crashes
 ),
@@ -430,7 +430,7 @@ FROM
 ```sql yoy_text_major_injury
 WITH date_range AS (
     SELECT
-        MAX(REPORTDATE) AS max_report_date
+        MAX(REPORTDATE)::DATE + INTERVAL '1 day' AS max_report_date
     FROM
         crashes.crashes
 ),

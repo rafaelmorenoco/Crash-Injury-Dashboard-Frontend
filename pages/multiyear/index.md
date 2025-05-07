@@ -326,8 +326,7 @@ SELECT
     ELSE (LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) - COALESCE(yc.year_count, 0)) * 1.0 
          / LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC)
   END AS Percent_Diff_from_previous,
-  (SELECT strftime(cy_start_date, '%m/%d') || '-' || strftime(cy_end_date, '%m/%d') 
-   FROM report_date_range_cy) AS Date_Range
+  (SELECT strftime('%m/%d', cy_start_date) || '-' || strftime('%m/%d', cy_end_date)FROM report_date_range_cy) AS Date_Range
 FROM yearly_counts yc
 ORDER BY yc.yr DESC;
 ```

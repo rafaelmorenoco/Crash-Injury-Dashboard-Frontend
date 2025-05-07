@@ -60,7 +60,7 @@ group by 1
 ```sql yoy_text_fatal
 WITH date_range AS (
     SELECT
-        MAX(REPORTDATE) AS max_report_date
+        MAX(REPORTDATE)::DATE + INTERVAL '1 day' AS max_report_date
     FROM
         crashes.crashes
 ),
