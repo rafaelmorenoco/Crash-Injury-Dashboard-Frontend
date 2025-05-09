@@ -280,12 +280,17 @@ WITH
       EXTRACT(YEAR FROM cy_end_date) AS cy_year
     FROM report_date_range_cy
   ),
-  -- Define allowed years based on the REPORTDATE values.
+  -- Define allowed years based on the REPORTDATE values and date range.
+  year_bounds AS (
+    SELECT 
+      EXTRACT(YEAR FROM '${inputs.date_range_cy.start}'::DATE) AS min_year,
+      (SELECT CAST(strftime('%Y', MAX(REPORTDATE)) AS INTEGER) FROM crashes.crashes) AS max_year
+  ),
   allowed_years AS (
     SELECT DISTINCT CAST(strftime('%Y', REPORTDATE) AS INTEGER) AS yr
-    FROM crashes.crashes
+    FROM crashes.crashes, year_bounds
     WHERE CAST(strftime('%Y', REPORTDATE) AS INTEGER)
-          BETWEEN 2018 AND (SELECT CAST(strftime('%Y', MAX(REPORTDATE)) AS INTEGER) FROM crashes.crashes)
+          BETWEEN year_bounds.min_year AND year_bounds.max_year
       AND CAST(strftime('%Y', REPORTDATE) AS INTEGER) IN ${inputs.multi_cy.value}
   ),
   -- Sum up counts for each allowed year using adjusted boundaries.
@@ -319,6 +324,15 @@ WITH
           AND c.MODE IN ${inputs.multi_mode_dd.value}
       ) AS year_count
     FROM allowed_years ay
+  ),
+  -- Format the date range for display
+  formatted_date_range AS (
+    SELECT 
+      LPAD(CAST(EXTRACT(MONTH FROM cy_start_date) AS VARCHAR), 2, '0') || '/' ||
+      LPAD(CAST(EXTRACT(DAY FROM cy_start_date) AS VARCHAR), 2, '0') || '-' ||
+      LPAD(CAST(EXTRACT(MONTH FROM cy_end_date) AS VARCHAR), 2, '0') || '/' ||
+      LPAD(CAST(EXTRACT(DAY FROM cy_end_date) AS VARCHAR), 2, '0') AS date_range
+    FROM report_date_range_cy
   )
   
 SELECT 
@@ -334,8 +348,7 @@ SELECT
     ELSE (LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) - COALESCE(yc.year_count, 0)) * 1.0 
          / LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC)
   END AS Percent_Diff_from_previous,
-  (SELECT strftime('%m/%d', cy_start_date) || '-' || strftime('%m/%d', cy_end_date) 
-   FROM report_date_range_cy) AS Date_Range
+  (SELECT date_range FROM formatted_date_range) AS Date_Range
 FROM yearly_counts yc
 ORDER BY yc.yr DESC;
 ```
@@ -502,7 +515,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
                 <Column id=Count title="Injuries"/>
                 <Column id=Diff_from_previous contentType=delta downIsGood=True title="Diff From Prior Year"/>
                 <Column id=Percent_Diff_from_previous fmt='pct0' title="% Diff From Prior Year"/> 
-        </DataTable>
+            </DataTable>
     </Group>
 </Grid>
 
