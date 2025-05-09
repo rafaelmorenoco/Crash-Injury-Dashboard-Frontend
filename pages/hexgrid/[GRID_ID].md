@@ -195,7 +195,6 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <BaseMap
           height=400
           startingZoom=17
-          title="{`${incidents[0].date_range_label}`}"
         >
           <Points data={incidents} lat=LATITUDE long=LONGITUDE value=SEVERITY pointName=MODE opacity=1 colorPalette={['#ffdf00','#ff9412','#ff5a53']} ignoreZoom=true             
           tooltip={[
