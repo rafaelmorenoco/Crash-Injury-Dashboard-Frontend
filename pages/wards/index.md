@@ -104,20 +104,23 @@ WITH
             '${inputs.date_range.start}'::DATE AS start_date
     ),
     date_info AS (
-        SELECT
-            start_date,
-            end_date,
-            CASE 
-                WHEN start_date = DATE_TRUNC('year', end_date)
-                    AND '${inputs.date_range.end}'::DATE = end_date::DATE - INTERVAL '1 day'
-                    THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD' 
-                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE  - INTERVAL '1 day'
-                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
-                ELSE 
-                    strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date - INTERVAL '1 day', '%m/%d/%y')
-            END AS date_range_label,
-            (end_date - start_date) AS date_range_days
-        FROM report_date_range
+    SELECT
+        start_date,
+        end_date,
+        CASE 
+            -- Check if this is a year-to-date scenario
+            WHEN start_date = DATE_TRUNC('year', end_date)
+                AND '${inputs.date_range.end}'::DATE = end_date::DATE - INTERVAL '1 day'
+                THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD' 
+            -- When user's end date is beyond available data
+            WHEN '${inputs.date_range.end}'::DATE > end_date::DATE - INTERVAL '1 day'
+                THEN strftime('%m/%d/%y', start_date) || '-' || strftime('%m/%d/%y', end_date - INTERVAL '1 day')
+            -- Regular case
+            ELSE 
+                strftime('%m/%d/%y', start_date) || '-' || strftime('%m/%d/%y', end_date - INTERVAL '1 day')
+        END AS date_range_label,
+        (end_date - start_date) AS date_range_days
+    FROM report_date_range
     ),
     offset_period AS (
         SELECT
