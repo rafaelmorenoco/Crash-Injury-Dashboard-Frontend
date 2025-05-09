@@ -72,19 +72,6 @@ WITH
                 ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
             '${inputs.date_range.start}'::DATE AS start_date
-    ),
-    date_info AS (
-        SELECT
-            start_date,
-            end_date,
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE
-                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
-                ELSE 
-                    ''  -- Return a blank string instead of any other value
-            END AS date_range_label,
-            (end_date - start_date) AS date_range_days
-        FROM report_date_range
     )
 SELECT
     MODE,
@@ -94,9 +81,13 @@ SELECT
     LATITUDE,
     LONGITUDE,
     SUM(COUNT) AS Count,
-    di.date_range_label
+    CASE 
+        WHEN '${inputs.date_range.end}'::DATE > (SELECT end_date::DATE FROM report_date_range)
+        THEN strftime((SELECT start_date FROM report_date_range), '%m/%d/%y') || '-' || 
+             strftime((SELECT end_date FROM report_date_range), '%m/%d/%y')
+        ELSE ''
+    END AS date_range_label
 FROM crashes.crashes
-CROSS JOIN date_info di
 WHERE MODE IN ${inputs.multi_mode_dd.value}
   AND SEVERITY IN ${inputs.multi_severity.value}
   AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
@@ -107,8 +98,7 @@ GROUP BY
     ADDRESS,
     REPORTDATE,
     LATITUDE,
-    LONGITUDE,
-    di.date_range_label;
+    LONGITUDE;
 ```
 
 ```sql intersection_list
