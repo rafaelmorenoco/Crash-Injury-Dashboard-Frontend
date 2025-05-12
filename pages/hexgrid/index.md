@@ -66,49 +66,49 @@ WITH reference AS (
             ('Sat', 6)
         ) AS dow(day_of_week, day_number),
         GENERATE_SERIES(0, 23) AS hr(hour_number)
-),
-report_date_range AS (
-    SELECT
-        CASE 
-            WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-            ELSE 
-                '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-        END AS end_date,
-        '${inputs.date_range.start}'::DATE AS start_date
-),
-count_data AS (
-    SELECT
-        CASE
-            WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 'Sun'
-            WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 'Mon'
-            WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 'Tue'
-            WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 'Wed'
-            WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 'Thu'
-            WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 'Fri'
-            WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 'Sat'
-        END AS day_of_week,
-        CASE
-            WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 0
-            WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 1
-            WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 2
-            WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 3
-            WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 4
-            WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 5
-            WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
-        END AS day_number,
-        LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
-        SUM("COUNT") AS Injuries
-    FROM crashes.crashes
-    WHERE 
-        MODE IN ${inputs.multi_mode_dd.value}
-        AND SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN 
-            (SELECT start_date FROM report_date_range) 
-            AND (SELECT end_date FROM report_date_range)
-    GROUP BY 
-        day_of_week, day_number, hour_number
-)
+    ),
+    report_date_range AS (
+        SELECT
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
+    ),
+    count_data AS (
+        SELECT
+            CASE
+                WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 'Sun'
+                WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 'Mon'
+                WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 'Tue'
+                WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 'Wed'
+                WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 'Thu'
+                WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 'Fri'
+                WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 'Sat'
+            END AS day_of_week,
+            CASE
+                WHEN DATE_PART('dow', REPORTDATE) = 1 THEN 0
+                WHEN DATE_PART('dow', REPORTDATE) = 2 THEN 1
+                WHEN DATE_PART('dow', REPORTDATE) = 3 THEN 2
+                WHEN DATE_PART('dow', REPORTDATE) = 4 THEN 3
+                WHEN DATE_PART('dow', REPORTDATE) = 5 THEN 4
+                WHEN DATE_PART('dow', REPORTDATE) = 6 THEN 5
+                WHEN DATE_PART('dow', REPORTDATE) = 0 THEN 6
+            END AS day_number,
+            LPAD(CAST(DATE_PART('hour', REPORTDATE) AS VARCHAR), 2, '0') AS hour_number,
+            SUM("COUNT") AS Injuries
+        FROM crashes.crashes
+        WHERE 
+            MODE IN ${inputs.multi_mode_dd.value}
+            AND SEVERITY IN ${inputs.multi_severity.value}
+            AND REPORTDATE BETWEEN 
+                (SELECT start_date FROM report_date_range) 
+                AND (SELECT end_date FROM report_date_range)
+        GROUP BY 
+            day_of_week, day_number, hour_number
+    )
 SELECT
     r.day_of_week,
     r.day_number,
@@ -126,8 +126,8 @@ WITH
     report_date_range AS (
         SELECT
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
                 ELSE 
                     '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
@@ -164,8 +164,8 @@ WITH
     report_date_range AS (
         SELECT
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
                 ELSE 
                     '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
@@ -231,10 +231,10 @@ WITH
     report_date_range AS (
         SELECT
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= 
-                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) 
-                THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
             '${inputs.date_range.start}'::DATE AS start_date
     ),
@@ -243,8 +243,8 @@ WITH
             start_date,
             end_date,
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE
-                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
+                WHEN '${inputs.date_range.end}'::DATE > (end_date::DATE - INTERVAL '1 day')
+                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date::DATE - INTERVAL '1 day'), '%m/%d/%y')
                 ELSE 
                     ''  -- Return a blank string instead of any other value
             END AS date_range_label,

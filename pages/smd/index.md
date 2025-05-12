@@ -67,10 +67,10 @@ WITH
             end_date,
             CASE 
                 WHEN start_date = DATE_TRUNC('year', end_date)
-                    AND '${inputs.date_range.end}'::DATE = end_date::DATE - INTERVAL '1 day'
+                    AND '${inputs.date_range.end}'::DATE = (end_date::DATE - INTERVAL '1 day')
                     THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD' 
-                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE  - INTERVAL '1 day'
-                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
+                WHEN '${inputs.date_range.end}'::DATE > (end_date::DATE  - INTERVAL '1 day')
+                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date::DATE  - INTERVAL '1 day'), '%m/%d/%y')
                 ELSE 
                     strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date - INTERVAL '1 day', '%m/%d/%y')
             END AS date_range_label,
@@ -145,12 +145,12 @@ WITH
         SELECT
             CASE 
                 WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', (SELECT end_date FROM date_info))
-                    AND '${inputs.date_range.end}'::DATE = (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+                    AND '${inputs.date_range.end}'::DATE = (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE
                     THEN EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
-                WHEN '${inputs.date_range.end}'::DATE > (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-                    THEN strftime(prior_start_date, '%m/%d/%y') || '-' || strftime(prior_end_date, '%m/%d/%y')
+                WHEN '${inputs.date_range.end}'::DATE > (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE
+                    THEN strftime(prior_start_date, '%m/%d/%y') || '-' || strftime((prior_end_date - INTERVAL '1 day'), '%m/%d/%y')
                 ELSE 
-                    strftime(prior_start_date, '%m/%d/%y') || '-' || strftime(prior_end_date - INTERVAL '1 day', '%m/%d/%y')
+                    strftime(prior_start_date, '%m/%d/%y') || '-' || strftime((prior_end_date - INTERVAL '1 day'), '%m/%d/%y')
             END AS prior_date_range_label
         FROM prior_date_info
     )
@@ -177,13 +177,67 @@ LEFT JOIN
     prior_period pp ON mas.SMD = pp.SMD;
 ```
 
+```sql debug_report_date_range
+SELECT
+    '${inputs.date_range.end}'::DATE AS input_end_date,
+    (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) AS max_report_date,
+    CASE 
+        WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+            THEN 'input_end_date >= max_report_date'
+        ELSE 'input_end_date < max_report_date'
+    END AS comparison_result;
+```
+
+```sql debug_date_info
+WITH 
+    report_date_range AS (
+        SELECT
+            CASE 
+                WHEN '${inputs.date_range.end}'::DATE >= 
+                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE 
+                     THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
+                ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+            END AS end_date,
+            '${inputs.date_range.start}'::DATE AS start_date
+    ),
+    date_info AS (
+        SELECT
+            start_date,
+            end_date,
+            '${inputs.date_range.end}'::DATE AS input_end_date,
+            DATE_TRUNC('year', end_date) AS truncated_year,
+            -- Identify which condition branch is being triggered (for debugging)
+            CASE 
+                WHEN start_date = DATE_TRUNC('year', end_date)
+                     AND '${inputs.date_range.end}'::DATE = (end_date::DATE - INTERVAL '1 day')
+                     THEN 1
+                WHEN '${inputs.date_range.end}'::DATE > (end_date::DATE - INTERVAL '1 day')::DATE
+                     THEN 2
+                ELSE 3
+            END AS debug_condition,
+            -- The label as originally defined:
+            CASE 
+                WHEN start_date = DATE_TRUNC('year', end_date)
+                     AND '${inputs.date_range.end}'::DATE = (end_date::DATE - INTERVAL '1 day')
+                     THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD' 
+                WHEN '${inputs.date_range.end}'::DATE > (end_date::DATE - INTERVAL '1 day')
+                     THEN strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date::DATE - INTERVAL '1 day'), '%m/%d/%y')
+                ELSE 
+                     strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date - INTERVAL '1 day'), '%m/%d/%y')
+            END AS date_range_label
+        FROM report_date_range
+    )
+SELECT *
+FROM date_info;
+```
+
 ```sql smd_map
 WITH 
     report_date_range AS (
         SELECT
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
                 ELSE 
                     '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
@@ -194,8 +248,8 @@ WITH
             start_date,
             end_date,
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE
-                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
+                WHEN '${inputs.date_range.end}'::DATE > (end_date::DATE - INTERVAL '1 day')
+                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date::DATE - INTERVAL '1 day'), '%m/%d/%y')
                 ELSE 
                     ''  -- Return a blank string instead of any other value
             END AS date_range_label,

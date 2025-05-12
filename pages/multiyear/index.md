@@ -65,7 +65,7 @@ WITH
             CASE 
                 WHEN '${inputs.date_range_cumulative.end}'::DATE >= 
                      (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                     (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
                 ELSE 
                     '${inputs.date_range_cumulative.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
@@ -76,8 +76,8 @@ WITH
             start_date,
             end_date,
             CASE 
-                WHEN '${inputs.date_range_cumulative.end}'::DATE > end_date::DATE
-                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
+                WHEN '${inputs.date_range_cumulative.end}'::DATE > (end_date::DATE - INTERVAL '1 day')
+                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date::DATE - INTERVAL '1 day'), '%m/%d/%y')
                 ELSE 
                     ''  -- Return a blank string instead of any other value
             END AS date_range_label,
@@ -280,17 +280,12 @@ WITH
       EXTRACT(YEAR FROM cy_end_date) AS cy_year
     FROM report_date_range_cy
   ),
-  -- Define allowed years based on the REPORTDATE values and date range.
-  year_bounds AS (
-    SELECT 
-      EXTRACT(YEAR FROM '${inputs.date_range_cy.start}'::DATE) AS min_year,
-      (SELECT CAST(strftime('%Y', MAX(REPORTDATE)) AS INTEGER) FROM crashes.crashes) AS max_year
-  ),
+  -- Define allowed years based on the REPORTDATE values.
   allowed_years AS (
     SELECT DISTINCT CAST(strftime('%Y', REPORTDATE) AS INTEGER) AS yr
-    FROM crashes.crashes, year_bounds
+    FROM crashes.crashes
     WHERE CAST(strftime('%Y', REPORTDATE) AS INTEGER)
-          BETWEEN year_bounds.min_year AND year_bounds.max_year
+          BETWEEN 2018 AND (SELECT CAST(strftime('%Y', MAX(REPORTDATE)) AS INTEGER) FROM crashes.crashes)
       AND CAST(strftime('%Y', REPORTDATE) AS INTEGER) IN ${inputs.multi_cy.value}
   ),
   -- Sum up counts for each allowed year using adjusted boundaries.
@@ -324,15 +319,6 @@ WITH
           AND c.MODE IN ${inputs.multi_mode_dd.value}
       ) AS year_count
     FROM allowed_years ay
-  ),
-  -- Format the date range for display
-  formatted_date_range AS (
-    SELECT 
-      LPAD(CAST(EXTRACT(MONTH FROM cy_start_date) AS VARCHAR), 2, '0') || '/' ||
-      LPAD(CAST(EXTRACT(DAY FROM cy_start_date) AS VARCHAR), 2, '0') || '-' ||
-      LPAD(CAST(EXTRACT(MONTH FROM cy_end_date) AS VARCHAR), 2, '0') || '/' ||
-      LPAD(CAST(EXTRACT(DAY FROM cy_end_date) AS VARCHAR), 2, '0') AS date_range
-    FROM report_date_range_cy
   )
   
 SELECT 
@@ -348,7 +334,8 @@ SELECT
     ELSE (LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) - COALESCE(yc.year_count, 0)) * 1.0 
          / LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC)
   END AS Percent_Diff_from_previous,
-  (SELECT date_range FROM formatted_date_range) AS Date_Range
+  (SELECT strftime('%m/%d', cy_start_date) || '-' || strftime('%m/%d', cy_end_date) 
+   FROM report_date_range_cy) AS Date_Range
 FROM yearly_counts yc
 ORDER BY yc.yr DESC;
 ```

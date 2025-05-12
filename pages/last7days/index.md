@@ -166,7 +166,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             <Column id=REPORTDATE title="Date" fmt='hh:mm' wrap=true totalAgg="Total"/>
             <Column id=MODESEV title="Road User - Sev" wrap=true/>
             <Column id=AGE title="Age" wrap=true totalAgg="-"/>
-            <Column id=ADDRESS wrap=true/>
+            <Column id=ADDRESS title="Approx Address" wrap=true/>
             <Column id=COUNT title="#" wrap=true/>
         </DataTable>
     </Group>

@@ -40,8 +40,8 @@ WITH
     report_date_range AS (
         SELECT
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
                 ELSE 
                     '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
@@ -66,10 +66,10 @@ WITH
     report_date_range AS (
         SELECT
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= 
-                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-                THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
             '${inputs.date_range.start}'::DATE AS start_date
     )
@@ -219,7 +219,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
           <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total" wrap=true description="24-Hour Format"/>
           <Column id=SEVERITY totalAgg="-"/>
           <Column id=MODE title='Road User' totalAgg='{inputs.multi_mode}'/>
-          <Column id=ADDRESS wrap=true/>
+          <Column id=ADDRESS title='Apporx Address' wrap=true/>
           <Column id=Count totalAgg=sum/>
         </DataTable>
         <Alert status="info">
