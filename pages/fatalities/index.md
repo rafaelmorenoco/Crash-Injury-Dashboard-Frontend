@@ -125,10 +125,10 @@ WITH
     report_date_range AS (
         SELECT
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= 
-                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-                THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
             '${inputs.date_range.start}'::DATE AS start_date
     ),
@@ -137,11 +137,10 @@ WITH
             start_date,
             end_date,
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE
-                    THEN strftime(start_date, '%m/%d/%y')
-                         || '-' || strftime(end_date, '%m/%d/%y')
+                WHEN '${inputs.date_range.end}'::DATE > (end_date::DATE - INTERVAL '1 day')
+                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date::DATE - INTERVAL '1 day'), '%m/%d/%y')
                 ELSE 
-                    ''  -- Return a blank string if the condition is not met
+                    ''  -- Return a blank string instead of any other value
             END AS date_range_label,
             (end_date - start_date) AS date_range_days
         FROM report_date_range

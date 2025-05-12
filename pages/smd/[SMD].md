@@ -77,26 +77,12 @@ WITH
     report_date_range AS (
         SELECT
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= 
-                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-                THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
+                ELSE 
+                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
             '${inputs.date_range.start}'::DATE AS start_date
-    ),
-    date_info AS (
-        SELECT
-            start_date,
-            end_date,
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE
-                    THEN strftime(start_date, '%m/%d/%y') 
-                         || '-' || strftime(end_date, '%m/%d/%y')
-                ELSE 
-                    ''  -- Return a blank string instead of any other value
-            END AS date_range_label,
-            (end_date - start_date) AS date_range_days
-        FROM report_date_range
     )
 SELECT 
     MODE,
@@ -104,10 +90,8 @@ SELECT
     LATITUDE,
     LONGITUDE,
     REPORTDATE,
-    ADDRESS,
-    di.date_range_label
+    ADDRESS
 FROM crashes.crashes
-CROSS JOIN date_info di
 WHERE MODE IN ${inputs.multi_mode_dd.value}
   AND SEVERITY IN ${inputs.multi_severity.value}
   AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) 
@@ -120,8 +104,8 @@ WITH
     report_date_range AS (
         SELECT
             CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
+                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
                 ELSE 
                     '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
             END AS end_date,
@@ -236,7 +220,6 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <BaseMap
           height=500
           startingZoom=15
-          title="{`${incidents[0].date_range_label}`}"
         >
           <Points data={incidents} lat=LATITUDE long=LONGITUDE value=SEVERITY pointName=MODE opacity=1 colorPalette={['#ffdf00','#ff9412','#ff5a53']} ignoreZoom=true
             tooltip={[
@@ -260,7 +243,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
           <Column id=REPORTDATE title='Date' wrap=true fmt='mm/dd/yy hh:mm' totalAgg="Total"/>
           <Column id=SEVERITY totalAgg="-"/>
           <Column id=MODE totalAgg='{inputs.multi_mode}'/>
-          <Column id=ADDRESS wrap=true totalAgg="-"/>
+          <Column id=ADDRESS title='Approx Address' wrap=true totalAgg="-"/>
           <Column id=Count totalAgg=sum/>
         </DataTable>
         <Alert status="info">
