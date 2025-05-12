@@ -251,24 +251,41 @@ ORDER BY yc.yr DESC;
 
 ```sql cy_table
 WITH 
-  -- Ensure the input dates are in the proper order.
-  report_date_range_cy_raw AS (
+  -- First, parse the dynamic input.
+  -- If the input is provided as an mm/dd string (length < 8) then prepend a dummy year.
+  base_input AS (
     SELECT 
-      LEAST('${inputs.date_range_cy.start}'::DATE, '${inputs.date_range_cy.end}'::DATE) AS input_start_date,
-      GREATEST('${inputs.date_range_cy.start}'::DATE, '${inputs.date_range_cy.end}'::DATE) AS input_end_date
+      CASE 
+        WHEN LENGTH('${inputs.date_range_cy.start}') < 8 
+          THEN CAST('2000-' || replace('${inputs.date_range_cy.start}', '/', '-') AS DATE)
+        ELSE '${inputs.date_range_cy.start}'::DATE 
+      END AS start_date_input,
+      CASE 
+        WHEN LENGTH('${inputs.date_range_cy.end}') < 8 
+          THEN CAST('2000-' || replace('${inputs.date_range_cy.end}', '/', '-') AS DATE)
+        ELSE '${inputs.date_range_cy.end}'::DATE 
+      END AS end_date_input
   ),
-  -- Use the ordered dates and clamp the cycle end to the max available REPORTDATE.
+  -- Force proper ordering – the cycle start must be the earlier date.
+  ordered_date_range AS (
+    SELECT 
+      LEAST(start_date_input, end_date_input) AS input_start_date,
+      GREATEST(start_date_input, end_date_input) AS input_end_date
+    FROM base_input
+  ),
+  -- Apply the clamping only if we have full dates (length ≥ 8).  
   report_date_range_cy AS (
     SELECT 
       input_start_date AS cy_start_date,
       CASE 
-        WHEN input_end_date > (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-          THEN (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+        WHEN LENGTH('${inputs.date_range_cy.end}') >= 8 
+             AND input_end_date >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+        THEN (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
         ELSE input_end_date
       END AS cy_end_date
-    FROM report_date_range_cy_raw
+    FROM ordered_date_range
   ),
-  -- Extract month and day parts from our computed cycle boundaries.
+  -- Extract numeric month and day parts from our (now normalized) cycle boundaries.
   date_info_cy AS (
     SELECT 
       cy_start_date,
@@ -276,11 +293,10 @@ WITH
       EXTRACT(MONTH FROM cy_start_date) AS start_month,
       EXTRACT(DAY FROM cy_start_date) AS start_day,
       EXTRACT(MONTH FROM cy_end_date) AS end_month,
-      EXTRACT(DAY FROM cy_end_date) AS end_day,
-      EXTRACT(YEAR FROM cy_end_date) AS cy_year
+      EXTRACT(DAY FROM cy_end_date) AS end_day
     FROM report_date_range_cy
   ),
-  -- Define allowed years based on the REPORTDATE values.
+  -- Define allowed years (make sure your input list uses numbers).
   allowed_years AS (
     SELECT DISTINCT CAST(strftime('%Y', REPORTDATE) AS INTEGER) AS yr
     FROM crashes.crashes
@@ -288,7 +304,7 @@ WITH
           BETWEEN 2018 AND (SELECT CAST(strftime('%Y', MAX(REPORTDATE)) AS INTEGER) FROM crashes.crashes)
       AND CAST(strftime('%Y', REPORTDATE) AS INTEGER) IN ${inputs.multi_cy.value}
   ),
-  -- Sum up counts for each allowed year using adjusted boundaries.
+  -- For each allowed year, compute the sum of counts by applying your adjusted date boundaries.
   yearly_counts AS (
     SELECT 
       ay.yr,
@@ -315,12 +331,11 @@ WITH
               THEN make_date(ay.yr, 2, 28)
               ELSE make_date(ay.yr, d.end_month, d.end_day)
             END + INTERVAL '1 day'
-          AND c.SEVERITY IN ${inputs.multi_severity.value}
+          AND c.SEVERITY IN ${inputs.multi_severity.value} 
           AND c.MODE IN ${inputs.multi_mode_dd.value}
       ) AS year_count
     FROM allowed_years ay
   )
-  
 SELECT 
   yc.yr AS Year,
   COALESCE(yc.year_count, 0) AS Count,
@@ -334,10 +349,12 @@ SELECT
     ELSE (LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) - COALESCE(yc.year_count, 0)) * 1.0 
          / LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC)
   END AS Percent_Diff_from_previous,
+  -- Re-create the cycle’s Date_Range using the normalized boundaries.
   (SELECT strftime('%m/%d', cy_start_date) || '-' || strftime('%m/%d', cy_end_date) 
    FROM report_date_range_cy) AS Date_Range
 FROM yearly_counts yc
 ORDER BY yc.yr DESC;
+
 ```
 
 <Dropdown
