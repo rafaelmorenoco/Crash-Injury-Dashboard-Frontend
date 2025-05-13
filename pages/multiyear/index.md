@@ -459,7 +459,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
                 value=year_string
                 title="Select Year"
                 multiple=true
-                defaultValue={["2024","2023","2022","2021","2020","2019"]}
+                defaultValue={["2040","2039","2038","2037","2036","2035","2034","2033","2032","2031","2030","2030","2029","2028","2027","2026","2025","2024","2023","2022","2021","2020","2019"]}
             />
             <DataTable data={cy_table} wrapTitles=true rowShading=true title="Comparison of Prior Calendar Years from {cy_table[0].Date_Range}">
                 <Column id=Year wrap=true/>
