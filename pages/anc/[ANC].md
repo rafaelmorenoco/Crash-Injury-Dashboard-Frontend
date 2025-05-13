@@ -51,35 +51,10 @@ group by 1
 ```
 
 ```sql smd_map
-WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    ),
-    date_info AS (
-        SELECT
-            start_date,
-            end_date,
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE > (end_date::DATE - INTERVAL '1 day')
-                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date::DATE - INTERVAL '1 day'), '%m/%d/%y')
-                ELSE 
-                    ''  -- Return a blank string instead of any other value
-            END AS date_range_label,
-            (end_date - start_date) AS date_range_days
-        FROM report_date_range
-    )
 SELECT 
     smd_2023.SMD,
     '/smd/' || smd_2023.SMD AS link,
-    COALESCE(subquery.Injuries, 0) AS Injuries,
-    di.date_range_label
+    COALESCE(subquery.Injuries, 0) AS Injuries
 FROM smd.smd_2023 AS smd_2023
 LEFT JOIN (
     SELECT
@@ -91,7 +66,7 @@ LEFT JOIN (
         ANC = '${params.ANC}'
         AND MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+        AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
         AND SMD IS NOT NULL
     GROUP BY 
         SMD
@@ -103,7 +78,6 @@ JOIN (
     WHERE ANC = '${params.ANC}'
 ) AS smd_anc
     ON smd_2023.SMD = smd_anc.SMD
-CROSS JOIN date_info di
 ORDER BY smd_2023.SMD;
 ```
 
@@ -316,7 +290,6 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <BaseMap
             height=500
             startingZoom=14
-            title="{`${smd_map[0].date_range_label}`}"
         >
         <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true borderWidth=1.5
             tooltip={[

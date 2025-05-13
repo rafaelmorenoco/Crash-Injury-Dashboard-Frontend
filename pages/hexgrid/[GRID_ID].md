@@ -37,17 +37,6 @@ group by all
 ```
 
 ```sql table_query
-WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    )
 SELECT
     REPORTDATE,
     SEVERITY,
@@ -58,22 +47,11 @@ FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
 AND GRID_ID = '${params.GRID_ID}'
 AND SEVERITY IN ${inputs.multi_severity.value}
-AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
 GROUP BY all
 ```
 
 ```sql incidents
-WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    )
 SELECT
     MODE,
     SEVERITY,
@@ -81,18 +59,11 @@ SELECT
     REPORTDATE,
     LATITUDE,
     LONGITUDE,
-    SUM(COUNT) AS Count,
-    CASE 
-        WHEN '${inputs.date_range.end}'::DATE > (SELECT end_date::DATE FROM report_date_range)
-        THEN strftime((SELECT start_date FROM report_date_range), '%m/%d/%y') || '-' || 
-             strftime((SELECT end_date FROM report_date_range), '%m/%d/%y')
-        ELSE ''
-    END AS date_range_label
+    SUM(COUNT) AS Count
 FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
   AND SEVERITY IN ${inputs.multi_severity.value}
-  AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
-                     AND (SELECT end_date FROM report_date_range)
+  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
 GROUP BY
     MODE,
     SEVERITY,

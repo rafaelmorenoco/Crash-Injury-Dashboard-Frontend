@@ -107,30 +107,6 @@ FROM
 ```
 
 ```sql inc_map
-WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    ),
-    date_info AS (
-        SELECT
-            start_date,
-            end_date,
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE > (end_date::DATE - INTERVAL '1 day')
-                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date::DATE - INTERVAL '1 day'), '%m/%d/%y')
-                ELSE 
-                    ''  -- Return a blank string instead of any other value
-            END AS date_range_label,
-            (end_date - start_date) AS date_range_days
-        FROM report_date_range
-    )
 SELECT
     REPORTDATE,
     LATITUDE,
@@ -138,14 +114,11 @@ SELECT
     MODE,
     SEVERITY,
     ADDRESS,
-    '/fatalities/' || OBJECTID AS link,
-    di.date_range_label
+    '/fatalities/' || OBJECTID AS link
 FROM crashes.crashes
-CROSS JOIN date_info di
 WHERE MODE IN ${inputs.multi_mode_dd.value}
   AND SEVERITY = 'Fatal'
-  AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
-                      AND (SELECT end_date FROM report_date_range)
+  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
 GROUP BY all;
 ```
 
@@ -201,7 +174,6 @@ The slection for <b>Road User</b> is: <b><Value data={mode_selection} column="MO
         <BaseMap
             height=450
             startingZoom=11
-            title="{`${inc_map[0].date_range_label}`}"
         >
             <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=SEVERITY colorPalette={['#ff5a53']} ignoreZoom=true
             tooltip={[

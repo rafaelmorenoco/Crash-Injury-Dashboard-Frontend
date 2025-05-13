@@ -48,17 +48,6 @@ group by 1
 ```
 
 ```sql table_query
-WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    )
 SELECT
     REPORTDATE,
     SEVERITY,
@@ -69,22 +58,12 @@ FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
 AND SMD = '${params.SMD}'
 AND SEVERITY IN ${inputs.multi_severity.value}
-AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) 
+AND (('${inputs.date_range.end}'::DATE)+ INTERVAL '1 day')
 GROUP BY all
 ```
 
 ```sql incidents
-WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    )
 SELECT 
     MODE,
     SEVERITY,
@@ -95,23 +74,12 @@ SELECT
 FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
   AND SEVERITY IN ${inputs.multi_severity.value}
-  AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) 
-                      AND (SELECT end_date FROM report_date_range)
+  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                             AND (('${inputs.date_range.end}'::DATE)+ INTERVAL '1 day')
 GROUP BY all;
 ```
 
 ```sql anc_map
-WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    )
 SELECT 
     smd_2023.SMD,
     '/smd/' || smd_2023.SMD AS link,
@@ -135,7 +103,8 @@ LEFT JOIN (
         GROUP BY 1)
         AND crashes.MODE IN ${inputs.multi_mode_dd.value}
         AND crashes.SEVERITY IN ${inputs.multi_severity.value}
-        AND crashes.REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) AND (SELECT end_date FROM report_date_range)
+        AND crashes.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                             AND (('${inputs.date_range.end}'::DATE)+ INTERVAL '1 day')
         AND crashes.SMD IS NOT NULL
     GROUP BY 
         crashes.SMD
