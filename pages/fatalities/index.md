@@ -2,6 +2,7 @@
 title: Traffic Fatalities
 queries:
    - fatality: fatality.sql
+   - last_record: last_record.sql
 sidebar_position: 1
 ---
 
@@ -25,22 +26,6 @@ select
     MODE
 from crashes.crashes
 group by 1
-```
-
-```sql last_record
-SELECT
-    LPAD(CAST(DATE_PART('month', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
-    LPAD(CAST(DATE_PART('day', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
-    RIGHT(CAST(DATE_PART('year', LAST_RECORD) AS VARCHAR), 2) || ',' AS latest_record,
-    LPAD(CAST(DATE_PART('month', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
-    LPAD(CAST(DATE_PART('day', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
-    RIGHT(CAST(DATE_PART('year', LAST_UPDATE) AS VARCHAR), 2) || ' at ' ||
-    LPAD(CAST(DATE_PART('hour', LAST_UPDATE) AS VARCHAR), 2, '0') || ':' ||
-    LPAD(CAST(DATE_PART('minute', LAST_UPDATE) AS VARCHAR), 2, '0') AS latest_update,
-    strftime(LAST_RECORD, '%Y-%m-%d') AS end_date
-FROM crashes.crashes
-ORDER BY LAST_RECORD DESC
-LIMIT 1;
 ```
 
 ```sql unique_hin
@@ -177,7 +162,16 @@ As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_
 
 <DateRange
   start="2018-01-01"
-  end="{`${last_record[0].end_date}`}"
+  end={
+    (last_record && last_record[0] && last_record[0].end_date)
+      ? `${last_record[0].end_date}`
+      : (() => {
+          const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
+          return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/New_York'
+          }).format(twoDaysAgo);
+        })()
+  }
   title="Select Time Period"
   name="date_range"
   presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
@@ -237,9 +231,9 @@ The slection for <b>Road User</b> is: <b><Value data={mode_selection} column="MO
             <Column id=MODE title="Road User" wrap=true/>
             <Column id=ADDRESS wrap=true/>
         </DataTable>
-        <Note>
-            The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs.
-        </Note>
     </Group>
 </Grid>
 
+<Note>
+    The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs.
+</Note>
