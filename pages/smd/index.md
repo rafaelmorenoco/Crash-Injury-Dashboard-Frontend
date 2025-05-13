@@ -2,6 +2,7 @@
 title: Injuries by SMD
 queries:
    - smd_link: smd_link.sql
+   - last_record: last_record.sql
 sidebar_position: 5
 ---
 
@@ -32,22 +33,6 @@ select
     SMD
 from smd.smd_2023
 group by 1
-```
-
-```sql last_record
-SELECT
-    LPAD(CAST(DATE_PART('month', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
-    LPAD(CAST(DATE_PART('day', LAST_RECORD) AS VARCHAR), 2, '0') || '/' ||
-    RIGHT(CAST(DATE_PART('year', LAST_RECORD) AS VARCHAR), 2) || ',' AS latest_record,
-    LPAD(CAST(DATE_PART('month', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
-    LPAD(CAST(DATE_PART('day', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
-    RIGHT(CAST(DATE_PART('year', LAST_UPDATE) AS VARCHAR), 2) || ' at ' ||
-    LPAD(CAST(DATE_PART('hour', LAST_UPDATE) AS VARCHAR), 2, '0') || ':' ||
-    LPAD(CAST(DATE_PART('minute', LAST_UPDATE) AS VARCHAR), 2, '0') AS latest_update,
-    strftime(LAST_RECORD, '%Y-%m-%d') AS end_date
-FROM crashes.crashes
-ORDER BY LAST_RECORD DESC
-LIMIT 1;
 ```
 
 ```sql period_comp_smd
@@ -178,60 +163,6 @@ LEFT JOIN
     prior_period pp ON mas.SMD = pp.SMD;
 ```
 
-```sql debug_report_date_range
-SELECT
-    '${inputs.date_range.end}'::DATE AS input_end_date,
-    (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) AS max_report_date,
-    CASE 
-        WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-            THEN 'input_end_date >= max_report_date'
-        ELSE 'input_end_date < max_report_date'
-    END AS comparison_result;
-```
-
-```sql debug_date_info
-WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= 
-                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE 
-                     THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    ),
-    date_info AS (
-        SELECT
-            start_date,
-            end_date,
-            '${inputs.date_range.end}'::DATE AS input_end_date,
-            DATE_TRUNC('year', end_date) AS truncated_year,
-            -- Identify which condition branch is being triggered (for debugging)
-            CASE 
-                WHEN start_date = DATE_TRUNC('year', end_date)
-                     AND '${inputs.date_range.end}'::DATE = (end_date::DATE - INTERVAL '1 day')
-                     THEN 1
-                WHEN '${inputs.date_range.end}'::DATE > (end_date::DATE - INTERVAL '1 day')::DATE
-                     THEN 2
-                ELSE 3
-            END AS debug_condition,
-            -- The label as originally defined:
-            CASE 
-                WHEN start_date = DATE_TRUNC('year', end_date)
-                     AND '${inputs.date_range.end}'::DATE = (end_date::DATE - INTERVAL '1 day')
-                     THEN EXTRACT(YEAR FROM end_date)::VARCHAR || ' YTD' 
-                WHEN '${inputs.date_range.end}'::DATE > (end_date::DATE - INTERVAL '1 day')
-                     THEN strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date::DATE - INTERVAL '1 day'), '%m/%d/%y')
-                ELSE 
-                     strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date - INTERVAL '1 day'), '%m/%d/%y')
-            END AS date_range_label
-        FROM report_date_range
-    )
-SELECT *
-FROM date_info;
-```
-
 ```sql smd_map
 WITH 
     report_date_range AS (
@@ -289,7 +220,16 @@ WHERE
 
 <DateRange
   start="2018-01-01"
-  end="{`${last_record[0].end_date}`}"
+  end={
+    (last_record && last_record[0] && last_record[0].end_date)
+      ? `${last_record[0].end_date}`
+      : (() => {
+          const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
+          return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/New_York'
+          }).format(twoDaysAgo);
+        })()
+  }
   title="Select Time Period"
   name="date_range"
   presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
