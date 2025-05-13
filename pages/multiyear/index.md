@@ -52,7 +52,8 @@ SELECT
     LPAD(CAST(DATE_PART('day', LAST_UPDATE) AS VARCHAR), 2, '0') || '/' ||
     RIGHT(CAST(DATE_PART('year', LAST_UPDATE) AS VARCHAR), 2) || ' at ' ||
     LPAD(CAST(DATE_PART('hour', LAST_UPDATE) AS VARCHAR), 2, '0') || ':' ||
-    LPAD(CAST(DATE_PART('minute', LAST_UPDATE) AS VARCHAR), 2, '0') AS latest_update
+    LPAD(CAST(DATE_PART('minute', LAST_UPDATE) AS VARCHAR), 2, '0') AS latest_update,
+    strftime(LAST_RECORD, '%Y-%m-%d') AS end_date
 FROM crashes.crashes
 ORDER BY LAST_RECORD DESC
 LIMIT 1;
@@ -384,14 +385,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
     <Group>
         <DateRange
         start='2018-01-01'
-        end={
-            (() => {
-            const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
-            return new Intl.DateTimeFormat('en-CA', {
-                timeZone: 'America/New_York'
-            }).format(twoDaysAgo);
-            })()
-        }
+        end="{`${last_record[0].end_date}`}"
         title="Select Time Period"
         name="date_range_cumulative"
         presetRanges={['All Time']}
@@ -449,14 +443,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             }).format(beginningOfYear);
             })()
         }
-        end={
-            (() => {
-            const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
-            return new Intl.DateTimeFormat('en-CA', {
-                timeZone: 'America/New_York'
-            }).format(twoDaysAgo);
-            })()
-        }
+        end="{`${last_record[0].end_date}`}"
         title="Select Time Period"
         name="date_range"
         presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today']}
