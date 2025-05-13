@@ -53,16 +53,6 @@ WITH reference AS (
         ) AS dow(day_of_week, day_number),
         GENERATE_SERIES(0, 23) AS hr(hour_number)
     ),
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    ),
     count_data AS (
         SELECT
             CASE
@@ -89,9 +79,7 @@ WITH reference AS (
         WHERE 
             MODE IN ${inputs.multi_mode_dd.value}
             AND SEVERITY IN ${inputs.multi_severity.value}
-            AND REPORTDATE BETWEEN 
-                (SELECT start_date FROM report_date_range) 
-                AND (SELECT end_date FROM report_date_range)
+            AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
         GROUP BY 
             day_of_week, day_number, hour_number
     )
@@ -109,16 +97,6 @@ ORDER BY r.day_number, r.hour_number;
 
 ```sql time
 WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    ),
 reference AS (
     SELECT hr.hour_number
     FROM GENERATE_SERIES(0, 23) AS hr(hour_number)
@@ -131,8 +109,8 @@ count_data AS (
     WHERE 
         MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
-                            AND (SELECT end_date FROM report_date_range)
+        AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) 
+        AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
     GROUP BY hour_number
 )
 SELECT
@@ -146,17 +124,7 @@ ORDER BY r.hour_number;
 ```
 
 ```sql day
-WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    ),
+WITH
 reference AS (
     SELECT
         dow.day_of_week,
@@ -197,8 +165,8 @@ count_data AS (
     FROM crashes.crashes
     WHERE MODE IN ${inputs.multi_mode_dd.value}
     AND SEVERITY IN ${inputs.multi_severity.value}
-    AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
-                        AND (SELECT end_date FROM report_date_range)
+    AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) 
+    AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
     GROUP BY day_of_week, day_number
 )
 SELECT
@@ -213,44 +181,18 @@ ORDER BY r.day_number;
 ```
 
 ```sql hex_map
-WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    ),
-    date_info AS (
-        SELECT
-            start_date,
-            end_date,
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE > (end_date::DATE - INTERVAL '1 day')
-                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date::DATE - INTERVAL '1 day'), '%m/%d/%y')
-                ELSE 
-                    ''  -- Return a blank string instead of any other value
-            END AS date_range_label,
-            (end_date - start_date) AS date_range_days
-        FROM report_date_range
-    )
 SELECT
     h.GRID_ID,
     COALESCE(SUM(c.COUNT), 0) AS Injuries,
-    '/hexgrid/' || h.GRID_ID AS link,
-    di.date_range_label  -- Added date range label column
+    '/hexgrid/' || h.GRID_ID AS link
 FROM hexgrid.crash_hexgrid h
 LEFT JOIN crashes.crashes c 
     ON h.GRID_ID = c.GRID_ID
     AND c.MODE IN ${inputs.multi_mode_dd.value}
     AND c.SEVERITY IN ${inputs.multi_severity.value}
-    AND c.REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
-                         AND (SELECT end_date FROM report_date_range)
-CROSS JOIN date_info di  -- Attach the single-row date_info
-GROUP BY h.GRID_ID, di.date_range_label;
+    AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+    AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+GROUP BY h.GRID_ID;
 ```
 
 ```sql hex_with_link
@@ -330,7 +272,6 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <BaseMap
             height=560
             startingZoom=12
-            title="{`${hex_map[0].date_range_label}`}"
         >
             <Areas data={hex_map} geoJsonUrl='/crash-hexgrid.geojson' geoId=GRID_ID areaCol=GRID_ID value=Injuries link=link min=0 opacity=0.7 />
             <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true 

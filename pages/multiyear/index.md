@@ -34,7 +34,6 @@ WHERE DATE_PART('year', REPORTDATE) BETWEEN 2018
     AND (SELECT DATE_PART('year', MAX(REPORTDATE)) FROM crashes.crashes)
     AND DATE_PART('year', REPORTDATE) <> DATE_PART('year', CURRENT_DATE)
 ORDER BY year_string DESC;
-
 ```
 
 ```sql unique_hin
@@ -47,30 +46,6 @@ group by all
 
 ```sql linechart_month
 WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range_cumulative.end}'::DATE >= 
-                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes) THEN 
-                     (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE 
-                    '${inputs.date_range_cumulative.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range_cumulative.start}'::DATE AS start_date
-    ),
-    date_info AS (
-        SELECT
-            start_date,
-            end_date,
-            CASE 
-                WHEN '${inputs.date_range_cumulative.end}'::DATE > (end_date::DATE - INTERVAL '1 day')
-                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date::DATE - INTERVAL '1 day'), '%m/%d/%y')
-                ELSE 
-                    ''  -- Return a blank string instead of any other value
-            END AS date_range_label,
-            (end_date - start_date) AS date_range_days
-        FROM report_date_range
-    ),
     months AS (
         SELECT 1 AS month, 'Jan' AS month_name UNION ALL
         SELECT 2, 'Feb' UNION ALL
@@ -94,8 +69,8 @@ WITH
         WHERE 
             MODE IN ${inputs.multi_mode_dd.value}
             AND SEVERITY IN ${inputs.multi_severity.value}
-            AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
-                              AND (SELECT end_date FROM report_date_range)
+            AND REPORTDATE BETWEEN ('${inputs.date_range_cumulative.start}'::DATE) 
+            AND (('${inputs.date_range_cumulative.end}'::DATE)+ INTERVAL '1 day')
         GROUP BY 
             EXTRACT(YEAR FROM REPORTDATE), 
             EXTRACT(MONTH FROM REPORTDATE)
@@ -117,13 +92,11 @@ SELECT
     m.month,
     m.month_name,
     COALESCE(mc.monthly_total, 0) AS monthly_total,
-    SUM(COALESCE(mc.monthly_total, 0)) OVER (PARTITION BY y.year ORDER BY m.month ASC) AS cumulative_total,
-    di.date_range_label  -- Added date range label column
+    SUM(COALESCE(mc.monthly_total, 0)) OVER (PARTITION BY y.year ORDER BY m.month ASC) AS cumulative_total
 FROM (SELECT DISTINCT year FROM monthly_counts) y
 CROSS JOIN months m
 LEFT JOIN monthly_counts mc 
     ON y.year = mc.year AND m.month = mc.month
-CROSS JOIN date_info di  -- Attach the date label to every row
 WHERE
     -- For years other than the max_year, show all months
     y.year <> (SELECT max_year FROM max_year_cte)
@@ -238,41 +211,24 @@ ORDER BY yc.yr DESC;
 
 ```sql cy_table
 WITH 
-  -- First, parse the dynamic input.
-  -- If the input is provided as an mm/dd string (length < 8) then prepend a dummy year.
-  base_input AS (
+  -- Ensure the input dates are in the proper order.
+  report_date_range_cy_raw AS (
     SELECT 
-      CASE 
-        WHEN LENGTH('${inputs.date_range_cy.start}') < 8 
-          THEN CAST('2000-' || replace('${inputs.date_range_cy.start}', '/', '-') AS DATE)
-        ELSE '${inputs.date_range_cy.start}'::DATE 
-      END AS start_date_input,
-      CASE 
-        WHEN LENGTH('${inputs.date_range_cy.end}') < 8 
-          THEN CAST('2000-' || replace('${inputs.date_range_cy.end}', '/', '-') AS DATE)
-        ELSE '${inputs.date_range_cy.end}'::DATE 
-      END AS end_date_input
+      LEAST('${inputs.date_range_cy.start}'::DATE, '${inputs.date_range_cy.end}'::DATE) AS input_start_date,
+      GREATEST('${inputs.date_range_cy.start}'::DATE, '${inputs.date_range_cy.end}'::DATE) AS input_end_date
   ),
-  -- Force proper ordering – the cycle start must be the earlier date.
-  ordered_date_range AS (
-    SELECT 
-      LEAST(start_date_input, end_date_input) AS input_start_date,
-      GREATEST(start_date_input, end_date_input) AS input_end_date
-    FROM base_input
-  ),
-  -- Apply the clamping only if we have full dates (length ≥ 8).  
+  -- Use the ordered dates and clamp the cycle end to the max available REPORTDATE.
   report_date_range_cy AS (
     SELECT 
       input_start_date AS cy_start_date,
       CASE 
-        WHEN LENGTH('${inputs.date_range_cy.end}') >= 8 
-             AND input_end_date >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-        THEN (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+        WHEN input_end_date > (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+          THEN (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
         ELSE input_end_date
       END AS cy_end_date
-    FROM ordered_date_range
+    FROM report_date_range_cy_raw
   ),
-  -- Extract numeric month and day parts from our (now normalized) cycle boundaries.
+  -- Extract month and day parts from our computed cycle boundaries.
   date_info_cy AS (
     SELECT 
       cy_start_date,
@@ -280,10 +236,11 @@ WITH
       EXTRACT(MONTH FROM cy_start_date) AS start_month,
       EXTRACT(DAY FROM cy_start_date) AS start_day,
       EXTRACT(MONTH FROM cy_end_date) AS end_month,
-      EXTRACT(DAY FROM cy_end_date) AS end_day
+      EXTRACT(DAY FROM cy_end_date) AS end_day,
+      EXTRACT(YEAR FROM cy_end_date) AS cy_year
     FROM report_date_range_cy
   ),
-  -- Define allowed years (make sure your input list uses numbers).
+  -- Define allowed years based on the REPORTDATE values.
   allowed_years AS (
     SELECT DISTINCT CAST(strftime('%Y', REPORTDATE) AS INTEGER) AS yr
     FROM crashes.crashes
@@ -291,7 +248,7 @@ WITH
           BETWEEN 2018 AND (SELECT CAST(strftime('%Y', MAX(REPORTDATE)) AS INTEGER) FROM crashes.crashes)
       AND CAST(strftime('%Y', REPORTDATE) AS INTEGER) IN ${inputs.multi_cy.value}
   ),
-  -- For each allowed year, compute the sum of counts by applying your adjusted date boundaries.
+  -- Sum up counts for each allowed year using adjusted boundaries.
   yearly_counts AS (
     SELECT 
       ay.yr,
@@ -318,11 +275,12 @@ WITH
               THEN make_date(ay.yr, 2, 28)
               ELSE make_date(ay.yr, d.end_month, d.end_day)
             END + INTERVAL '1 day'
-          AND c.SEVERITY IN ${inputs.multi_severity.value} 
+          AND c.SEVERITY IN ${inputs.multi_severity.value}
           AND c.MODE IN ${inputs.multi_mode_dd.value}
       ) AS year_count
     FROM allowed_years ay
   )
+  
 SELECT 
   yc.yr AS Year,
   COALESCE(yc.year_count, 0) AS Count,
@@ -336,12 +294,10 @@ SELECT
     ELSE (LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) - COALESCE(yc.year_count, 0)) * 1.0 
          / LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC)
   END AS Percent_Diff_from_previous,
-  -- Re-create the cycle’s Date_Range using the normalized boundaries.
   (SELECT strftime('%m/%d', cy_start_date) || '-' || strftime('%m/%d', cy_end_date) 
    FROM report_date_range_cy) AS Date_Range
 FROM yearly_counts yc
 ORDER BY yc.yr DESC;
-
 ```
 
 <Dropdown
@@ -388,7 +344,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         description="By default, there is a two-day lag after the latest update"
         />
         <LineChart 
-            title="Yearly Cumulative {`${linechart_month[0].date_range_label}`}"
+            title="Yearly Cumulative"
             chartAreaHeight={450}
             subtitle="Injuries"
             data={linechart_month}
@@ -503,9 +459,9 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
                 value=year_string
                 title="Select Year"
                 multiple=true
-                selectAllByDefault=true
+                defaultValue={["2024","2023","2022","2021","2020","2019"]}
             />
-            <DataTable data={cy_table} wrapTitles=true rowShading=true title="Comparison of Prior Years from {cy_table[0].Date_Range}">
+            <DataTable data={cy_table} wrapTitles=true rowShading=true title="Comparison of Prior Calendar Years from {cy_table[0].Date_Range}">
                 <Column id=Year wrap=true/>
                 <Column id=Count title="Injuries"/>
                 <Column id=Diff_from_previous contentType=delta downIsGood=True title="Diff From Prior Year"/>

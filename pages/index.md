@@ -39,29 +39,6 @@ group by all
 
 ```sql barchart_mode
 WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)::DATE THEN 
-                    (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-                ELSE 
-                    '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    ),
-    date_info AS (
-        SELECT
-            start_date,
-            end_date,
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE > (end_date::DATE - INTERVAL '1 day')
-                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime((end_date::DATE - INTERVAL '1 day'), '%m/%d/%y')
-                ELSE 
-                    ''  -- Return a blank string instead of any other value
-            END AS date_range_label,
-            (end_date - start_date) AS date_range_days
-        FROM report_date_range
-    ),
     combinations AS (
         SELECT DISTINCT
             MODE,
@@ -75,19 +52,16 @@ WITH
             SUM(COUNT) AS sum_count
         FROM crashes.crashes
         WHERE SEVERITY IN ${inputs.multi_severity.value}
-          AND REPORTDATE BETWEEN (SELECT start_date FROM report_date_range) 
-                             AND (SELECT end_date FROM report_date_range)
+          AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
         GROUP BY MODE, SEVERITY
     )
 SELECT
     c.MODE,
     c.SEVERITY,
     COALESCE(cnt.sum_count, 0) AS sum_count,
-    di.date_range_label  -- new column included here
 FROM combinations c
 LEFT JOIN counts cnt 
-    ON c.MODE = cnt.MODE AND c.SEVERITY = cnt.SEVERITY
-CROSS JOIN date_info di;
+    ON c.MODE = cnt.MODE AND c.SEVERITY = cnt.SEVERITY;
 ```
 
 ```sql period_comp_mode
@@ -528,7 +502,7 @@ The slection for <b>Severity</b> is: <b><Value data={severity_selection} column=
 <Grid cols=2>
     <Group>
         <BarChart 
-            title="Selected Period {`${barchart_mode[0].date_range_label}`}"
+            title="Selected Period"
             chartAreaHeight=300
             subtitle="Road User"
             data={barchart_mode}

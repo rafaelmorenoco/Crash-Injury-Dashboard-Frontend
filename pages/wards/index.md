@@ -36,43 +36,17 @@ group by all
 ```
 
 ```sql ward_map
-WITH 
-    report_date_range AS (
-        SELECT
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE >= 
-                     (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-                THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)
-                ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-            END AS end_date,
-            '${inputs.date_range.start}'::DATE AS start_date
-    ),
-    date_info AS (
-        SELECT
-            start_date,
-            end_date,
-            CASE 
-                WHEN '${inputs.date_range.end}'::DATE > end_date::DATE
-                    THEN strftime(start_date, '%m/%d/%y') || '-' || strftime(end_date, '%m/%d/%y')
-                ELSE 
-                    ''  -- Return a blank string instead of any other value
-            END AS date_range_label,
-            (end_date - start_date) AS date_range_days
-        FROM report_date_range
-    )
 SELECT
     w.WARD_ID AS WARD,
-    COALESCE(SUM(c.COUNT), 0) AS Injuries,
-    di.date_range_label  -- the added column with the formatted date range
+    COALESCE(SUM(c.COUNT), 0) AS Injuries
 FROM wards.wards_2022 w
 LEFT JOIN crashes.crashes c
     ON w.WARD_ID = c.WARD
     AND c.MODE IN ${inputs.multi_mode_dd.value}
     AND c.SEVERITY IN ${inputs.multi_severity.value}
-    AND c.REPORTDATE BETWEEN (SELECT start_date FROM report_date_range)
-                          AND (SELECT end_date FROM report_date_range)
-CROSS JOIN date_info di   -- cross join since date_info returns one row
-GROUP BY w.WARD_ID, di.date_range_label
+    AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                             AND (('${inputs.date_range.end}'::DATE)+ INTERVAL '1 day')
+GROUP BY w.WARD_ID
 ORDER BY w.WARD_ID;
 ```
 
@@ -273,7 +247,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <BaseMap
             height=450
             startingZoom=11
-            title="Wards {`${ward_map[0].date_range_label}`}"
+            title="Wards"
         >
         <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true
             tooltip={[
