@@ -221,11 +221,7 @@ WITH
   report_date_range_cy AS (
     SELECT 
       input_start_date AS cy_start_date,
-      CASE 
-        WHEN input_end_date > (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-          THEN (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
-        ELSE input_end_date
-      END AS cy_end_date
+      input_end_date AS cy_end_date
     FROM report_date_range_cy_raw
   ),
   -- Extract month and day parts from our computed cycle boundaries.
@@ -244,9 +240,7 @@ WITH
   allowed_years AS (
     SELECT DISTINCT CAST(strftime('%Y', REPORTDATE) AS INTEGER) AS yr
     FROM crashes.crashes
-    WHERE CAST(strftime('%Y', REPORTDATE) AS INTEGER)
-          BETWEEN 2018 AND (SELECT CAST(strftime('%Y', MAX(REPORTDATE)) AS INTEGER) FROM crashes.crashes)
-      AND CAST(strftime('%Y', REPORTDATE) AS INTEGER) IN ${inputs.multi_cy.value}
+    WHERE CAST(strftime('%Y', REPORTDATE) AS INTEGER) IN ${inputs.multi_cy.value}
   ),
   -- Sum up counts for each allowed year using adjusted boundaries.
   yearly_counts AS (
@@ -299,7 +293,6 @@ SELECT
   strftime('%m/%d', yc.cy_start_date) || '-' || strftime('%m/%d', yc.cy_end_date) AS Date_Range
 FROM yearly_counts yc
 ORDER BY yc.yr DESC;
-
 ```
 
 <Dropdown
