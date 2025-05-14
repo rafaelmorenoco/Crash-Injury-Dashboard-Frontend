@@ -28,12 +28,13 @@ ORDER BY year_string DESC;
 ```
 
 ```sql unique_cy
-SELECT DISTINCT CAST(DATE_PART('year', REPORTDATE) AS VARCHAR) AS year_string
+SELECT DISTINCT CAST(DATE_PART('year', REPORTDATE) AS INTEGER) AS year_integer
 FROM crashes.crashes
 WHERE DATE_PART('year', REPORTDATE) BETWEEN 2018
-    AND (SELECT DATE_PART('year', MAX(REPORTDATE)) FROM crashes.crashes)
+    AND (SELECT CAST(DATE_PART('year', MAX(REPORTDATE)) AS INTEGER) FROM crashes.crashes)
     AND DATE_PART('year', REPORTDATE) <> DATE_PART('year', CURRENT_DATE)
-ORDER BY year_string DESC;
+ORDER BY year_integer DESC;
+
 ```
 
 ```sql unique_hin
@@ -451,7 +452,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             <Dropdown
                 data={unique_cy} 
                 name=multi_cy
-                value=year_string
+                value=year_integer
                 title="Select Year"
                 multiple=true
                 selectAllByDefault=true
