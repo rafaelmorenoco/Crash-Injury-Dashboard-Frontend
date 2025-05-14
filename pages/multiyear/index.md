@@ -277,7 +277,9 @@ WITH
             END + INTERVAL '1 day'
           AND c.SEVERITY IN ${inputs.multi_severity.value}
           AND c.MODE IN ${inputs.multi_mode_dd.value}
-      ) AS year_count
+      ) AS year_count,
+      (SELECT cy_start_date FROM date_info_cy) AS cy_start_date,
+      (SELECT cy_end_date FROM date_info_cy) AS cy_end_date
     FROM allowed_years ay
   )
   
@@ -294,10 +296,10 @@ SELECT
     ELSE (LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) - COALESCE(yc.year_count, 0)) * 1.0 
          / LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC)
   END AS Percent_Diff_from_previous,
-  (SELECT strftime('%m/%d', cy_start_date) || '-' || strftime('%m/%d', cy_end_date) 
-   FROM report_date_range_cy) AS Date_Range
+  strftime('%m/%d', yc.cy_start_date) || '-' || strftime('%m/%d', yc.cy_end_date) AS Date_Range
 FROM yearly_counts yc
 ORDER BY yc.yr DESC;
+
 ```
 
 <Dropdown
@@ -459,7 +461,7 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
                 value=year_string
                 title="Select Year"
                 multiple=true
-                defaultValue={["2040","2039","2038","2037","2036","2035","2034","2033","2032","2031","2030","2030","2029","2028","2027","2026","2025","2024","2023","2022","2021","2020","2019"]}
+                selectAllByDefault=true
             />
             <DataTable data={cy_table} wrapTitles=true rowShading=true title="Comparison of Prior Calendar Years from {cy_table[0].Date_Range}">
                 <Column id=Year wrap=true/>
