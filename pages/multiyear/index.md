@@ -249,20 +249,20 @@ WITH
           c.REPORTDATE >= 
             CASE 
               WHEN d.start_month = 2 
-                AND d.start_day = 29 
-                AND NOT (ay.yr % 4 = 0 AND (ay.yr % 100 <> 0 OR ay.yr % 400 = 0))
+                   AND d.start_day = 29 
+                   AND NOT (ay.yr % 4 = 0 AND (ay.yr % 100 <> 0 OR ay.yr % 400 = 0))
               THEN make_date(ay.yr, 2, 28)
               ELSE make_date(ay.yr, d.start_month, d.start_day)
             END
           -- Adjust for Feb 29 on the cycle end, and add one day for an inclusive range.
           AND c.REPORTDATE < 
-            CASE 
+            (CASE 
               WHEN d.end_month = 2 
-                AND d.end_day = 29 
-                AND NOT (ay.yr % 4 = 0 AND (ay.yr % 100 <> 0 OR ay.yr % 400 = 0))
+                   AND d.end_day = 29 
+                   AND NOT (ay.yr % 4 = 0 AND (ay.yr % 100 <> 0 OR ay.yr % 400 = 0))
               THEN make_date(ay.yr, 2, 28)
               ELSE make_date(ay.yr, d.end_month, d.end_day)
-            END + INTERVAL '1 day'
+            END) + INTERVAL '1 day'
           AND c.SEVERITY IN ${inputs.multi_severity.value}
           AND c.MODE IN ${inputs.multi_mode_dd.value}
       ) AS year_count,
