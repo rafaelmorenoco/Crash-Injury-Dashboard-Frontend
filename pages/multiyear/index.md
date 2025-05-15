@@ -213,17 +213,10 @@ ORDER BY yc.yr DESC;
 ```sql cy_table
 WITH 
   -- Ensure the input dates are in the proper order.
-  report_date_range_cy_raw AS (
-    SELECT 
-      LEAST('${inputs.date_range_cy.start}'::DATE, '${inputs.date_range_cy.end}'::DATE) AS input_start_date,
-      GREATEST('${inputs.date_range_cy.start}'::DATE, '${inputs.date_range_cy.end}'::DATE) AS input_end_date
-  ),
-  -- Use the ordered dates and clamp the cycle end to the max available REPORTDATE.
   report_date_range_cy AS (
     SELECT 
-      input_start_date AS cy_start_date,
-      input_end_date AS cy_end_date
-    FROM report_date_range_cy_raw
+      LEAST('${inputs.date_range_cy.start}'::DATE) AS cy_start_date,
+      GREATEST('${inputs.date_range_cy.end}'::DATE) AS cy_end_date
   ),
   -- Extract month and day parts from our computed cycle boundaries.
   date_info_cy AS (
