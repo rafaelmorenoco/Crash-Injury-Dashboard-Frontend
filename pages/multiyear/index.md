@@ -215,8 +215,8 @@ WITH
   -- Ensure the input dates are in the proper order.
   report_date_range_cy AS (
     SELECT 
-      LEAST('${inputs.date_range_cy.start}'::DATE) AS cy_start_date,
-      GREATEST('${inputs.date_range_cy.end}'::DATE) AS cy_end_date
+      '${inputs.date_range_cy.start}'::DATE AS cy_start_date,
+      '${inputs.date_range_cy.end}'::DATE AS cy_end_date
   ),
   -- Extract month and day parts from our computed cycle boundaries.
   date_info_cy AS (
@@ -414,33 +414,29 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             <Column id=Percent_Diff_from_current fmt='pct0' title="% Diff From {ytd_table[0].Year}"/> 
         </DataTable>
             <DateRange
-                start={
-                    (() => {
-                    // Get the previous year
-                    const priorYear = new Date().getFullYear() - 1;
-                    // January is month 0
-                    const priorYearStart = new Date(priorYear, 0, 1);
-                    return new Intl.DateTimeFormat('en-CA', {
-                        timeZone: 'America/New_York'
-                    }).format(priorYearStart);
-                    })()
-                }
-                end={
-                    (() => {
-                    // Get the previous year
-                    const priorYear = new Date().getFullYear() - 1;
-                    // December is month 11
-                    const priorYearEnd = new Date(priorYear, 11, 31);
-                    return new Intl.DateTimeFormat('en-CA', {
-                        timeZone: 'America/New_York'
-                    }).format(priorYearEnd);
-                    })()
-                }
-                title="Select Time Period"
-                name="date_range_cy"
-                presetRanges={['All Time']}
-                defaultValue="All Time"
-                description="Date range set to the entirety of the previous year"
+              start={
+                (() => {
+                  // Directly compute the first day of the previous year.
+                  const priorYearStart = new Date(new Date().getFullYear() - 1, 0, 1);
+                  return new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'America/New_York'
+                  }).format(priorYearStart);
+                })()
+              }
+              end={
+                (() => {
+                  // Directly compute the last day of the previous year.
+                  const priorYearEnd = new Date(new Date().getFullYear() - 1, 11, 31);
+                  return new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'America/New_York'
+                  }).format(priorYearEnd);
+                })()
+              }
+              title="Select Time Period"
+              name="date_range_cy"
+              presetRanges={['All Time']}
+              defaultValue="All Time"
+              description="Date range set to the entirety of the previous year"
             />
             <Dropdown
                 data={unique_cy} 
