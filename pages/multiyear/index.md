@@ -416,6 +416,9 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
               defaultValue='Last Year'
               description="Date range set to the entirety of the previous year"
             />
+            <Info description=
+                "The date picker considers only your selection of the month and day. For year selection use the year dropdown."
+            />
             <Dropdown
                 data={unique_cy} 
                 name=multi_cy
