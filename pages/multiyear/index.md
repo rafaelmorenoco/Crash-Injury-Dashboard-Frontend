@@ -211,23 +211,26 @@ ORDER BY yc.yr DESC;
 ```
 
 ```sql cy_table
-WITH 
+WITH
   -- Ensure the input dates are in the proper order.
+  -- This CTE will use the corrected dates passed from your DateRange component.
+  -- For example, if the DateRange component sends '2024-01-01' and '2024-12-31':
   report_date_range_cy AS (
-    SELECT 
-      '${inputs.date_range_cy.start}'::DATE AS cy_start_date,
-      '${inputs.date_range_cy.end}'::DATE AS cy_end_date
+    SELECT
+      '${inputs.date_range_cy.start}'::DATE AS cy_start_date, -- e.g., '2024-01-01'::DATE
+      '${inputs.date_range_cy.end}'::DATE AS cy_end_date     -- e.g., '2024-12-31'::DATE
   ),
   -- Extract month and day parts from our computed cycle boundaries.
   date_info_cy AS (
-    SELECT 
+    SELECT
       cy_start_date,
       cy_end_date,
       EXTRACT(MONTH FROM cy_start_date) AS start_month,
       EXTRACT(DAY FROM cy_start_date) AS start_day,
       EXTRACT(MONTH FROM cy_end_date) AS end_month,
       EXTRACT(DAY FROM cy_end_date) AS end_day,
-      EXTRACT(YEAR FROM cy_end_date) AS cy_year
+      EXTRACT(YEAR FROM cy_end_date) AS cy_year -- Note: This cy_year is from the input end date,
+                                                -- the main yearly iteration uses ay.yr
     FROM report_date_range_cy
   ),
   -- Define allowed years based on the REPORTDATE values.
@@ -238,52 +241,56 @@ WITH
   ),
   -- Sum up counts for each allowed year using adjusted boundaries.
   yearly_counts AS (
-    SELECT 
+    SELECT
       ay.yr,
       (
         SELECT SUM("COUNT")
         FROM crashes.crashes c,
              date_info_cy d
-        WHERE 
+        WHERE
           -- Adjust for Feb 29 on the cycle start.
-          c.REPORTDATE >= 
-            CASE 
-              WHEN d.start_month = 2 
-                   AND d.start_day = 29 
-                   AND NOT (ay.yr % 4 = 0 AND (ay.yr % 100 <> 0 OR ay.yr % 400 = 0))
+          c.REPORTDATE >=
+            CASE
+              WHEN d.start_month = 2
+                   AND d.start_day = 29
+                   AND NOT (ay.yr % 4 = 0 AND (ay.yr % 100 <> 0 OR ay.yr % 400 = 0)) -- Not a leap year for ay.yr
               THEN make_date(ay.yr, 2, 28)
               ELSE make_date(ay.yr, d.start_month, d.start_day)
             END
           -- Adjust for Feb 29 on the cycle end, and add one day for an inclusive range.
-          AND c.REPORTDATE < 
-            (CASE 
-              WHEN d.end_month = 2 
-                   AND d.end_day = 29 
-                   AND NOT (ay.yr % 4 = 0 AND (ay.yr % 100 <> 0 OR ay.yr % 400 = 0))
+          AND c.REPORTDATE <
+            (CASE
+              WHEN d.end_month = 2
+                   AND d.end_day = 29
+                   AND NOT (ay.yr % 4 = 0 AND (ay.yr % 100 <> 0 OR ay.yr % 400 = 0)) -- Not a leap year for ay.yr
               THEN make_date(ay.yr, 2, 28)
               ELSE make_date(ay.yr, d.end_month, d.end_day)
             END) + INTERVAL '1 day'
           AND c.SEVERITY IN ${inputs.multi_severity.value}
           AND c.MODE IN ${inputs.multi_mode_dd.value}
       ) AS year_count,
+      -- These will reflect the original input start and end dates
+      -- used for determining the month/day range for display.
       (SELECT cy_start_date FROM date_info_cy) AS cy_start_date,
       (SELECT cy_end_date FROM date_info_cy) AS cy_end_date
     FROM allowed_years ay
   )
-  
-SELECT 
+
+SELECT
   yc.yr AS Year,
   COALESCE(yc.year_count, 0) AS Count,
-  CASE 
+  CASE
     WHEN LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) IS NULL THEN 0
     ELSE LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) - COALESCE(yc.year_count, 0)
   END AS Diff_from_previous,
-  CASE 
-    WHEN LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) IS NULL 
+  CASE
+    WHEN LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) IS NULL
          OR LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) = 0 THEN 0
-    ELSE (LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) - COALESCE(yc.year_count, 0)) * 1.0 
+    ELSE (LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC) - COALESCE(yc.year_count, 0)) * 1.0
          / LAG(COALESCE(yc.year_count, 0)) OVER (ORDER BY yc.yr DESC)
   END AS Percent_Diff_from_previous,
+  -- This will now correctly format the month/day part of the input date range.
+  -- e.g., if inputs were '2024-01-01' and '2024-12-31', this will be '01/01-12/31'
   strftime('%m/%d', yc.cy_start_date) || '-' || strftime('%m/%d', yc.cy_end_date) AS Date_Range
 FROM yearly_counts yc
 ORDER BY yc.yr DESC;
@@ -414,28 +421,26 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
             <Column id=Percent_Diff_from_current fmt='pct0' title="% Diff From {ytd_table[0].Year}"/> 
         </DataTable>
             <DateRange
-              start={
-                (() => {
-                  // Directly compute the first day of the previous year.
-                  const priorYearStart = new Date(new Date().getFullYear() - 1, 0, 1);
-                  return new Intl.DateTimeFormat('en-CA', {
-                    timeZone: 'America/New_York'
-                  }).format(priorYearStart);
-                })()
-              }
-              end={
-                (() => {
-                  // Directly compute the last day of the previous year.
-                  const priorYearEnd = new Date(new Date().getFullYear() - 1, 11, 31);
-                  return new Intl.DateTimeFormat('en-CA', {
-                    timeZone: 'America/New_York'
-                  }).format(priorYearEnd);
-                })()
-              }
+            start={
+                  (() => {
+                    const priorYearStart = new Date(new Date().getFullYear() - 1, 0, 1);
+                    return new Intl.DateTimeFormat('en-CA', {
+                      timeZone: 'America/New_York'
+                    }).format(priorYearStart);
+                  })()
+                }
+            end={
+                  (() => {
+                    const priorYearEnd = new Date(new Date().getFullYear() - 1, 11, 31);
+                    return new Intl.DateTimeFormat('en-CA', {
+                      timeZone: 'America/New_York'
+                    }).format(priorYearEnd);
+                  })()
+                }
               title="Select Time Period"
               name="date_range_cy"
-              presetRanges={['All Time']}
-              defaultValue="All Time"
+              presetRanges={['Last Year']}
+              defaultValue='Last Year'
               description="Date range set to the entirety of the previous year"
             />
             <Dropdown
