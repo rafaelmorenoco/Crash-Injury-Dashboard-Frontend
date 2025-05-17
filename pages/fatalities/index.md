@@ -114,6 +114,7 @@ SELECT
     MODE,
     SEVERITY,
     ADDRESS,
+    CCN,
     '/fatalities/' || OBJECTID AS link
 FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
@@ -178,6 +179,7 @@ The slection for <b>Road User</b> is: <b><Value data={mode_selection} column="MO
             <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=SEVERITY colorPalette={['#ff5a53']} ignoreZoom=true
             tooltip={[
                 {id:'MODE', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
+                {id:'CCN',showColumnName:false, fmt:'id'},
                 {id:'REPORTDATE', showColumnName:false, fmt:'mm/dd/yy hh:mm'},
                 {id:'ADDRESS', showColumnName:false, fmt:'id'}
             ]}
@@ -198,11 +200,14 @@ The slection for <b>Road User</b> is: <b><Value data={mode_selection} column="MO
         <Note class='text-sm'>
             Select a fatality in the table to see more details.
         </Note>
-        <DataTable data={inc_map} link=link wrapTitles=true rowShading=true rows=8>
+        <DataTable data={inc_map} link=link wrapTitles=true rowShading=true search=true rows=10>
             <Column id=REPORTDATE title="Date" fmt='mm/dd/yy hh:mm' wrap=true/>
             <Column id=MODE title="Road User" wrap=true/>
             <Column id=ADDRESS wrap=true/>
         </DataTable>
+        <Note>
+            *Fatal only.
+        </Note>
     </Group>
 </Grid>
 
