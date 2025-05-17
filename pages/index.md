@@ -1,12 +1,12 @@
 ---
-title: DC Vision Zero Traffic Fatalities and Injury Crashes
+title: DC Vision Zero Traffic Fatalities and Injuries
 queries:
    - last_record: last_record.sql
 ---
 
 <Details title="About this dashboard">
 
-    The Fatal and Injury Crashes Dashboard can be used by the public to know more about injuries or fatalities product of a crash in the District of Columbia (DC).
+    The Traffic Fatalities and Injuries Dashboard can be used by the public to know more about injuries or fatalities product of a crash in the District of Columbia (DC).
     
     Adjust the Road User, Severity and Date filters to refine the results.
 
