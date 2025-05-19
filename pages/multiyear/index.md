@@ -153,7 +153,7 @@ WITH
                  || '-' || strftime(current_end_date, '%m/%d')
           ELSE 
             strftime(current_start_date, '%m/%d') 
-                 || '-' || strftime(current_end_date - INTERVAL '1 day', '%m/%d')
+                 || '-' || strftime(current_end_date, '%m/%d')
       END AS date_range_label,
       (current_end_date - current_start_date) AS date_range_days,
       strftime(current_start_date, '%m-%d') AS month_day_start,
