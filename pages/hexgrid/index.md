@@ -196,8 +196,24 @@ GROUP BY h.GRID_ID;
 ```
 
 ```sql hex_with_link
-select *, '/hexgrid/' || GRID_ID as link
-from ${hex}
+SELECT 
+    h.*,
+    COALESCE(i.Injuries, 0) AS Injuries,
+    '/hexgrid/' || h.GRID_ID AS link
+FROM ${hex} AS h
+LEFT JOIN (
+    SELECT 
+        c.GRID_ID,
+        SUM(c.COUNT) AS Injuries
+    FROM crashes.crashes c
+    WHERE 
+        c.MODE IN ${inputs.multi_mode_dd.value}
+        AND c.SEVERITY IN ${inputs.multi_severity.value}
+        AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                              AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+    GROUP BY c.GRID_ID
+) AS i
+ON h.GRID_ID = i.GRID_ID;
 ```
 
 ```sql intersections_table
@@ -236,7 +252,7 @@ from ${hex}
   }
   title="Select Time Period"
   name="date_range"
-  presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
+  presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today', 'Last Year', 'All Time']}
   defaultValue="Year to Today"
   description="By default, there is a two-day lag after the latest update"
 />
@@ -261,7 +277,7 @@ from ${hex}
 />
 
 <Alert status="info">
-The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
+The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The selection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 <Grid cols=2>
@@ -412,8 +428,9 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         </DataTable>
     </Group>
     <Group>
-        <DataTable data={hex_with_link} subtitle="Hexagon Search" search=true link=link rows=5 rowShading=true>
+        <DataTable data={hex_with_link} subtitle="Hexagon Search" search=true link=link rows=5 rowShading=true sort="Injuries desc">
             <Column id=GRID_ID title="Hexagon ID"/>
+            <Column id=Injuries />
         </DataTable>
     </Group>
 </Grid>
