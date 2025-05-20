@@ -4,7 +4,7 @@ queries:
    - last_record: last_record.sql
 ---
 
-# {params.GRID_ID}
+# Selected Hexagon
 
 ```sql unique_mode
 select 
@@ -131,7 +131,7 @@ WHERE
         }
         title="Select Time Period"
         name="date_range"
-        presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
+        presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today', 'Last Year', 'All Time']}
         defaultValue="Year to Today"
         description="By default, there is a two-day lag after the latest update"
         />
@@ -156,7 +156,7 @@ WHERE
 </Grid>
 
 <Alert status="info">
-The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
+The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The selection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 ### Selected Hexagon

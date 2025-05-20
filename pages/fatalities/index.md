@@ -164,7 +164,7 @@ As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_
 />
 
 <Alert status="info">
-The slection for <b>Road User</b> is: <b><Value data={mode_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
+The selection for <b>Road User</b> is: <b><Value data={mode_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 <Grid cols=2>
@@ -198,7 +198,7 @@ The slection for <b>Road User</b> is: <b><Value data={mode_selection} column="MO
     </Group>
     <Group>
         <Note class='text-sm'>
-            Select a fatality in the table to see more details.
+            Select a fatality in the table to see more details about it and the post-crash follow-up.
         </Note>
         <DataTable data={inc_map} link=link wrapTitles=true rowShading=true search=true rows=10>
             <Column id=REPORTDATE title="Date" fmt='mm/dd/yy hh:mm' wrap=true/>

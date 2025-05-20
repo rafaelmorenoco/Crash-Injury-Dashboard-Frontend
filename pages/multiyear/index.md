@@ -288,7 +288,7 @@ ORDER BY yc.yr DESC;
 />
 
 <Alert status="info">
-The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The slection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
+The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The selection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
 <Grid cols=2>
@@ -389,8 +389,8 @@ The slection for <b>Severity</b> is: <b><Value data={mode_severity_selection} co
         <DataTable data={ytd_table} wrapTitles=true rowShading=true title="{ytd_table[0].Year} {ytd_table[0].Date_Range} vs Prior Years {ytd_table[0].Date_Range}">
             <Column id=Year wrap=true/>
             <Column id=Count title="Injuries"/>
-            <Column id=Diff_from_current contentType=delta downIsGood=True title="Diff From {ytd_table[0].Year}"/>
-            <Column id=Percent_Diff_from_current fmt='pct0' title="% Diff From {ytd_table[0].Year}"/> 
+            <Column id=Diff_from_current contentType=delta downIsGood=True title=" {ytd_table[0].Year} Diff"/>
+            <Column id=Percent_Diff_from_current fmt='pct0' title="{ytd_table[0].Year} % Diff"/> 
         </DataTable>
             <DateRange
             start={

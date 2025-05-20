@@ -494,7 +494,7 @@ echartsOptions={{animation: false}}
 />
 
 <Alert status="info">
-The slection for <b>Severity</b> is: <b><Value data={severity_selection} column="SEVERITY_SELECTION"/></b>.
+The selection for <b>Severity</b> is: <b><Value data={severity_selection} column="SEVERITY_SELECTION"/></b>.
 </Alert>
 
 ### Injuries by Road User and Severity
