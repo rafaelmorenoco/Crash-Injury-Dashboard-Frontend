@@ -37,6 +37,16 @@ from hin.hin
 group by all
 ```
 
+```sql max_age
+SELECT 
+    MAX(AGE) AS unique_max_age
+FROM crashes.crashes
+WHERE SEVERITY IN ${inputs.multi_severity.value}
+  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                      AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+  AND AGE < 110;
+```
+
 ```sql barchart_mode
 WITH 
     combinations AS (
@@ -52,13 +62,20 @@ WITH
             SUM(COUNT) AS sum_count
         FROM crashes.crashes
         WHERE SEVERITY IN ${inputs.multi_severity.value}
-          AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+          AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                              AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+          AND (
+              CASE 
+                  WHEN AGE IS NULL OR AGE < 1 OR AGE > 120 THEN 120
+                  ELSE AGE
+              END
+          ) BETWEEN ${inputs.min_age} AND ${inputs.max_age}
         GROUP BY MODE, SEVERITY
     )
 SELECT
     c.MODE,
     c.SEVERITY,
-    COALESCE(cnt.sum_count, 0) AS sum_count,
+    COALESCE(cnt.sum_count, 0) AS sum_count
 FROM combinations c
 LEFT JOIN counts cnt 
     ON c.MODE = cnt.MODE AND c.SEVERITY = cnt.SEVERITY;
@@ -491,6 +508,19 @@ echartsOptions={{animation: false}}
     title="Select Severity"
     multiple=true
     defaultValue={['Fatal', 'Major']}
+/>
+
+<TextInput
+    name="max_age" 
+    title="Enter Min Age"
+    defaultValue="0"
+/>
+
+<TextInput
+    name="max_age"
+    title="Enter Max Age"
+    defaultValue="120"
+    description="For an accurate age count, enter a maximum age below 120, as 120 serves as a placeholder for missing age values in the records. The actual maximum age for the current selection of filters is {max_age[0].unique_max_age}."
 />
 
 <Alert status="info">
