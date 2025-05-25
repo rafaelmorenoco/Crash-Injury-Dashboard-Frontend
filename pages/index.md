@@ -513,9 +513,9 @@ echartsOptions={{animation: false}}
 
 <TextInput
     name="max_age"
-    title="Enter Max Age"
+    title="Enter Max Age**"
     defaultValue="120"
-    description="For an accurate age count, enter a maximum age below 120, as 120 serves as a placeholder for missing age values in the records. The actual maximum age for the current selection of filters is {max_age[0].unique_max_age}."
+    description="**For an accurate age count, enter a maximum age below 120, as 120 serves as a placeholder for missing age values in the records. The actual maximum age for the current selection of filters is {max_age[0].unique_max_age}."
 />
 
 <Alert status="info">
