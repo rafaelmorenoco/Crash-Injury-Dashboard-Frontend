@@ -64,12 +64,7 @@ WITH
         WHERE SEVERITY IN ${inputs.multi_severity.value}
           AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
                               AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-          AND (
-              CASE 
-                  WHEN AGE IS NULL OR AGE < 1 OR AGE > 120 THEN 120
-                  ELSE AGE
-              END
-          ) BETWEEN ${inputs.min_age} AND ${inputs.max_age}
+          AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
         GROUP BY MODE, SEVERITY
     )
 SELECT
@@ -511,7 +506,7 @@ echartsOptions={{animation: false}}
 />
 
 <TextInput
-    name="max_age" 
+    name="min_age" 
     title="Enter Min Age"
     defaultValue="0"
 />
