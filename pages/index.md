@@ -134,6 +134,7 @@ WITH
             SEVERITY IN ${inputs.multi_severity.value} 
             AND REPORTDATE >= (SELECT start_date FROM date_info)
             AND REPORTDATE <= (SELECT end_date FROM date_info)
+            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
         GROUP BY 
             MODE
     ), 
@@ -151,6 +152,7 @@ WITH
             AND REPORTDATE <= (
                 (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period)
             )
+            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
         GROUP BY 
             MODE
     ), 
@@ -267,6 +269,7 @@ WITH
             SEVERITY IN ${inputs.multi_severity.value} 
             AND REPORTDATE >= (SELECT start_date FROM date_info)
             AND REPORTDATE <= (SELECT end_date FROM date_info)
+            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
         GROUP BY 
             SEVERITY
     ), 
@@ -284,6 +287,7 @@ WITH
             AND REPORTDATE <= (
                 (SELECT end_date FROM offset_period) - (SELECT interval_offset FROM offset_period)
             )
+            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
         GROUP BY 
             SEVERITY
     ), 
