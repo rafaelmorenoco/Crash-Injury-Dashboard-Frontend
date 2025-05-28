@@ -8,7 +8,7 @@ queries:
 
     The Traffic Fatalities and Injuries Dashboard can be used by the public to know more about injuries or fatalities product of a crash in the District of Columbia (DC).
     
-    Adjust the Road User, Severity and Date filters to refine the results.
+    Adjust the Road User, Severity, Age and Date filters to refine the results.
 
 </Details>
 
@@ -43,7 +43,7 @@ SELECT
 FROM crashes.crashes
 WHERE SEVERITY IN ${inputs.multi_severity.value}
   AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-                      AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+  AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
   AND AGE < 110;
 ```
 
@@ -63,7 +63,7 @@ WITH
         FROM crashes.crashes
         WHERE SEVERITY IN ${inputs.multi_severity.value}
           AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-                              AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+          AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
           AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
         GROUP BY MODE, SEVERITY
     )

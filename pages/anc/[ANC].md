@@ -50,6 +50,16 @@ from smd.smd_2023
 group by 1
 ```
 
+```sql max_age
+SELECT 
+    MAX(AGE) AS unique_max_age
+FROM crashes.crashes
+WHERE SEVERITY IN ${inputs.multi_severity.value}
+  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+  AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+  AND AGE < 110;
+```
+
 ```sql smd_map
 SELECT 
     smd_2023.SMD,
@@ -67,6 +77,7 @@ LEFT JOIN (
         AND MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
         AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+        AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
         AND SMD IS NOT NULL
     GROUP BY 
         SMD
@@ -149,7 +160,8 @@ WITH
             crashes.SEVERITY IN ${inputs.multi_severity.value} 
             AND crashes.MODE IN ${inputs.multi_mode_dd.value}
             AND crashes.REPORTDATE BETWEEN (SELECT start_date FROM date_info)
-                                        AND (SELECT end_date FROM date_info)
+            AND (SELECT end_date FROM date_info)
+            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
         GROUP BY 
             crashes.SMD
     ), 
@@ -170,6 +182,7 @@ WITH
                 ) AND (
                     (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period)
                 )
+            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
         GROUP BY 
             crashes.SMD
     ),
@@ -274,6 +287,19 @@ WHERE
     multiple=true
     selectAllByDefault=true
     description="*Only fatal"
+/>
+
+<TextInput
+    name="min_age" 
+    title="Enter Min Age"
+    defaultValue="0"
+/>
+
+<TextInput
+    name="max_age"
+    title="Enter Max Age**"
+    defaultValue="120"
+    description="**For an accurate age count, enter a maximum age below 120, as 120 serves as a placeholder for missing age values in the records. The actual maximum age for the current selection of filters is {max_age[0].unique_max_age}."
 />
 
 <Alert status="info">

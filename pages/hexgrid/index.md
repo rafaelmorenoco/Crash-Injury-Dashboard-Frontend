@@ -35,6 +35,16 @@ from hin.hin
 group by all
 ```
 
+```sql max_age
+SELECT 
+    MAX(AGE) AS unique_max_age
+FROM crashes.crashes
+WHERE SEVERITY IN ${inputs.multi_severity.value}
+  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                      AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+  AND AGE < 110;
+```
+
 ```sql day_time
 WITH reference AS (
     SELECT
@@ -80,6 +90,7 @@ WITH reference AS (
             MODE IN ${inputs.multi_mode_dd.value}
             AND SEVERITY IN ${inputs.multi_severity.value}
             AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
         GROUP BY 
             day_of_week, day_number, hour_number
     )
@@ -111,6 +122,7 @@ count_data AS (
         AND SEVERITY IN ${inputs.multi_severity.value}
         AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) 
         AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+        AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
     GROUP BY hour_number
 )
 SELECT
@@ -167,6 +179,7 @@ count_data AS (
     AND SEVERITY IN ${inputs.multi_severity.value}
     AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) 
     AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+    AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
     GROUP BY day_of_week, day_number
 )
 SELECT
@@ -192,6 +205,7 @@ LEFT JOIN crashes.crashes c
     AND c.SEVERITY IN ${inputs.multi_severity.value}
     AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
     AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+    AND c.AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
 GROUP BY h.GRID_ID;
 ```
 
@@ -210,7 +224,8 @@ LEFT JOIN (
         c.MODE IN ${inputs.multi_mode_dd.value}
         AND c.SEVERITY IN ${inputs.multi_severity.value}
         AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-                              AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+        AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+        AND c.AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
     GROUP BY c.GRID_ID
 ) AS i
 ON h.GRID_ID = i.GRID_ID;
@@ -274,6 +289,19 @@ ON h.GRID_ID = i.GRID_ID;
     multiple=true
     selectAllByDefault=true
     description="*Only fatal"
+/>
+
+<TextInput
+    name="min_age" 
+    title="Enter Min Age"
+    defaultValue="0"
+/>
+
+<TextInput
+    name="max_age"
+    title="Enter Max Age**"
+    defaultValue="120"
+    description="**For an accurate age count, enter a maximum age below 120, as 120 serves as a placeholder for missing age values in the records. The actual maximum age for the current selection of filters is {max_age[0].unique_max_age}."
 />
 
 <Alert status="info">

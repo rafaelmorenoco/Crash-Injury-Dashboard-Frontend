@@ -43,6 +43,16 @@ from dc_boundary.dc_boundary
 group by 1
 ```
 
+```sql max_age
+SELECT 
+    MAX(AGE) AS unique_max_age
+FROM crashes.crashes
+WHERE SEVERITY IN ${inputs.multi_severity.value}
+  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+  AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+  AND AGE < 110;
+```
+
 ```sql yoy_text_fatal
 WITH date_range AS (
     SELECT
@@ -120,6 +130,7 @@ FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
   AND SEVERITY = 'Fatal'
   AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+  AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
 GROUP BY all;
 ```
 
@@ -161,6 +172,19 @@ As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_
     multiple=true
     selectAllByDefault=true
     description="*Only fatal"
+/>
+
+<TextInput
+    name="min_age" 
+    title="Enter Min Age"
+    defaultValue="0"
+/>
+
+<TextInput
+    name="max_age"
+    title="Enter Max Age**"
+    defaultValue="120"
+    description="**For an accurate age count, enter a maximum age below 120, as 120 serves as a placeholder for missing age values in the records. The actual maximum age for the current selection of filters is {max_age[0].unique_max_age}."
 />
 
 <Alert status="info">
