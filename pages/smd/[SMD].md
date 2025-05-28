@@ -47,6 +47,16 @@ where SMD = '${params.SMD}'
 group by 1
 ```
 
+```sql max_age
+SELECT 
+    MAX(AGE) AS unique_max_age
+FROM crashes.crashes
+WHERE SEVERITY IN ${inputs.multi_severity.value}
+  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                      AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+  AND AGE < 110;
+```
+
 ```sql table_query
 SELECT
     REPORTDATE,
@@ -60,6 +70,7 @@ AND SMD = '${params.SMD}'
 AND SEVERITY IN ${inputs.multi_severity.value}
 AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) 
 AND (('${inputs.date_range.end}'::DATE)+ INTERVAL '1 day')
+AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
 GROUP BY all
 ```
 
@@ -73,60 +84,11 @@ SELECT
     ADDRESS
 FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
-  AND SEVERITY IN ${inputs.multi_severity.value}
-  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-                             AND (('${inputs.date_range.end}'::DATE)+ INTERVAL '1 day')
+AND SEVERITY IN ${inputs.multi_severity.value}
+AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+AND (('${inputs.date_range.end}'::DATE)+ INTERVAL '1 day')
+AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
 GROUP BY all;
-```
-
-```sql anc_map
-SELECT 
-    smd_2023.SMD,
-    '/smd/' || smd_2023.SMD AS link,
-    COALESCE(subquery.Injuries, 0) AS Injuries
-FROM 
-    smd.smd_2023 AS smd_2023
-LEFT JOIN (
-    SELECT
-        crashes.SMD,
-        SUM(COUNT) AS Injuries
-    FROM 
-        crashes.crashes AS crashes
-    WHERE 
-        ANC = (SELECT 
-            CASE 
-                WHEN smd_2023.SMD LIKE '3-4G%' THEN '3-4G'
-                ELSE SUBSTRING(smd_2023.SMD, 1, 2)
-            END AS ANC
-        FROM smd.smd_2023 AS smd_2023
-        WHERE smd_2023.SMD = '${params.SMD}'
-        GROUP BY 1)
-        AND crashes.MODE IN ${inputs.multi_mode_dd.value}
-        AND crashes.SEVERITY IN ${inputs.multi_severity.value}
-        AND crashes.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-                             AND (('${inputs.date_range.end}'::DATE)+ INTERVAL '1 day')
-        AND crashes.SMD IS NOT NULL
-    GROUP BY 
-        crashes.SMD
-) AS subquery
-ON 
-    smd_2023.SMD = subquery.SMD
-JOIN (
-    SELECT DISTINCT crashes.SMD
-    FROM crashes.crashes AS crashes
-    WHERE ANC = (SELECT 
-        CASE 
-            WHEN smd_2023.SMD LIKE '3-4G%' THEN '3-4G'
-            ELSE SUBSTRING(smd_2023.SMD, 1, 2)
-        END AS ANC
-    FROM smd.smd_2023 AS smd_2023
-    WHERE smd_2023.SMD = '${params.SMD}'
-    GROUP BY 1)
-) AS smd_anc
-ON 
-    smd_2023.SMD = smd_anc.SMD
-ORDER BY 
-    smd_2023.SMD;
 ```
 
 ```sql mode_severity_selection
@@ -178,6 +140,19 @@ WHERE
     description="*Only fatal"
 />
 
+<TextInput
+    name="min_age" 
+    title="Enter Min Age"
+    defaultValue="0"
+/>
+
+<TextInput
+    name="max_age"
+    title="Enter Max Age**"
+    defaultValue="120"
+    description="**For an accurate age count, enter a maximum age below 120, as 120 serves as a placeholder for missing age values in the records. The actual maximum age for the current selection of filters is {max_age[0].unique_max_age}."
+/>
+
 <Alert status="info">
 The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The selection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
@@ -223,26 +198,6 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
         </Alert>
     </Group>
 </Grid>
-
-#### Selected ANC
-        <Note>
-            Select an SMD to zoom in and see more details about the crashes within it.
-        </Note>
-        <BaseMap
-            height=500
-            startingZoom=14
-        >
-        <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00 ignoreZoom=true borderWidth=1.5
-            tooltip={[
-                {id: 'ROUTENAME'}
-            ]}
-        />
-        <Areas data={anc_map} height=650 startingZoom=13 geoJsonUrl='/smd_2023.geojson' geoId=SMD areaCol=SMD value=Injuries min=0 borderWidth=1.5 borderColor='#A9A9A9' link=link
-        />
-        </BaseMap>
-        <Note>
-            The purple lines represent DC's High Injury Network
-        </Note>
 
 <Note>
     The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs.

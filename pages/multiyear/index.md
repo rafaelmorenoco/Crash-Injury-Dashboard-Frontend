@@ -45,6 +45,16 @@ from hin.hin
 group by all
 ```
 
+```sql max_age
+SELECT 
+    MAX(AGE) AS unique_max_age
+FROM crashes.crashes
+WHERE SEVERITY IN ${inputs.multi_severity.value}
+  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                      AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+  AND AGE < 110;
+```
+
 ```sql linechart_month
 WITH 
     months AS (
@@ -72,6 +82,7 @@ WITH
             AND SEVERITY IN ${inputs.multi_severity.value}
             AND REPORTDATE BETWEEN ('${inputs.date_range_cumulative.start}'::DATE) 
             AND (('${inputs.date_range_cumulative.end}'::DATE)+ INTERVAL '1 day')
+            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
         GROUP BY 
             EXTRACT(YEAR FROM REPORTDATE), 
             EXTRACT(MONTH FROM REPORTDATE)
@@ -185,6 +196,7 @@ WITH
           AND REPORTDATE < CAST(y.yr || '-' || d.month_day_end AS DATE) + INTERVAL '1 day'
           AND crashes.SEVERITY IN ${inputs.multi_severity.value}
           AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+          AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
       ) AS year_count
     FROM years y
   ),
@@ -242,9 +254,10 @@ WITH
              date_info_cy d
         WHERE
           c.REPORTDATE >= make_date(ay.yr, d.start_month, d.start_day) AND
-          c.REPORTDATE < make_date(ay.yr, d.end_month, d.end_day) + INTERVAL '1 day' AND
-          c.SEVERITY IN ${inputs.multi_severity.value} AND
-          c.MODE IN ${inputs.multi_mode_dd.value}
+          c.REPORTDATE < make_date(ay.yr, d.end_month, d.end_day) + INTERVAL '1 day' 
+          AND c.SEVERITY IN ${inputs.multi_severity.value} 
+          AND c.MODE IN ${inputs.multi_mode_dd.value}
+          AND c.AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
       ) AS year_count,
       (SELECT cy_start_date FROM date_info_cy) AS cy_start_date,
       (SELECT cy_end_date FROM date_info_cy) AS cy_end_date
@@ -285,6 +298,19 @@ ORDER BY yc.yr DESC;
     multiple=true
     selectAllByDefault=true
     description="*Only fatal"
+/>
+
+<TextInput
+    name="min_age" 
+    title="Enter Min Age"
+    defaultValue="0"
+/>
+
+<TextInput
+    name="max_age"
+    title="Enter Max Age**"
+    defaultValue="120"
+    description="**For an accurate age count, enter a maximum age below 120, as 120 serves as a placeholder for missing age values in the records. The actual maximum age for the current selection of filters is {max_age[0].unique_max_age}."
 />
 
 <Alert status="info">

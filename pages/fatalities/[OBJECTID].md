@@ -162,5 +162,8 @@ UNION ALL
         <Column id=column_name title="Fatality Details" wrap=true/>
         <Column id=column_value title=" " wrap=true/>
       </DataTable>
+      <Note>
+        *Fatal only.
+      </Note>
     </Group>
 </Grid>
