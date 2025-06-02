@@ -22,7 +22,7 @@ group by 1
 ```sql unique_year
 SELECT DISTINCT strftime('%Y', REPORTDATE) AS year_string
 FROM crashes.crashes
-WHERE strftime('%Y', REPORTDATE) BETWEEN '2018' 
+WHERE strftime('%Y', REPORTDATE) BETWEEN '2017' 
     AND (SELECT strftime('%Y', MAX(REPORTDATE)) FROM crashes.crashes)
 ORDER BY year_string DESC;
 ```
@@ -30,7 +30,7 @@ ORDER BY year_string DESC;
 ```sql unique_cy
 SELECT DISTINCT CAST(DATE_PART('year', REPORTDATE) AS INTEGER) AS year_integer
 FROM crashes.crashes
-WHERE DATE_PART('year', REPORTDATE) BETWEEN 2018
+WHERE DATE_PART('year', REPORTDATE) BETWEEN 2017
     AND (SELECT CAST(DATE_PART('year', MAX(REPORTDATE)) AS INTEGER) FROM crashes.crashes)
     AND DATE_PART('year', REPORTDATE) <> DATE_PART('year', CURRENT_DATE)
 ORDER BY year_integer DESC;
@@ -179,8 +179,12 @@ WITH
     FROM (
       SELECT DISTINCT strftime('%Y', REPORTDATE) AS year_string
       FROM crashes.crashes
-      WHERE strftime('%Y', REPORTDATE) BETWEEN '2018' 
-            AND (SELECT strftime('%Y', MAX(REPORTDATE)) FROM crashes.crashes)
+      WHERE strftime('%Y', REPORTDATE) BETWEEN 
+        (
+          SELECT MIN(x) 
+          FROM (VALUES ${inputs.multi_year.value}) AS t(x)
+        )
+        AND (SELECT strftime('%Y', MAX(REPORTDATE)) FROM crashes.crashes)
     ) unique_years
     WHERE year_string IN ${inputs.multi_year.value}
     ORDER BY year_string DESC
@@ -320,7 +324,7 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
 <Grid cols=2>
     <Group>
         <DateRange
-        start='2018-01-01'
+        start='2017-01-01'
         end={
           (last_record && last_record[0] && last_record[0].end_date)
             ? `${last_record[0].end_date}`
@@ -456,8 +460,8 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
             <DataTable data={cy_table} wrapTitles=true rowShading=true title="Comparison of Prior Calendar Years from {cy_table[0].Date_Range}">
                 <Column id=Year wrap=true/>
                 <Column id=Count title="Injuries"/>
-                <Column id=Diff_from_previous contentType=delta downIsGood=True title="Diff From Prior Year"/>
-                <Column id=Percent_Diff_from_previous fmt='pct0' title="% Diff From Prior Year"/> 
+                <Column id=Diff_from_previous contentType=delta downIsGood=True title="Prior Year Diff"/>
+                <Column id=Percent_Diff_from_previous fmt='pct0' title="Prior Year % Diff"/> 
             </DataTable>
     </Group>
 </Grid>
