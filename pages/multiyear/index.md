@@ -55,77 +55,6 @@ WHERE SEVERITY IN ${inputs.multi_severity.value}
   AND AGE < 110;
 ```
 
-```sql linechart_month
-WITH 
-    months AS (
-        SELECT 1 AS month, 'Jan' AS month_name UNION ALL
-        SELECT 2, 'Feb' UNION ALL
-        SELECT 3, 'Mar' UNION ALL
-        SELECT 4, 'Apr' UNION ALL
-        SELECT 5, 'May' UNION ALL
-        SELECT 6, 'Jun' UNION ALL
-        SELECT 7, 'Jul' UNION ALL
-        SELECT 8, 'Aug' UNION ALL
-        SELECT 9, 'Sep' UNION ALL
-        SELECT 10, 'Oct' UNION ALL
-        SELECT 11, 'Nov' UNION ALL
-        SELECT 12, 'Dec'
-    ),
-    monthly_counts AS (
-        SELECT 
-            EXTRACT(YEAR FROM REPORTDATE) AS year,
-            EXTRACT(MONTH FROM REPORTDATE) AS month,
-            SUM("COUNT") AS monthly_total
-        FROM crashes.crashes
-        WHERE 
-            MODE IN ${inputs.multi_mode_dd.value}
-            AND SEVERITY IN ${inputs.multi_severity.value}
-            AND REPORTDATE BETWEEN ('${inputs.date_range_cumulative.start}'::DATE) 
-            AND (('${inputs.date_range_cumulative.end}'::DATE)+ INTERVAL '1 day')
-            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
-        GROUP BY 
-            EXTRACT(YEAR FROM REPORTDATE), 
-            EXTRACT(MONTH FROM REPORTDATE)
-    ),
-    max_year_cte AS (
-        SELECT MAX(year) AS max_year
-        FROM monthly_counts
-    ),
-    max_month_cte AS (
-        SELECT MAX(month) AS max_data_month
-        FROM monthly_counts
-        WHERE year = (SELECT max_year FROM max_year_cte)
-    ),
-    current_month_cte AS (
-        SELECT EXTRACT(MONTH FROM CURRENT_DATE) AS current_month
-    )
-SELECT 
-    y.year,
-    m.month,
-    m.month_name,
-    COALESCE(mc.monthly_total, 0) AS monthly_total,
-    SUM(COALESCE(mc.monthly_total, 0)) OVER (PARTITION BY y.year ORDER BY m.month ASC) AS cumulative_total
-FROM (SELECT DISTINCT year FROM monthly_counts) y
-CROSS JOIN months m
-LEFT JOIN monthly_counts mc 
-    ON y.year = mc.year AND m.month = mc.month
-WHERE
-    -- For years other than the max_year, show all months
-    y.year <> (SELECT max_year FROM max_year_cte)
-    OR
-    -- For the max_year, show months up to the effective month.
-    -- effective_max_month is the greater of the last data month and the current month.
-    m.month <= (
-        SELECT CASE 
-                 WHEN (SELECT current_month FROM current_month_cte) > max_data_month 
-                      THEN (SELECT current_month FROM current_month_cte)
-                 ELSE max_data_month
-               END
-        FROM max_month_cte
-    )
-ORDER BY y.year DESC, m.month;
-```
-
 ```sql mode_severity_selection
 SELECT
     STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
@@ -135,6 +64,32 @@ FROM
 WHERE
     MODE IN ${inputs.multi_mode_dd.value}
     AND SEVERITY IN ${inputs.multi_severity.value};
+```
+
+```sql ytd_avg
+WITH date_range AS (
+  SELECT
+    '${inputs.date_range.start}'::DATE AS start_date,
+    CASE
+      WHEN '${inputs.date_range.end}'::DATE >= (SELECT CAST(MAX(REPORTDATE) AS DATE) FROM crashes.crashes)
+        THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)
+      ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+    END AS end_date
+)
+SELECT COALESCE(AVG(yearly_count), 0) AS average_count
+FROM (
+  SELECT 
+    CAST(strftime('%Y', REPORTDATE) AS INTEGER) AS yr,
+    SUM("COUNT") AS yearly_count
+  FROM crashes.crashes, date_range
+  WHERE REPORTDATE >= CAST(CAST(strftime('%Y', REPORTDATE) AS TEXT) || '-' || strftime(start_date, '%m-%d') AS DATE)
+    AND REPORTDATE < CAST(CAST(strftime('%Y', REPORTDATE) AS TEXT) || '-' || strftime(end_date, '%m-%d') AS DATE) + INTERVAL '1 day'
+    AND crashes.SEVERITY IN ${inputs.multi_severity.value}
+    AND crashes.MODE IN ${inputs.multi_mode_dd.value}
+    AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+    AND strftime('%Y', REPORTDATE) IN ${inputs.multi_year.value}
+  GROUP BY yr
+) AS yearly_counts;
 ```
 
 ```sql ytd_table
@@ -224,6 +179,49 @@ SELECT
 FROM yearly_counts yc
 CROSS JOIN current_year_count cyc
 ORDER BY yc.yr DESC;
+```
+
+```sql cy_avg
+WITH
+  report_date_range_cy AS (
+    SELECT
+      '${inputs.date_range_cy.start}'::DATE AS cy_start_date,
+      '${inputs.date_range_cy.end}'::DATE AS cy_end_date
+  ),
+  date_info_cy AS (
+    SELECT
+      cy_start_date,
+      cy_end_date,
+      EXTRACT(MONTH FROM cy_start_date) AS start_month,
+      EXTRACT(DAY FROM cy_start_date) AS start_day,
+      EXTRACT(MONTH FROM cy_end_date) AS end_month,
+      EXTRACT(DAY FROM cy_end_date) AS end_day
+    FROM report_date_range_cy
+  ),
+  allowed_years AS (
+    SELECT DISTINCT CAST(strftime('%Y', REPORTDATE) AS INTEGER) AS yr
+    FROM crashes.crashes
+    WHERE CAST(strftime('%Y', REPORTDATE) AS INTEGER) IN ${inputs.multi_cy.value}
+  ),
+  yearly_counts AS (
+    SELECT
+      ay.yr,
+      (
+        SELECT SUM("COUNT")
+        FROM crashes.crashes c,
+             date_info_cy d
+        WHERE
+          c.REPORTDATE >= make_date(ay.yr, d.start_month, d.start_day)
+          AND c.REPORTDATE < make_date(ay.yr, d.end_month, d.end_day) + INTERVAL '1 day'
+          AND c.SEVERITY IN ${inputs.multi_severity.value}
+          AND c.MODE IN ${inputs.multi_mode_dd.value}
+          AND c.AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+      ) AS year_count
+    FROM allowed_years ay
+  )
+SELECT
+  COALESCE(AVG(year_count), 0) AS average_count
+FROM yearly_counts;
 ```
 
 ```sql cy_table
@@ -321,148 +319,146 @@ ORDER BY yc.yr DESC;
 The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} column="SEVERITY_SELECTION"/></b>. The selection for <b>Road User</b> is: <b><Value data={mode_severity_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
 </Alert>
 
+<DateRange
+start={
+    (() => {
+    const beginningOfYear = new Date(new Date().getFullYear(), 0, 1);
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York'
+    }).format(beginningOfYear);
+    })()
+}
+  end={
+        (last_record && last_record[0] && last_record[0].end_date)
+          ? `${last_record[0].end_date}`
+          : (() => {
+              const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
+              return new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/New_York'
+              }).format(twoDaysAgo);
+            })()
+      }
+title="Select Time Period"
+name="date_range"
+presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today']}
+defaultValue="Year to Today"
+description="By default, there is a two-day lag after the latest update"
+/>
+
+<Dropdown
+    data={unique_year} 
+    name=multi_year
+    value=year_string
+    title="Select Year"
+    multiple=true
+    selectAllByDefault=true
+/>
+
 <Grid cols=2>
     <Group>
-        <DateRange
-        start='2017-01-01'
-        end={
-          (last_record && last_record[0] && last_record[0].end_date)
-            ? `${last_record[0].end_date}`
-            : (() => {
-                const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
-                return new Intl.DateTimeFormat('en-CA', {
-                  timeZone: 'America/New_York'
-                }).format(twoDaysAgo);
-              })()
-        }
-        title="Select Time Period"
-        name="date_range_cumulative"
-        presetRanges={['All Time']}
-        defaultValue='All Time'
-        description="By default, there is a two-day lag after the latest update"
-        />
-        <LineChart 
-            title="Yearly Cumulative"
-            chartAreaHeight={450}
-            subtitle="Injuries"
-            data={linechart_month}
-            x="month"
-            y="cumulative_total"
-            series="year"
-            labels={false}
-            echartsOptions={{
-                legend: {
-                    data: ["2040","2039","2038","2037","2036","2035","2034","2033","2032","2031","2030","2030","2029","2028","2027","2026","2025","2024","2023","2022","2021","2020","2019","2018","2017","2016","2015"],
-                },
-                xAxis: {
-                    type: 'category',
-                    axisLabel: {
-                        rotate: 90,
-                        formatter: function(value) {
-                            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                            return months[value - 1] || value;
-                        }
-                    }
-                },
-                tooltip: {
-                    trigger: 'axis',
-                    formatter: function(params) {
-                        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                        const monthNumber = params[0].axisValue;
-                        const monthLabel = months[monthNumber - 1] || monthNumber;
-            
-                        let tooltipContent = `<strong>${monthLabel}</strong><br/>`;
-                        params.forEach(item => {
-                            const value = Array.isArray(item.value) ? item.value[1] : item.value;
-                            tooltipContent += `${item.marker} <strong>${item.seriesName}</strong>: ${value}<br/>`;
-                        });
-                        return tooltipContent;
-                    }
-                }
-            }}
-        />
+        <BarChart 
+          data={ytd_table}
+          chartAreaHeight=230 
+          x="Year" 
+          y="Count" 
+          labels={true} 
+          yAxisTitle="Injuries" 
+          xAxisLabels={true} 
+          xTickMarks={true} 
+          leftPadding={10} 
+          rightPadding={30} 
+          title={`Years ${ytd_table[0].Date_Range}`}
+          echartsOptions={{
+            xAxis: {
+              type: 'category',
+              axisLabel: {
+                rotate: 90
+              }
+            }
+          }}
+        >
+          <ReferenceLine data={ytd_avg} y="average_count" label="Average"/>
+        </BarChart>
     </Group>
     <Group>
-        <DateRange
-        start={
-            (() => {
-            const beginningOfYear = new Date(new Date().getFullYear(), 0, 1);
-            return new Intl.DateTimeFormat('en-CA', {
-                timeZone: 'America/New_York'
-            }).format(beginningOfYear);
-            })()
-        }
-          end={
-                (last_record && last_record[0] && last_record[0].end_date)
-                  ? `${last_record[0].end_date}`
-                  : (() => {
-                      const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
-                      return new Intl.DateTimeFormat('en-CA', {
-                        timeZone: 'America/New_York'
-                      }).format(twoDaysAgo);
-                    })()
-              }
-        title="Select Time Period"
-        name="date_range"
-        presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today']}
-        defaultValue="Year to Today"
-        description="By default, there is a two-day lag after the latest update"
-        />
-        <Dropdown
-            data={unique_year} 
-            name=multi_year
-            value=year_string
-            title="Select Year"
-            multiple=true
-            selectAllByDefault=true
-        />
         <DataTable data={ytd_table} wrapTitles=true rowShading=true title="{ytd_table[0].Year} {ytd_table[0].Date_Range} vs Prior Years {ytd_table[0].Date_Range}">
             <Column id=Year wrap=true/>
             <Column id=Count title="Injuries"/>
             <Column id=Diff_from_current contentType=delta downIsGood=True title=" {ytd_table[0].Year} Diff"/>
             <Column id=Percent_Diff_from_current fmt='pct0' title="{ytd_table[0].Year} % Diff"/> 
         </DataTable>
-            <DateRange
-            start={
-              (() => {
-                // Create a date for January 1st of the current year
-                const currentYearStart = new Date(new Date().getFullYear(), 0, 1);
-                return new Intl.DateTimeFormat('en-CA', {
-                  timeZone: 'America/New_York'
-                }).format(currentYearStart);
-              })()
+    </Group>
+</Grid>
+
+<DateRange
+start={
+  (() => {
+    // Create a date for January 1st of the current year
+    const currentYearStart = new Date(new Date().getFullYear(), 0, 1);
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York'
+    }).format(currentYearStart);
+  })()
+}
+end={
+      (() => {
+        const currentYearEnd = new Date(new Date().getFullYear(), 11, 31);
+        return new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'America/New_York'
+        }).format(currentYearEnd);
+      })()
+    }
+  title="Select Time Period"
+  name="date_range_cy"
+  presetRanges={['Last Year']}
+  defaultValue='Last Year'
+  description="Date range set to the entirety of the previous year"
+/>
+<Info description=
+    "The date picker considers only your selection of the month and day. For year selection use the year dropdown."
+/>
+<Dropdown
+    data={unique_cy} 
+    name=multi_cy
+    value=year_integer
+    title="Select Year"
+    multiple=true
+    selectAllByDefault=true
+/>
+
+<Grid cols=2>
+    <Group>
+        <BarChart 
+          data={cy_table}
+          chartAreaHeight=230 
+          x="Year" 
+          y="Count" 
+          labels={true} 
+          yAxisTitle="Injuries" 
+          xAxisLabels={true} 
+          xTickMarks={true} 
+          leftPadding={10} 
+          rightPadding={30} 
+          title={`Calendar Years from ${cy_table[0].Date_Range}`}
+          echartsOptions={{
+            xAxis: {
+              type: 'category',
+              axisLabel: {
+                rotate: 90
+              }
             }
-            end={
-                  (() => {
-                    const currentYearEnd = new Date(new Date().getFullYear(), 11, 31);
-                    return new Intl.DateTimeFormat('en-CA', {
-                      timeZone: 'America/New_York'
-                    }).format(currentYearEnd);
-                  })()
-                }
-              title="Select Time Period"
-              name="date_range_cy"
-              presetRanges={['Last Year']}
-              defaultValue='Last Year'
-              description="Date range set to the entirety of the previous year"
-            />
-            <Info description=
-                "The date picker considers only your selection of the month and day. For year selection use the year dropdown."
-            />
-            <Dropdown
-                data={unique_cy} 
-                name=multi_cy
-                value=year_integer
-                title="Select Year"
-                multiple=true
-                selectAllByDefault=true
-            />
-            <DataTable data={cy_table} wrapTitles=true rowShading=true title="Comparison of Prior Calendar Years from {cy_table[0].Date_Range}">
-                <Column id=Year wrap=true/>
-                <Column id=Count title="Injuries"/>
-                <Column id=Diff_from_previous contentType=delta downIsGood=True title="Prior Year Diff"/>
-                <Column id=Percent_Diff_from_previous fmt='pct0' title="Prior Year % Diff"/> 
-            </DataTable>
+          }}
+        >
+          <ReferenceLine data={cy_avg} y="average_count" label="Average"/>
+        </BarChart>
+    </Group>
+    <Group>
+        <DataTable data={cy_table} wrapTitles=true rowShading=true title="Comparison of Prior Calendar Years from {cy_table[0].Date_Range}">
+            <Column id=Year wrap=true/>
+            <Column id=Count title="Injuries"/>
+            <Column id=Diff_from_previous contentType=delta downIsGood=True title="Prior Year Diff"/>
+            <Column id=Percent_Diff_from_previous fmt='pct0' title="Prior Year % Diff"/> 
+        </DataTable>
     </Group>
 </Grid>
 

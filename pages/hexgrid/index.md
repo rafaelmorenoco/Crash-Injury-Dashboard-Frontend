@@ -254,7 +254,7 @@ ON h.GRID_ID = i.GRID_ID;
 ```
 
 <DateRange
-  start="2018-01-01"
+  start="2017-01-01"
   end={
     (last_record && last_record[0] && last_record[0].end_date)
       ? `${last_record[0].end_date}`

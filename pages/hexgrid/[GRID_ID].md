@@ -49,17 +49,26 @@ WHERE SEVERITY IN ${inputs.multi_severity.value}
 ```sql table_query
 SELECT
     REPORTDATE,
-    SEVERITY,
-    MODE,
+    MODE || '-' || SEVERITY AS mode_severity,
     ADDRESS,
-    sum(COUNT) as Count
+    CASE
+        WHEN CAST(AGE AS INTEGER) = 120 THEN '-'
+        ELSE CAST(CAST(AGE AS INTEGER) AS VARCHAR)
+    END AS Age,
+    SUM(COUNT) AS Count
 FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
-AND GRID_ID = '${params.GRID_ID}'
-AND SEVERITY IN ${inputs.multi_severity.value}
-AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
-GROUP BY all
+  AND GRID_ID = '${params.GRID_ID}'
+  AND SEVERITY IN ${inputs.multi_severity.value}
+  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+      AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+  AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+GROUP BY
+    REPORTDATE,
+    MODE,
+    SEVERITY,
+    ADDRESS,
+    AGE;
 ```
 
 ```sql incidents
@@ -130,7 +139,7 @@ WHERE
     </Group>
     <Group>
         <DateRange
-        start="2018-01-01"
+        start="2017-01-01"
         end={
             (last_record && last_record[0] && last_record[0].end_date)
             ? `${last_record[0].end_date}`
@@ -214,8 +223,8 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
     <Group>
         <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 title='Injury Table' rowShading=true wrapTitles=true>
           <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total" wrap=true description="24-Hour Format"/>
-          <Column id=SEVERITY totalAgg="-"/>
-          <Column id=MODE title='Road User' totalAgg='{inputs.multi_mode}'/>
+          <Column id=mode_severity title='Road User - Severity' totalAgg="-" wrap=true/>
+          <Column id=Age totalAgg="-"/>
           <Column id=ADDRESS title='Apporx Address' wrap=true/>
           <Column id=Count totalAgg=sum/>
         </DataTable>
