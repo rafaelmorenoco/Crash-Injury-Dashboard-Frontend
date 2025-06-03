@@ -10,13 +10,6 @@ select *, '/fatalities/' || OBJECTID as link
 from ${fatality}
 ```
 
-```sql unique_mode
-select 
-    MODE
-from crashes.crashes
-group by 1
-```
-
 ```sql unique_hin
 select 
     GIS_ID,
@@ -61,7 +54,7 @@ group by all
 
   UNION ALL
 
-  SELECT 'Road User', MODE::TEXT
+  SELECT 'Road User', replace(MODE, '*', '') AS MODE
   FROM crashes.crashes
   WHERE OBJECTID = '${params.OBJECTID}'
 

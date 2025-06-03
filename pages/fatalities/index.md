@@ -22,10 +22,10 @@ from ${fatality}
 ```
 
 ```sql unique_mode
-select 
-    MODE
-from crashes.crashes
-group by 1
+SELECT 
+    replace(MODE, '*', '') AS MODE,
+FROM crashes.crashes
+GROUP BY 1
 ```
 
 ```sql unique_hin
@@ -47,10 +47,10 @@ group by 1
 SELECT 
     MAX(AGE) AS unique_max_age
 FROM crashes.crashes
-WHERE SEVERITY IN ${inputs.multi_severity.value}
-  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-  AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-  AND AGE < 110;
+WHERE MODE IN ${inputs.multi_mode_dd.value}
+AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+AND AGE < 110;
 ```
 
 ```sql yoy_text_fatal
@@ -121,13 +121,17 @@ SELECT
     REPORTDATE,
     LATITUDE,
     LONGITUDE,
-    MODE,
+    replace(MODE, '*', '') AS MODE,
     SEVERITY,
     ADDRESS,
     CCN,
+    CASE
+        WHEN CAST(AGE AS INTEGER) = 120 THEN '-'
+        ELSE CAST(CAST(AGE AS INTEGER) AS VARCHAR)
+    END AS Age,
     '/fatalities/' || OBJECTID AS link
 FROM crashes.crashes
-WHERE MODE IN ${inputs.multi_mode_dd.value}
+WHERE replace(MODE, '*', '') IN ${inputs.multi_mode_dd.value}
   AND SEVERITY = 'Fatal'
   AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
   AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
@@ -141,77 +145,6 @@ FROM
     crashes.crashes
 WHERE
     MODE IN ${inputs.multi_mode_dd.value};
-```
-
-```sql linechart_month
-WITH 
-    months AS (
-        SELECT 1 AS month, 'Jan' AS month_name UNION ALL
-        SELECT 2, 'Feb' UNION ALL
-        SELECT 3, 'Mar' UNION ALL
-        SELECT 4, 'Apr' UNION ALL
-        SELECT 5, 'May' UNION ALL
-        SELECT 6, 'Jun' UNION ALL
-        SELECT 7, 'Jul' UNION ALL
-        SELECT 8, 'Aug' UNION ALL
-        SELECT 9, 'Sep' UNION ALL
-        SELECT 10, 'Oct' UNION ALL
-        SELECT 11, 'Nov' UNION ALL
-        SELECT 12, 'Dec'
-    ),
-    monthly_counts AS (
-        SELECT 
-            EXTRACT(YEAR FROM REPORTDATE) AS year,
-            EXTRACT(MONTH FROM REPORTDATE) AS month,
-            SUM("COUNT") AS monthly_total
-        FROM crashes.crashes
-        WHERE 
-            MODE IN ${inputs.multi_mode_dd.value}
-            AND SEVERITY = 'Fatal'
-            AND REPORTDATE BETWEEN ('${inputs.date_range_cumulative.start}'::DATE) 
-            AND (('${inputs.date_range_cumulative.end}'::DATE)+ INTERVAL '1 day')
-            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
-        GROUP BY 
-            EXTRACT(YEAR FROM REPORTDATE), 
-            EXTRACT(MONTH FROM REPORTDATE)
-    ),
-    max_year_cte AS (
-        SELECT MAX(year) AS max_year
-        FROM monthly_counts
-    ),
-    max_month_cte AS (
-        SELECT MAX(month) AS max_data_month
-        FROM monthly_counts
-        WHERE year = (SELECT max_year FROM max_year_cte)
-    ),
-    current_month_cte AS (
-        SELECT EXTRACT(MONTH FROM CURRENT_DATE) AS current_month
-    )
-SELECT 
-    y.year,
-    m.month,
-    m.month_name,
-    COALESCE(mc.monthly_total, 0) AS monthly_total,
-    SUM(COALESCE(mc.monthly_total, 0)) OVER (PARTITION BY y.year ORDER BY m.month ASC) AS cumulative_total
-FROM (SELECT DISTINCT year FROM monthly_counts) y
-CROSS JOIN months m
-LEFT JOIN monthly_counts mc 
-    ON y.year = mc.year AND m.month = mc.month
-WHERE
-    -- For years other than the max_year, show all months
-    y.year <> (SELECT max_year FROM max_year_cte)
-    OR
-    -- For the max_year, show months up to the effective month.
-    -- effective_max_month is the greater of the last data month and the current month.
-    m.month <= (
-        SELECT CASE 
-                 WHEN (SELECT current_month FROM current_month_cte) > max_data_month 
-                      THEN (SELECT current_month FROM current_month_cte)
-                 ELSE max_data_month
-               END
-        FROM max_month_cte
-    )
-ORDER BY y.year DESC, m.month;
 ```
 
 As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_text_fatal} column="has_have"/> been <Value data={yoy_text_fatal} column="current_year_sum" agg=sum/> <Value data={yoy_text_fatal} column="fatality"/> among all road users in <Value data={yoy_text_fatal} column="current_year" fmt='####","'/>   <Value data={yoy_text_fatal} column="difference" agg=sum fmt='####' /> <Value data={yoy_text_fatal} column="difference_text"/> (<Delta data={yoy_text_fatal} column="percentage_change" fmt="+0%;-0%;0%" downIsGood=True neutralMin=-0.00 neutralMax=0.00/>) compared to the same period in <Value data={yoy_text_fatal} column="year_prior" fmt="####."/>
@@ -242,7 +175,6 @@ As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_
     title="Select Mode"
     multiple=true
     selectAllByDefault=true
-    description="*Only fatal"
 />
 
 <TextInput
@@ -259,10 +191,10 @@ As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_
 />
 
 <Alert status="info">
-The selection for <b>Road User</b> is: <b><Value data={mode_selection} column="MODE_SELECTION"/></b> <Info description="*Fatal only." color="primary" />
+The selection for <b>Road User</b> is: <b><Value data={mode_selection} column="MODE_SELECTION"/></b>
 </Alert>
 
-<Grid cols=3>
+<Grid cols=2>
     <Group>
         <Note>
             Each point on the map represents an fatality. Fatality incidents can overlap in the same spot.
@@ -298,74 +230,9 @@ The selection for <b>Road User</b> is: <b><Value data={mode_selection} column="M
         <DataTable data={inc_map} link=link wrapTitles=true rowShading=true search=true rows=8>
             <Column id=REPORTDATE title="Date" fmt='mm/dd/yy hh:mm' wrap=true/>
             <Column id=MODE title="Road User" wrap=true/>
+            <Column id=Age/>
             <Column id=ADDRESS wrap=true/>
         </DataTable>
-        <Note>
-            *Fatal only.
-        </Note>
-    </Group>
-    <Group>
-        <DateRange
-            start='2017-01-01'
-            end={
-            (last_record && last_record[0] && last_record[0].end_date)
-                ? `${last_record[0].end_date}`
-                : (() => {
-                    const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
-                    return new Intl.DateTimeFormat('en-CA', {
-                    timeZone: 'America/New_York'
-                    }).format(twoDaysAgo);
-                })()
-            }
-            title="Select Time Period"
-            name="date_range_cumulative"
-            presetRanges={['All Time']}
-            defaultValue='All Time'
-            description="By default, there is a two-day lag after the latest update"
-        />
-        <Info description=
-            "The chart shows the cumulative number of fatalities by month and year. The data is cumulative, meaning it adds up the fatalities for each month across the years."
-        />
-        <LineChart 
-            title="Monthly Cumulative by Year"
-            chartAreaHeight={350}
-            subtitle="Injuries"
-            data={linechart_month}
-            x="month"
-            y="cumulative_total"
-            series="year"
-            labels={false}
-            echartsOptions={{
-                legend: {
-                    data: ["2040","2039","2038","2037","2036","2035","2034","2033","2032","2031","2030","2030","2029","2028","2027","2026","2025","2024","2023","2022","2021","2020","2019","2018","2017","2016","2015"],
-                },
-                xAxis: {
-                    type: 'category',
-                    axisLabel: {
-                        rotate: 90,
-                        formatter: function(value) {
-                            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                            return months[value - 1] || value;
-                        }
-                    }
-                },
-                tooltip: {
-                    trigger: 'axis',
-                    formatter: function(params) {
-                        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                        const monthNumber = params[0].axisValue;
-                        const monthLabel = months[monthNumber - 1] || monthNumber;
-            
-                        let tooltipContent = `<strong>${monthLabel}</strong><br/>`;
-                        params.forEach(item => {
-                            const value = Array.isArray(item.value) ? item.value[1] : item.value;
-                            tooltipContent += `${item.marker} <strong>${item.seriesName}</strong>: ${value}<br/>`;
-                        });
-                        return tooltipContent;
-                    }
-                }
-            }}
-        />
     </Group>
 </Grid>
 
