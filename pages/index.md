@@ -42,9 +42,9 @@ SELECT
     MAX(AGE) AS unique_max_age
 FROM crashes.crashes
 WHERE SEVERITY IN ${inputs.multi_severity.value}
-  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-  AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-  AND AGE < 110;
+AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+AND AGE < 110;
 ```
 
 ```sql barchart_mode
