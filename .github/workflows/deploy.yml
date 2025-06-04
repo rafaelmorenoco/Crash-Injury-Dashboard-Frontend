@@ -7,6 +7,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: '--max-old-space-size=8192' # Increase memory limit for Node.js
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,8 +25,14 @@ jobs:
         env:
           BASE_PATH: '/${{ github.event.repository.name }}'
           ## Add and uncomment any environment variables here
-          ## EVIDENCE_SOURCE__my_source__username: ${{ secrets.EVIDENCE_SOURCE__MY_SOURCE__USERNAME }}
-          ## EVIDENCE_SOURCE__my_source__private_key: ${{ secrets.EVIDENCE_SOURCE__MY_SOURCE__PRIVATE_KEY }}
+          EVIDENCE_SOURCE__ANC__FILENAME: ${{ secrets.EVIDENCE_SOURCE__ANC__FILENAME }}
+          EVIDENCE_SOURCE__CRASHES__FILENAME: ${{ secrets.EVIDENCE_SOURCE__CRASHES__FILENAME }}
+          EVIDENCE_SOURCE__DC_BOUNDARY__FILENAME: ${{ secrets.EVIDENCE_SOURCE__DC_BOUNDARY__FILENAME }}
+          EVIDENCE_SOURCE__HEXGRID__FILENAME: ${{ secrets.EVIDENCE_SOURCE__HEXGRID__FILENAME }}
+          EVIDENCE_SOURCE__HIN__FILENAME: ${{ secrets.EVIDENCE_SOURCE__HIN__FILENAME }}
+          EVIDENCE_SOURCE__INTERSECTIONS__FILENAME: ${{ secrets.EVIDENCE_SOURCE__INTERSECTIONS__FILENAME }}
+          EVIDENCE_SOURCE__SMD__FILENAME: ${{ secrets.EVIDENCE_SOURCE__SMD__FILENAME }}
+          EVIDENCE_SOURCE__WARDS__FILENAME: ${{ secrets.EVIDENCE_SOURCE__WARDS__FILENAME }}
         run: |
           npm run sources
           npm run build
