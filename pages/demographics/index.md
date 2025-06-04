@@ -30,7 +30,7 @@ AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
 AND AGE < 110;
 ```
 
-```sql age_distribution
+```sql age_severity
 WITH buckets(bucket_order, bucket_label, lower_bound, upper_bound) AS (
     VALUES
         (0,    '0-10',   0,   10),
@@ -53,7 +53,8 @@ all_buckets AS (
 )
 SELECT
     ab.bucket_label,
-    COALESCE(SUM(c."COUNT"), 0) AS Injuries
+    c.SEVERITY,
+    COALESCE(SUM(c.COUNT), 0) AS Injuries
 FROM all_buckets ab
 LEFT JOIN crashes.crashes c 
     ON (
@@ -68,8 +69,67 @@ LEFT JOIN crashes.crashes c
     AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
                          AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
     AND c.AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
-GROUP BY ab.bucket_order, ab.bucket_label
-ORDER BY ab.bucket_order;
+GROUP BY ab.bucket_order, ab.bucket_label, c.SEVERITY
+ORDER BY 
+    ab.bucket_order,
+    CASE 
+        WHEN c.SEVERITY = 'Minor' THEN 1
+        WHEN c.SEVERITY = 'Major' THEN 2
+        WHEN c.SEVERITY = 'Fatal' THEN 3
+    END;
+```
+
+```sql age_mode
+WITH buckets(bucket_order, bucket_label, lower_bound, upper_bound) AS (
+    VALUES
+        (0,    '0-10',   0,   10),
+        (11,   '11-20',  11,  20),
+        (21,   '21-30',  21,  30),
+        (31,   '31-40',  31,  40),
+        (41,   '41-50',  41,  50),
+        (51,   '51-60',  51,  60),
+        (61,   '61-70',  61,  70),
+        (71,   '71-80',  71,  80),
+        (81,   '> 80',  81,  110)
+),
+null_bucket AS (
+    SELECT 9999 AS bucket_order, 'Null' AS bucket_label, 120 AS lower_bound, 120 AS upper_bound
+),
+all_buckets AS (
+    SELECT * FROM buckets
+    UNION ALL
+    SELECT * FROM null_bucket
+)
+SELECT
+    ab.bucket_label,
+    c.MODE,
+    COALESCE(SUM(c.COUNT), 0) AS Injuries
+FROM all_buckets ab
+LEFT JOIN crashes.crashes c 
+    ON (
+         -- For the Null bucket, match records where AGE equals 120 exactly
+         (ab.bucket_label = 'Null' AND CAST(c.AGE AS INTEGER) = ab.lower_bound)
+         OR
+         -- For all other buckets, match where AGE falls between the bucket's lower and upper bounds
+         (ab.bucket_label <> 'Null' AND CAST(c.AGE AS INTEGER) BETWEEN ab.lower_bound AND ab.upper_bound)
+       )
+    AND c.MODE IN ${inputs.multi_mode_dd.value}
+    AND c.SEVERITY IN ${inputs.multi_severity.value}
+    AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                         AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+    AND c.AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+GROUP BY ab.bucket_order, ab.bucket_label, c.MODE
+ORDER BY ab.bucket_order,
+    CASE 
+        WHEN c.MODE = 'Bicyclist' THEN 1
+        WHEN c.MODE = 'Pedestrian' THEN 2
+        WHEN c.MODE = 'Other' THEN 3
+        WHEN c.MODE = 'Driver' THEN 4
+        WHEN c.MODE = 'Passenger' THEN 5
+        WHEN c.MODE = 'Motorcyclist*' THEN 6
+        WHEN c.MODE = 'Scooterist*' THEN 7
+        ELSE 8  -- for any other cases, place them last
+    END;
 ```
 
 ```sql mode_severity_selection
@@ -141,12 +201,15 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
 <Grid cols=2>
     <Group>
         <BarChart 
-            data={age_distribution}
+            data={age_severity}
+            title="Age Distribution by Severity"
             chartAreaHeight=300
             x="bucket_label" 
-            y="Injuries" 
+            y="Injuries"
             labels={true} 
             yAxisTitle="Injuries" 
+            series=SEVERITY
+            seriesColors={{"Minor": '#ffdf00',"Major": '#ff9412',"Fatal": '#ff5a53'}}
             xAxisLabels={true} 
             xTickMarks={true} 
             leftPadding={10} 
@@ -156,5 +219,22 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
         />
     </Group>
     <Group>
+        <BarChart 
+            data={age_mode}
+            title="Age Distribution by Road User"
+            chartAreaHeight=300
+            x="bucket_label" 
+            y="Injuries"
+            labels={true} 
+            yAxisTitle="Injuries" 
+            series=MODE
+            seriesColors={{"Bicyclist": '#00bf7d',"Driver": '#2546f0',"Motorcyclist*": '#029356',"Other": '#89ce00',"Passenger": '#00b4c5',"Pedestrian": '#5928ed',"Unknown": '#b3c7f7', "Scooterist*": '#bee3f9'}}
+            xAxisLabels={true} 
+            xTickMarks={true} 
+            leftPadding={10} 
+            rightPadding={30}
+            sort=false
+            swapXY=true
+        />
     </Group>
 </Grid>
