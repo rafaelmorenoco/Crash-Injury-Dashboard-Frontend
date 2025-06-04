@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "scripts": {
     "build": "NODE_OPTIONS=--max-old-space-size=4096 EVIDENCE_BUILD_DIR=./build/Crash-Injury-Dashboard-Frontend evidence build",
-    "build:strict": "NODE_OPTIONS=--max-old-space-size=4096 evidence build:strict",
+    "build:strict": "NODE_OPTIONS=--max-old-space-size=8192 evidence build:strict",
     "dev": "evidence dev --open /",
     "test": "evidence build",
     "sources": "evidence sources",
