@@ -121,13 +121,13 @@ LEFT JOIN crashes.crashes c
 GROUP BY ab.bucket_order, ab.bucket_label, c.MODE
 ORDER BY ab.bucket_order,
     CASE 
-        WHEN c.MODE = 'Bicyclist' THEN 1
-        WHEN c.MODE = 'Pedestrian' THEN 2
-        WHEN c.MODE = 'Other' THEN 3
-        WHEN c.MODE = 'Driver' THEN 4
-        WHEN c.MODE = 'Passenger' THEN 5
-        WHEN c.MODE = 'Motorcyclist*' THEN 6
-        WHEN c.MODE = 'Scooterist*' THEN 7
+        WHEN c.MODE = 'Pedestrian' THEN 1
+        WHEN c.MODE = 'Other' THEN 2
+        WHEN c.MODE = 'Bicyclist' THEN 3
+        WHEN c.MODE = 'Scooterist*' THEN 4
+        WHEN c.MODE = 'Motorcyclist*' THEN 5
+        WHEN c.MODE = 'Passenger' THEN 6
+        WHEN c.MODE = 'Driver' THEN 7
         ELSE 8  -- for any other cases, place them last
     END;
 ```
@@ -228,7 +228,7 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
             labels={true} 
             yAxisTitle="Injuries" 
             series=MODE
-            seriesColors={{"Bicyclist": '#00bf7d',"Driver": '#2546f0',"Motorcyclist*": '#029356',"Other": '#89ce00',"Passenger": '#00b4c5',"Pedestrian": '#5928ed',"Unknown": '#b3c7f7', "Scooterist*": '#bee3f9'}}
+            seriesColors={{"Pedestrian": '#00FFD4',"Other": '#06DFC8',"Bicyclist": '#0BBFBC',"Scooterist*": '#119FB0',"Motorcyclist*": '#167FA3',"Passenger": '#1C5F97',"Driver": '#271F7F',"Unknown": '213F8B#'}}
             xAxisLabels={true} 
             xTickMarks={true} 
             leftPadding={10} 
