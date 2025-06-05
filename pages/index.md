@@ -37,16 +37,6 @@ from hin.hin
 group by all
 ```
 
-```sql max_age
-SELECT 
-    MAX(AGE) AS unique_max_age
-FROM crashes.crashes
-WHERE SEVERITY IN ${inputs.multi_severity.value}
-AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-AND AGE < 110;
-```
-
 ```sql barchart_mode
 WITH 
     combinations AS (
@@ -63,8 +53,15 @@ WITH
         FROM crashes.crashes
         WHERE SEVERITY IN ${inputs.multi_severity.value}
           AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-          AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-          AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+                             AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+          AND AGE BETWEEN CAST('${inputs.min_age}' AS INTEGER)
+                      AND (
+                           CASE 
+                             WHEN CAST('${inputs.min_age}' AS INTEGER) <> 0 AND '${inputs.max_age}' = '120'
+                               THEN 119
+                             ELSE CAST('${inputs.max_age}' AS INTEGER)
+                           END
+                          )
         GROUP BY MODE, SEVERITY
     )
 SELECT
@@ -134,7 +131,14 @@ WITH
             SEVERITY IN ${inputs.multi_severity.value} 
             AND REPORTDATE >= (SELECT start_date FROM date_info)
             AND REPORTDATE <= (SELECT end_date FROM date_info)
-            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+            AND AGE BETWEEN CAST('${inputs.min_age}' AS INTEGER)
+                      AND (
+                           CASE 
+                             WHEN CAST('${inputs.min_age}' AS INTEGER) <> 0 AND '${inputs.max_age}' = '120'
+                               THEN 119
+                             ELSE CAST('${inputs.max_age}' AS INTEGER)
+                           END
+                          )
         GROUP BY 
             MODE
     ), 
@@ -152,7 +156,14 @@ WITH
             AND REPORTDATE <= (
                 (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period)
             )
-            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+            AND AGE BETWEEN CAST('${inputs.min_age}' AS INTEGER)
+                      AND (
+                           CASE 
+                             WHEN CAST('${inputs.min_age}' AS INTEGER) <> 0 AND '${inputs.max_age}' = '120'
+                               THEN 119
+                             ELSE CAST('${inputs.max_age}' AS INTEGER)
+                           END
+                          )
         GROUP BY 
             MODE
     ), 
@@ -269,7 +280,14 @@ WITH
             SEVERITY IN ${inputs.multi_severity.value} 
             AND REPORTDATE >= (SELECT start_date FROM date_info)
             AND REPORTDATE <= (SELECT end_date FROM date_info)
-            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+            AND AGE BETWEEN CAST('${inputs.min_age}' AS INTEGER)
+                      AND (
+                           CASE 
+                             WHEN CAST('${inputs.min_age}' AS INTEGER) <> 0 AND '${inputs.max_age}' = '120'
+                               THEN 119
+                             ELSE CAST('${inputs.max_age}' AS INTEGER)
+                           END
+                          )
         GROUP BY 
             SEVERITY
     ), 
@@ -287,7 +305,14 @@ WITH
             AND REPORTDATE <= (
                 (SELECT end_date FROM offset_period) - (SELECT interval_offset FROM offset_period)
             )
-            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+            AND AGE BETWEEN CAST('${inputs.min_age}' AS INTEGER)
+                      AND (
+                           CASE 
+                             WHEN CAST('${inputs.min_age}' AS INTEGER) <> 0 AND '${inputs.max_age}' = '120'
+                               THEN 119
+                             ELSE CAST('${inputs.max_age}' AS INTEGER)
+                           END
+                          )
         GROUP BY 
             SEVERITY
     ), 
@@ -519,7 +544,6 @@ echartsOptions={{animation: false}}
     name="max_age"
     title="Enter Max Age**"
     defaultValue="120"
-    description="**For an accurate age count, enter a maximum age below 120, as 120 serves as a placeholder for missing age values in the records. The actual maximum age for the current selection of filters is {max_age[0].unique_max_age}."
 />
 
 <Alert status="info">
