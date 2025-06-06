@@ -54,12 +54,13 @@ WITH
         WHERE SEVERITY IN ${inputs.multi_severity.value}
           AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
                              AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-          AND AGE BETWEEN CAST('${inputs.min_age}' AS INTEGER)
+          AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
                       AND (
                            CASE 
-                             WHEN CAST('${inputs.min_age}' AS INTEGER) <> 0 AND '${inputs.max_age}' = '120'
+                             WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
+                               AND COALESCE('${inputs.max_age}', '120') = '120'
                                THEN 119
-                             ELSE CAST('${inputs.max_age}' AS INTEGER)
+                             ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
                            END
                           )
         GROUP BY MODE, SEVERITY
@@ -131,14 +132,15 @@ WITH
             SEVERITY IN ${inputs.multi_severity.value} 
             AND REPORTDATE >= (SELECT start_date FROM date_info)
             AND REPORTDATE <= (SELECT end_date FROM date_info)
-            AND AGE BETWEEN CAST('${inputs.min_age}' AS INTEGER)
-                      AND (
-                           CASE 
-                             WHEN CAST('${inputs.min_age}' AS INTEGER) <> 0 AND '${inputs.max_age}' = '120'
-                               THEN 119
-                             ELSE CAST('${inputs.max_age}' AS INTEGER)
-                           END
-                          )
+            AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
+                        AND (
+                            CASE 
+                                WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
+                                AND COALESCE('${inputs.max_age}', '120') = '120'
+                                THEN 119
+                                ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
+                            END
+                            )
         GROUP BY 
             MODE
     ), 
@@ -156,14 +158,15 @@ WITH
             AND REPORTDATE <= (
                 (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period)
             )
-            AND AGE BETWEEN CAST('${inputs.min_age}' AS INTEGER)
-                      AND (
-                           CASE 
-                             WHEN CAST('${inputs.min_age}' AS INTEGER) <> 0 AND '${inputs.max_age}' = '120'
-                               THEN 119
-                             ELSE CAST('${inputs.max_age}' AS INTEGER)
-                           END
-                          )
+            AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
+                        AND (
+                            CASE 
+                                WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
+                                AND COALESCE('${inputs.max_age}', '120') = '120'
+                                THEN 119
+                                ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
+                            END
+                            )
         GROUP BY 
             MODE
     ), 
@@ -280,14 +283,15 @@ WITH
             SEVERITY IN ${inputs.multi_severity.value} 
             AND REPORTDATE >= (SELECT start_date FROM date_info)
             AND REPORTDATE <= (SELECT end_date FROM date_info)
-            AND AGE BETWEEN CAST('${inputs.min_age}' AS INTEGER)
-                      AND (
-                           CASE 
-                             WHEN CAST('${inputs.min_age}' AS INTEGER) <> 0 AND '${inputs.max_age}' = '120'
-                               THEN 119
-                             ELSE CAST('${inputs.max_age}' AS INTEGER)
-                           END
-                          )
+            AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
+                        AND (
+                            CASE 
+                                WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
+                                AND COALESCE('${inputs.max_age}', '120') = '120'
+                                THEN 119
+                                ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
+                            END
+                            )
         GROUP BY 
             SEVERITY
     ), 
@@ -305,14 +309,15 @@ WITH
             AND REPORTDATE <= (
                 (SELECT end_date FROM offset_period) - (SELECT interval_offset FROM offset_period)
             )
-            AND AGE BETWEEN CAST('${inputs.min_age}' AS INTEGER)
-                      AND (
-                           CASE 
-                             WHEN CAST('${inputs.min_age}' AS INTEGER) <> 0 AND '${inputs.max_age}' = '120'
-                               THEN 119
-                             ELSE CAST('${inputs.max_age}' AS INTEGER)
-                           END
-                          )
+            AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
+                        AND (
+                            CASE 
+                                WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
+                                AND COALESCE('${inputs.max_age}', '120') = '120'
+                                THEN 119
+                                ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
+                            END
+                            )
         GROUP BY 
             SEVERITY
     ), 
@@ -542,7 +547,7 @@ echartsOptions={{animation: false}}
 
 <TextInput
     name="max_age"
-    title="Enter Max Age**"
+    title="Enter Max Age"
     defaultValue="120"
 />
 
