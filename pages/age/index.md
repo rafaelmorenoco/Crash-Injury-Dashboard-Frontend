@@ -19,15 +19,21 @@ from crashes.crashes
 group by 1
 ```
 
-```sql max_age
+```sql min_max_age
 SELECT 
-    MAX(AGE) AS unique_max_age
+    MAX(AGE) AS unique_max_age,
+    MIN(AGE) AS unique_min_age
 FROM crashes.crashes
 WHERE SEVERITY IN ${inputs.multi_severity.value}
-AND MODE IN ${inputs.multi_mode_dd.value}
-AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-AND AGE < 110;
+  AND MODE IN ${inputs.multi_mode_dd.value}
+  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+      AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+  AND AGE BETWEEN 
+      COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
+      AND LEAST(
+            COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 120),
+            119
+          );
 ```
 
 ```sql age_severity
@@ -68,7 +74,15 @@ LEFT JOIN crashes.crashes c
     AND c.SEVERITY IN ${inputs.multi_severity.value}
     AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
                          AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-    AND c.AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+    AND c.AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
+        AND (
+            CASE 
+                WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
+                AND COALESCE('${inputs.max_age}', '120') = '120'
+                THEN 119
+                ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
+            END
+            )
 GROUP BY ab.bucket_order, ab.bucket_label, c.SEVERITY
 ORDER BY 
     ab.bucket_order,
@@ -117,7 +131,15 @@ LEFT JOIN crashes.crashes c
     AND c.SEVERITY IN ${inputs.multi_severity.value}
     AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
                          AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-    AND c.AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+    AND c.AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
+        AND (
+            CASE 
+                WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
+                AND COALESCE('${inputs.max_age}', '120') = '120'
+                THEN 119
+                ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
+            END
+            )
 GROUP BY ab.bucket_order, ab.bucket_label, c.MODE
 ORDER BY ab.bucket_order,
     CASE 
@@ -185,13 +207,14 @@ WHERE
     name="min_age" 
     title="Enter Min Age"
     defaultValue="0"
+    description='The minumum age for the current selection of filters is {min_max_age[0].unique_min_age}.'
 />
 
 <TextInput
     name="max_age"
-    title="Enter Max Age**"
+    title="Enter Max Age"
     defaultValue="120"
-    description="**For an accurate age count, enter a maximum age below 120, as 120 serves as a placeholder for missing age values in the records. The actual maximum age for the current selection of filters is {max_age[0].unique_max_age}."
+    description='Age 120 serves as a placeholder for missing age values in the records. However, missing values will be automatically excluded from the query if the default 0-120 range is changed by the user. The maximum age for the current selection of filters is {min_max_age[0].unique_max_age}.'
 />
 
 <Alert status="info">
@@ -238,3 +261,11 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
         />
     </Group>
 </Grid>
+
+<Note>
+    The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
+</Note>
+
+<Details title="About Road Users">
+<b>Road User</b> type <b>'Other'</b> includes motor-driven cycles (commonly referred to as mopeds and motorcycles), as well as personal mobility devices, such as standing scooters. The term <b>'Scooterist'</b> refers to the user of a standing scooter, while <b>'Motorcyclist'</b> applies to users of motor-driven cycles.
+</Details>

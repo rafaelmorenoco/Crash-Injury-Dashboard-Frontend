@@ -549,6 +549,7 @@ echartsOptions={{animation: false}}
     name="max_age"
     title="Enter Max Age"
     defaultValue="120"
+    description='Age 120 serves as a placeholder for missing age values in the records. However, missing values will be automatically excluded from the query if the default 0-120 range is changed by the user. To get a count of missing age values, go to the "Age Distribution" page.'
 />
 
 <Alert status="info">
