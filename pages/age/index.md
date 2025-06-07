@@ -263,7 +263,7 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
 </Grid>
 
 <Note>
-    The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
+    The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs.
 </Note>
 
 <Details title="About Road Users">
