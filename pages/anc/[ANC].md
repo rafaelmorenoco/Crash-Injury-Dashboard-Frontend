@@ -50,17 +50,6 @@ from smd.smd_2023
 group by 1
 ```
 
-```sql max_age
-SELECT 
-    MAX(AGE) AS unique_max_age
-FROM crashes.crashes
-WHERE SEVERITY IN ${inputs.multi_severity.value}
-AND MODE IN ${inputs.multi_mode_dd.value}
-AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-AND AGE < 110;
-```
-
 ```sql smd_map
 SELECT 
     smd_2023.SMD,
@@ -78,7 +67,15 @@ LEFT JOIN (
         AND MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
         AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-        AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+        AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
+            AND (
+                CASE 
+                    WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
+                    AND COALESCE('${inputs.max_age}', '120') = '120'
+                    THEN 119
+                    ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
+                END
+                )
         AND SMD IS NOT NULL
     GROUP BY 
         SMD
@@ -162,7 +159,15 @@ WITH
             AND crashes.MODE IN ${inputs.multi_mode_dd.value}
             AND crashes.REPORTDATE BETWEEN (SELECT start_date FROM date_info)
             AND (SELECT end_date FROM date_info)
-            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+            AND crashes.AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
+                AND (
+                    CASE 
+                        WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
+                        AND COALESCE('${inputs.max_age}', '120') = '120'
+                        THEN 119
+                        ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
+                    END
+                    )
         GROUP BY 
             crashes.SMD
     ), 
@@ -183,7 +188,15 @@ WITH
                 ) AND (
                     (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period)
                 )
-            AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+            AND crashes.AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
+                AND (
+                    CASE 
+                        WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
+                        AND COALESCE('${inputs.max_age}', '120') = '120'
+                        THEN 119
+                        ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
+                    END
+                    )
         GROUP BY 
             crashes.SMD
     ),
@@ -298,9 +311,9 @@ WHERE
 
 <TextInput
     name="max_age"
-    title="Enter Max Age**"
+    title="Enter Max Age"
     defaultValue="120"
-    description="**For an accurate age count, enter a maximum age below 120, as 120 serves as a placeholder for missing age values in the records. The actual maximum age for the current selection of filters is {max_age[0].unique_max_age}."
+    description='Age 120 serves as a placeholder for missing age values in the records. However, missing values will be automatically excluded from the query if the default 0-120 range is changed by the user. To get a count of missing age values, go to the "Age Distribution" page.'
 />
 
 <Alert status="info">

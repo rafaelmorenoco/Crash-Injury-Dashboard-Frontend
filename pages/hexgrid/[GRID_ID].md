@@ -36,17 +36,6 @@ from hin.hin
 group by all
 ```
 
-```sql max_age
-SELECT 
-    MAX(AGE) AS unique_max_age
-FROM crashes.crashes
-WHERE SEVERITY IN ${inputs.multi_severity.value}
-AND MODE IN ${inputs.multi_mode_dd.value}
-AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-AND AGE < 110;
-```
-
 ```sql table_query
 SELECT
     REPORTDATE,
@@ -62,8 +51,16 @@ WHERE MODE IN ${inputs.multi_mode_dd.value}
   AND GRID_ID = '${params.GRID_ID}'
   AND SEVERITY IN ${inputs.multi_severity.value}
   AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-      AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-  AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+  AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+  AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
+        AND (
+            CASE 
+                WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
+                AND COALESCE('${inputs.max_age}', '120') = '120'
+                THEN 119
+                ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
+            END
+            )
 GROUP BY
     REPORTDATE,
     MODE,
@@ -85,7 +82,15 @@ FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
   AND SEVERITY IN ${inputs.multi_severity.value}
   AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-  AND AGE BETWEEN '${inputs.min_age}' AND '${inputs.max_age}'
+  AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
+            AND (
+                CASE 
+                    WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
+                    AND COALESCE('${inputs.max_age}', '120') = '120'
+                    THEN 119
+                    ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
+                END
+                )
 GROUP BY
     MODE,
     SEVERITY,
@@ -181,9 +186,9 @@ WHERE
         />
         <TextInput
             name="max_age"
-            title="Enter Max Age**"
+            title="Enter Max Age"
             defaultValue="120"
-            description="**For an accurate age count, enter a maximum age below 120, as 120 serves as a placeholder for missing age values in the records. The actual maximum age for the current selection of filters is {max_age[0].unique_max_age}."
+            description='Age 120 serves as a placeholder for missing age values in the records. However, missing values will be automatically excluded from the query if the default 0-120 range is changed by the user. To get a count of missing age values, go to the "Age Distribution" page.'
         />
     </Group>
 </Grid>
