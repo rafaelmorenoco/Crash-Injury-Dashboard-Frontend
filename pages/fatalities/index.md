@@ -209,12 +209,12 @@ The selection for <b>Road User</b> is: <b><Value data={mode_selection} column="M
                 {id:'ADDRESS', showColumnName:false, fmt:'id'}
             ]}
             />
-            <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true borderWidth=1.2
+            <Areas data={unique_hin} geoJsonUrl='./static/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ ignoreZoom=true borderWidth=1.2
             tooltip={[
                 {id: 'ROUTENAME'}
             ]}
             />
-            <Areas data={unique_dc} geoJsonUrl='/dc_boundary.geojson' geoId=CITY_NAME areaCol=CITY_NAME opacity=0.5 borderColor=#000000 color=#1C00ff00/ 
+            <Areas data={unique_dc} geoJsonUrl='./static/dc_boundary.geojson' geoId=CITY_NAME areaCol=CITY_NAME opacity=0.5 borderColor=#000000 color=#1C00ff00/ 
             />
         </BaseMap>
         <Note>
