@@ -488,7 +488,7 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
     <Group>
         <DataTable data={hex_with_link} subtitle="Hexagon Search" search=true link=link rows=5 rowShading=true sort="Injuries desc">
             <Column id=GRID_ID title="Hexagon ID"/>
-            <Column id=Injuries />
+            <Column id=Injuries contentType=colorscale/>
         </DataTable>
     </Group>
 </Grid>
