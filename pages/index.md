@@ -140,7 +140,7 @@ WITH
                                 THEN 119
                                 ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
                             END
-                            )
+                        )
         GROUP BY 
             MODE
     ), 
@@ -152,12 +152,8 @@ WITH
             crashes.crashes 
         WHERE 
             SEVERITY IN ${inputs.multi_severity.value} 
-            AND REPORTDATE >= (
-                (SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period)
-            )
-            AND REPORTDATE <= (
-                (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period)
-            )
+            AND REPORTDATE >= ((SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period))
+            AND REPORTDATE <= ((SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period))
             AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
                         AND (
                             CASE 
@@ -166,7 +162,7 @@ WITH
                                 THEN 119
                                 ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
                             END
-                            )
+                        )
         GROUP BY 
             MODE
     ), 
@@ -200,20 +196,30 @@ WITH
     )
 SELECT 
     mas.MODE,
+    CASE
+        WHEN mas.MODE = 'Driver' THEN 'https://cdn-icons-png.flaticon.com/128/6955/6955575.png'
+        WHEN mas.MODE = 'Passenger' THEN 'https://cdn-icons-png.flaticon.com/128/16645/16645585.png'
+        WHEN mas.MODE = 'Pedestrian' THEN 'https://cdn-icons-png.flaticon.com/128/12617/12617280.png'
+        WHEN mas.MODE = 'Bicyclist' THEN 'https://cdn-icons-png.flaticon.com/128/5073/5073976.png'
+        WHEN mas.MODE = 'Motorcyclist*' THEN 'https://cdn-icons-png.flaticon.com/128/18995/18995096.png'
+        WHEN mas.MODE = 'Scooterist*' THEN 'https://cdn-icons-png.flaticon.com/128/15865/15865153.png'
+        WHEN mas.MODE = 'Unknown' THEN 'https://cdn-icons-png.flaticon.com/128/11271/11271965.png'
+        WHEN mas.MODE = 'Other' THEN 'https://cdn-icons-png.flaticon.com/128/11271/11271958.png'
+        ELSE NULL
+    END AS ICON,
     COALESCE(cp.sum_count, 0) AS current_period_sum, 
     COALESCE(pp.sum_count, 0) AS prior_period_sum, 
     COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0) AS difference,
     CASE 
-        WHEN COALESCE(cp.sum_count, 0) = 0 THEN 
-            NULL 
-        WHEN COALESCE(pp.sum_count, 0) != 0 THEN 
-            ((COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0)) / COALESCE(pp.sum_count, 0)) 
-        ELSE 
-            NULL 
+        WHEN COALESCE(cp.sum_count, 0) = 0 THEN NULL 
+        WHEN COALESCE(pp.sum_count, 0) != 0 THEN ((COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0)) / COALESCE(pp.sum_count, 0)) 
+        ELSE NULL 
     END AS percentage_change,
     (SELECT date_range_label FROM date_info) AS current_period_range,
     (SELECT prior_date_range_label FROM prior_date_label) AS prior_period_range,
-    (total_current_period - total_prior_period) / NULLIF(total_prior_period, 0) AS total_percentage_change
+    (total_current_period - total_prior_period) / NULLIF(total_prior_period, 0) AS total_percentage_change,
+    (COALESCE(cp.sum_count, 0) / NULLIF(total_current_period, 0)) AS current_mode_percentage,
+    (COALESCE(pp.sum_count, 0) / NULLIF(total_prior_period, 0)) AS prior_mode_percentage
 FROM 
     modes_and_severities mas
 LEFT JOIN 
@@ -291,7 +297,7 @@ WITH
                                 THEN 119
                                 ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
                             END
-                            )
+                        )
         GROUP BY 
             SEVERITY
     ), 
@@ -317,7 +323,7 @@ WITH
                                 THEN 119
                                 ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
                             END
-                            )
+                        )
         GROUP BY 
             SEVERITY
     ), 
@@ -361,7 +367,9 @@ SELECT
     END AS percentage_change,
     (SELECT date_range_label FROM date_info) AS current_period_range,
     (SELECT prior_date_range_label FROM prior_date_label) AS prior_period_range,
-    (total_current_period - total_prior_period) / NULLIF(total_prior_period, 0) AS total_percentage_change
+    (total_current_period - total_prior_period) / NULLIF(total_prior_period, 0) AS total_percentage_change,
+    (COALESCE(cp.sum_count, 0) / NULLIF(total_current_period, 0)) AS current_severity_percentage,
+    (COALESCE(pp.sum_count, 0) / NULLIF(total_prior_period, 0)) AS prior_severity_percentage
 FROM 
     severities s
 LEFT JOIN 
@@ -556,13 +564,11 @@ echartsOptions={{animation: false}}
 The selection for <b>Severity</b> is: <b><Value data={severity_selection} column="SEVERITY_SELECTION"/></b>
 </Alert>
 
-### Injuries by Road User and Severity
-
 <Grid cols=2>
     <Group>
         <BarChart 
-            title="Selected Period"
-            chartAreaHeight=300
+            title="Injuries by Road User ({`${period_comp_mode[0].current_period_range}`})"
+            chartAreaHeight=165
             subtitle="Road User"
             data={barchart_mode}
             x=MODE
@@ -574,25 +580,30 @@ The selection for <b>Severity</b> is: <b><Value data={severity_selection} column
             labels=true
             leftPadding=10
             rightPadding=30
+            wrapTitles=true
         />
+        <DataTable data={period_comp_severity} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true title="Year Over Year Injuries Comparison by Severity Level">
+            <Column id=SEVERITY title=Level wrap=true totalAgg="Total"/>
+            <Column id=current_period_sum title="Cnt" colGroup={`${period_comp_severity[0].current_period_range}`} />
+            <Column id=current_severity_percentage fmt=pct0 contentType=colorscale title="%" colGroup={`${period_comp_severity[0].current_period_range}`}/>
+            <Column id=prior_period_sum title="Cnt" colGroup={`${period_comp_severity[0].prior_period_range}`}  />
+            <Column id=prior_severity_percentage fmt=pct0 contentType=colorscale title="%" colGroup={`${period_comp_severity[0].prior_period_range}`}/>
+            <Column id=difference contentType=delta downIsGood=True title="Diff"/>
+            <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_severity[0].total_percentage_change} totalFmt='pct0' /> 
+        </DataTable>
         <Note>
             *Fatal only.
         </Note>
     </Group>
         <Group>
-        <DataTable data={period_comp_mode} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true title="Selected Period Comparison">
-            <Column id=MODE title='Road User' wrap=true totalAgg="Total"/>
-            <Column id=current_period_sum title={`${period_comp_mode[0].current_period_range}`} />
-            <Column id=prior_period_sum title={`${period_comp_mode[0].prior_period_range}`} />
+        <DataTable data={period_comp_mode} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true title="Year Over Year Injuries Comparison by Road User">
+            <Column id=ICON title='Road User' contentType=image height=20px align=center totalAgg="Total"/>
+            <Column id=current_period_sum title="Cnt" colGroup={`${period_comp_mode[0].current_period_range}`} />
+            <Column id=current_mode_percentage fmt=pct0 contentType=colorscale title="%" colGroup={`${period_comp_mode[0].current_period_range}`}/>
+            <Column id=prior_period_sum title="Cnt" colGroup={`${period_comp_mode[0].prior_period_range}`}/>
+            <Column id=prior_mode_percentage fmt=pct0 contentType=colorscale title="%" colGroup={`${period_comp_mode[0].prior_period_range}`}/>
             <Column id=difference contentType=delta downIsGood=True title="Diff"/>
             <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_mode[0].total_percentage_change} totalFmt='pct0'/> 
-        </DataTable>
-        <DataTable data={period_comp_severity} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true>
-            <Column id=SEVERITY wrap=true totalAgg="Total"/>
-            <Column id=current_period_sum title={`${period_comp_severity[0].current_period_range}`} />
-            <Column id=prior_period_sum title={`${period_comp_severity[0].prior_period_range}`}  />
-            <Column id=difference contentType=delta downIsGood=True title="Diff"/>
-            <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_severity[0].total_percentage_change} totalFmt='pct0' /> 
         </DataTable>
         <Note>
             *Fatal only.
@@ -605,7 +616,59 @@ The selection for <b>Severity</b> is: <b><Value data={severity_selection} column
 </Note>
 
 <Details title="About Road Users">
-<b>Road User</b> type <b>'Other'</b> includes motor-driven cycles (commonly referred to as mopeds and motorcycles), as well as personal mobility devices, such as standing scooters. The term <b>'Scooterist'</b> refers to the user of a standing scooter, while <b>'Motorcyclist'</b> applies to users of motor-driven cycles.
+
+<table border="1" cellspacing="0" cellpadding="8">
+    <thead>
+      <tr>
+        <th>Icon</th>
+        <th>Road User</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><img src="https://cdn-icons-png.flaticon.com/128/6955/6955575.png" alt="Driver Icon" width="32"></td>
+        <td>Driver</td>
+        <td>The individual operating the motor vehicle.</td>
+      </tr>
+      <tr>
+        <td><img src="https://cdn-icons-png.flaticon.com/128/16645/16645585.png" alt="Passenger Icon" width="32"></td>
+        <td>Passenger</td>
+        <td>The individual riding along in the motor vehicle.</td>
+      </tr>
+      <tr>
+        <td><img src="https://cdn-icons-png.flaticon.com/128/12617/12617280.png" alt="Pedestrian Icon" width="32"></td>
+        <td>Pedestrian</td>
+        <td>An individual moving on foot.</td>
+      </tr>
+      <tr>
+        <td><img src="https://cdn-icons-png.flaticon.com/128/5073/5073976.png" alt="Bicyclist Icon" width="32"></td>
+        <td>Bicyclist</td>
+        <td>A person riding a bicycle or motorized bicycle.</td>
+      </tr>
+      <tr>
+        <td><img src="https://cdn-icons-png.flaticon.com/128/18995/18995096.png" alt="Motorcyclist Icon" width="32"></td>
+        <td>Motorcyclist*</td>
+        <td>User of a motor-driven cycle (e.g., motorcycle or moped). *Fatal only.</td>
+      </tr>
+      <tr>
+        <td><img src="https://cdn-icons-png.flaticon.com/128/15865/15865153.png" alt="Scooterist Icon" width="32"></td>
+        <td>Scooterist*</td>
+        <td>User of a standing scooter or personal mobility device. *Fatal only.</td>
+      </tr>
+      <tr>
+        <td><img src="https://cdn-icons-png.flaticon.com/128/11271/11271965.png" alt="Unknown Icon" width="32"></td>
+        <td>Unknown</td>
+        <td>A road user whose type is unspecified.</td>
+      </tr>
+      <tr>
+        <td><img src="https://cdn-icons-png.flaticon.com/128/11271/11271958.png" alt="Other Icon" width="32"></td>
+        <td>Other</td>
+        <td>Includes motor-driven cycles (commonly referred to as mopeds and motorcycles), as well as personal mobility devices, such as standing scooters, among others.</td>
+      </tr>
+    </tbody>
+  </table>
+
 </Details>
 
 <Details title="About the data">
