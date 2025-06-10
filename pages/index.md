@@ -197,14 +197,14 @@ WITH
 SELECT 
     mas.MODE,
     CASE
-        WHEN mas.MODE = 'Driver' THEN 'https://cdn-icons-png.flaticon.com/128/6955/6955575.png'
-        WHEN mas.MODE = 'Passenger' THEN 'https://cdn-icons-png.flaticon.com/128/16645/16645585.png'
+        WHEN mas.MODE = 'Driver' THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/driver2.png'
+        WHEN mas.MODE = 'Passenger' THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/passenger2.png'
         WHEN mas.MODE = 'Pedestrian' THEN 'https://cdn-icons-png.flaticon.com/128/12617/12617280.png'
-        WHEN mas.MODE = 'Bicyclist' THEN 'https://cdn-icons-png.flaticon.com/128/5073/5073976.png'
-        WHEN mas.MODE = 'Motorcyclist*' THEN 'https://cdn-icons-png.flaticon.com/128/18995/18995096.png'
-        WHEN mas.MODE = 'Scooterist*' THEN 'https://cdn-icons-png.flaticon.com/128/15865/15865153.png'
+        WHEN mas.MODE = 'Bicyclist' THEN 'https://cdn-icons-png.flaticon.com/128/6627/6627606.png'
+        WHEN mas.MODE = 'Motorcyclist*' THEN 'https://cdn-icons-png.flaticon.com/128/18860/18860700.png'
+        WHEN mas.MODE = 'Scooterist*' THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/scooter.png'
         WHEN mas.MODE = 'Unknown' THEN 'https://cdn-icons-png.flaticon.com/128/11271/11271965.png'
-        WHEN mas.MODE = 'Other' THEN 'https://cdn-icons-png.flaticon.com/128/11271/11271958.png'
+        WHEN mas.MODE = 'Other' THEN 'https://cdn-icons-png.flaticon.com/128/11271/11271965.png'
         ELSE NULL
     END AS ICON,
     COALESCE(cp.sum_count, 0) AS current_period_sum, 
@@ -568,7 +568,7 @@ The selection for <b>Severity</b> is: <b><Value data={severity_selection} column
     <Group>
         <BarChart 
             title="Injuries by Road User ({`${period_comp_mode[0].current_period_range}`})"
-            chartAreaHeight=165
+            chartAreaHeight=300
             subtitle="Road User"
             data={barchart_mode}
             x=MODE
@@ -582,17 +582,11 @@ The selection for <b>Severity</b> is: <b><Value data={severity_selection} column
             rightPadding=30
             wrapTitles=true
         />
-        <DataTable data={period_comp_severity} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true title="Year Over Year Injuries Comparison by Severity Level">
-            <Column id=SEVERITY title=Level wrap=true totalAgg="Total"/>
-            <Column id=current_period_sum title="Cnt" colGroup={`${period_comp_severity[0].current_period_range}`} />
-            <Column id=current_severity_percentage fmt=pct0 contentType=colorscale title="%" colGroup={`${period_comp_severity[0].current_period_range}`}/>
-            <Column id=prior_period_sum title="Cnt" colGroup={`${period_comp_severity[0].prior_period_range}`}  />
-            <Column id=prior_severity_percentage fmt=pct0 contentType=colorscale title="%" colGroup={`${period_comp_severity[0].prior_period_range}`}/>
-            <Column id=difference contentType=delta downIsGood=True title="Diff"/>
-            <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_severity[0].total_percentage_change} totalFmt='pct0' /> 
-        </DataTable>
         <Note>
             *Fatal only.
+        </Note>
+        <Note>
+            The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
         </Note>
     </Group>
         <Group>
@@ -605,15 +599,17 @@ The selection for <b>Severity</b> is: <b><Value data={severity_selection} column
             <Column id=difference contentType=delta downIsGood=True title="Diff"/>
             <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_mode[0].total_percentage_change} totalFmt='pct0'/> 
         </DataTable>
-        <Note>
-            *Fatal only.
-        </Note>
+        <DataTable data={period_comp_severity} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true title="Year Over Year Injuries Comparison by Severity Level">
+            <Column id=SEVERITY title=Level wrap=true totalAgg="Total"/>
+            <Column id=current_period_sum title="Cnt" colGroup={`${period_comp_severity[0].current_period_range}`} />
+            <Column id=current_severity_percentage fmt=pct0 contentType=colorscale title="%" colGroup={`${period_comp_severity[0].current_period_range}`}/>
+            <Column id=prior_period_sum title="Cnt" colGroup={`${period_comp_severity[0].prior_period_range}`}  />
+            <Column id=prior_severity_percentage fmt=pct0 contentType=colorscale title="%" colGroup={`${period_comp_severity[0].prior_period_range}`}/>
+            <Column id=difference contentType=delta downIsGood=True title="Diff"/>
+            <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_severity[0].total_percentage_change} totalFmt='pct0' /> 
+        </DataTable>
     </Group>
 </Grid>
-
-<Note>
-    The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
-</Note>
 
 <Details title="About Road Users">
 
@@ -627,12 +623,12 @@ The selection for <b>Severity</b> is: <b><Value data={severity_selection} column
     </thead>
     <tbody>
       <tr>
-        <td><img src="https://cdn-icons-png.flaticon.com/128/6955/6955575.png" alt="Driver Icon" width="32"></td>
+        <td><img src="https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/driver2.png" alt="Driver Icon" width="32"></td>
         <td>Driver</td>
         <td>The individual operating the motor vehicle.</td>
       </tr>
       <tr>
-        <td><img src="https://cdn-icons-png.flaticon.com/128/16645/16645585.png" alt="Passenger Icon" width="32"></td>
+        <td><img src="https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/passenger2.png" alt="Passenger Icon" width="32"></td>
         <td>Passenger</td>
         <td>The individual riding along in the motor vehicle.</td>
       </tr>
@@ -642,29 +638,24 @@ The selection for <b>Severity</b> is: <b><Value data={severity_selection} column
         <td>An individual moving on foot.</td>
       </tr>
       <tr>
-        <td><img src="https://cdn-icons-png.flaticon.com/128/5073/5073976.png" alt="Bicyclist Icon" width="32"></td>
+        <td><img src="https://cdn-icons-png.flaticon.com/128/6627/6627606.png" alt="Bicyclist Icon" width="32"></td>
         <td>Bicyclist</td>
         <td>A person riding a bicycle or motorized bicycle.</td>
       </tr>
       <tr>
-        <td><img src="https://cdn-icons-png.flaticon.com/128/18995/18995096.png" alt="Motorcyclist Icon" width="32"></td>
+        <td><img src="https://cdn-icons-png.flaticon.com/128/18860/18860700.png" alt="Motorcyclist Icon" width="32"></td>
         <td>Motorcyclist*</td>
         <td>User of a motor-driven cycle (e.g., motorcycle or moped). *Fatal only.</td>
       </tr>
       <tr>
-        <td><img src="https://cdn-icons-png.flaticon.com/128/15865/15865153.png" alt="Scooterist Icon" width="32"></td>
+        <td><img src="https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/scooter.png" alt="Scooterist Icon" width="32"></td>
         <td>Scooterist*</td>
         <td>User of a standing scooter or personal mobility device. *Fatal only.</td>
       </tr>
       <tr>
-        <td><img src="https://cdn-icons-png.flaticon.com/128/11271/11271965.png" alt="Unknown Icon" width="32"></td>
-        <td>Unknown</td>
-        <td>A road user whose type is unspecified.</td>
-      </tr>
-      <tr>
-        <td><img src="https://cdn-icons-png.flaticon.com/128/11271/11271958.png" alt="Other Icon" width="32"></td>
+        <td><img src="https://cdn-icons-png.flaticon.com/128/11271/11271965.png" alt="Other Icon" width="32"></td>
         <td>Other</td>
-        <td>Includes motor-driven cycles (commonly referred to as mopeds and motorcycles), as well as personal mobility devices, such as standing scooters, among others.</td>
+        <td>Includes motor-driven cycles (commonly referred to as mopeds and motorcycles), as well as personal mobility devices such as standing scooters, bus occupants, truck occupants, and others, including unknown classifications.</td>
       </tr>
     </tbody>
   </table>
