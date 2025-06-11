@@ -45,6 +45,7 @@ WITH
             MODE,
             SEVERITY
         FROM crashes.crashes
+        WHERE SEVERITY IN ${inputs.multi_severity.value}
     ),
     counts AS (
         SELECT
@@ -53,17 +54,17 @@ WITH
             SUM(COUNT) AS sum_count
         FROM crashes.crashes
         WHERE SEVERITY IN ${inputs.multi_severity.value}
-        AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-                             AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-        AND AGE BETWEEN ${inputs.min_age.value}
-                            AND (
-                                CASE 
-                                    WHEN ${inputs.min_age.value} <> 0 
-                                    AND ${inputs.max_age.value} = 120
-                                    THEN 119
-                                    ELSE ${inputs.max_age.value}
-                                END
-                                )
+          AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                              AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+          AND AGE BETWEEN ${inputs.min_age.value}
+                        AND (
+                            CASE 
+                                WHEN ${inputs.min_age.value} <> 0 
+                                AND ${inputs.max_age.value} = 120
+                                THEN 119
+                                ELSE ${inputs.max_age.value}
+                            END
+                        )
         GROUP BY MODE, SEVERITY
     )
 SELECT
@@ -199,7 +200,7 @@ SELECT
     mas.MODE,
     CASE
         WHEN mas.MODE = 'Driver' THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/driver2.png'
-        WHEN mas.MODE = 'Passenger' THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/passenger2.png'
+        WHEN mas.MODE = 'Passenger' THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/passenger.png'
         WHEN mas.MODE = 'Pedestrian' THEN 'https://cdn-icons-png.flaticon.com/128/12617/12617280.png'
         WHEN mas.MODE = 'Bicyclist' THEN 'https://cdn-icons-png.flaticon.com/128/6627/6627606.png'
         WHEN mas.MODE = 'Motorcyclist*' THEN 'https://cdn-icons-png.flaticon.com/128/18860/18860700.png'
@@ -575,7 +576,6 @@ The selection for <b>Severity</b> is: <b><Value data={severity_selection} column
         <BarChart 
             title="Injuries by Road User ({`${period_comp_mode[0].current_period_range}`})"
             chartAreaHeight=300
-            subtitle="Road User"
             data={barchart_mode}
             x=MODE
             y=sum_count
@@ -590,9 +590,6 @@ The selection for <b>Severity</b> is: <b><Value data={severity_selection} column
         />
         <Note>
             *Fatal only.
-        </Note>
-        <Note>
-            The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
         </Note>
     </Group>
         <Group>
@@ -616,6 +613,10 @@ The selection for <b>Severity</b> is: <b><Value data={severity_selection} column
         </DataTable>
     </Group>
 </Grid>
+
+<Note>
+    The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
+</Note>
 
 <Details title="About Road Users">
 
