@@ -2,6 +2,7 @@
 title: Age Distribution
 queries:
    - last_record: last_record.sql
+   - age_range: age_range.sql
 sidebar_position: 8
 ---
 
@@ -29,11 +30,8 @@ WHERE SEVERITY IN ${inputs.multi_severity.value}
   AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
       AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
   AND AGE BETWEEN 
-      COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-      AND LEAST(
-            COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 120),
-            119
-          );
+      ${inputs.min_age.value}
+      AND LEAST(${inputs.max_age.value}, 119);
 ```
 
 ```sql age_severity
@@ -47,7 +45,7 @@ WITH buckets(bucket_order, bucket_label, lower_bound, upper_bound) AS (
         (51,   '51-60',  51,  60),
         (61,   '61-70',  61,  70),
         (71,   '71-80',  71,  80),
-        (81,   '> 80',  81,  110)
+        (81,   '> 80',   81,  110)
 ),
 null_bucket AS (
     SELECT 9999 AS bucket_order, 'Null' AS bucket_label, 120 AS lower_bound, 120 AS upper_bound
@@ -56,40 +54,49 @@ all_buckets AS (
     SELECT * FROM buckets
     UNION ALL
     SELECT * FROM null_bucket
+),
+binned_data AS (
+    SELECT
+        ab.bucket_order,
+        ab.bucket_label,
+        c.SEVERITY,
+        COALESCE(SUM(c.COUNT), 0) AS Injuries
+    FROM all_buckets ab
+    LEFT JOIN crashes.crashes c 
+      ON (
+            -- For the Null bucket, match records where AGE equals 120 exactly
+            (ab.bucket_label = 'Null' AND CAST(c.AGE AS INTEGER) = ab.lower_bound)
+            OR
+            -- For all other buckets, match where AGE falls between the bucket's lower and upper bounds
+            (ab.bucket_label <> 'Null' AND CAST(c.AGE AS INTEGER) BETWEEN ab.lower_bound AND ab.upper_bound)
+         )
+         AND c.MODE IN ${inputs.multi_mode_dd.value}
+         AND c.SEVERITY IN ${inputs.multi_severity.value}
+         AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                              AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+         AND c.AGE BETWEEN ${inputs.min_age.value}
+                        AND (
+                            CASE 
+                                WHEN ${inputs.min_age.value} <> 0 
+                                AND ${inputs.max_age.value} = 120
+                                THEN 119
+                                ELSE ${inputs.max_age.value}
+                            END
+                        )
+    GROUP BY ab.bucket_order, ab.bucket_label, c.SEVERITY
 )
 SELECT
-    ab.bucket_label,
-    c.SEVERITY,
-    COALESCE(SUM(c.COUNT), 0) AS Injuries
-FROM all_buckets ab
-LEFT JOIN crashes.crashes c 
-    ON (
-         -- For the Null bucket, match records where AGE equals 120 exactly
-         (ab.bucket_label = 'Null' AND CAST(c.AGE AS INTEGER) = ab.lower_bound)
-         OR
-         -- For all other buckets, match where AGE falls between the bucket's lower and upper bounds
-         (ab.bucket_label <> 'Null' AND CAST(c.AGE AS INTEGER) BETWEEN ab.lower_bound AND ab.upper_bound)
-       )
-    AND c.MODE IN ${inputs.multi_mode_dd.value}
-    AND c.SEVERITY IN ${inputs.multi_severity.value}
-    AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-                         AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-    AND c.AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-        AND (
-            CASE 
-                WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                AND COALESCE('${inputs.max_age}', '120') = '120'
-                THEN 119
-                ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-            END
-            )
-GROUP BY ab.bucket_order, ab.bucket_label, c.SEVERITY
+    bucket_label,
+    SEVERITY,
+    Injuries
+FROM binned_data
+WHERE SEVERITY IS NOT NULL
 ORDER BY 
-    ab.bucket_order,
+    bucket_order,
     CASE 
-        WHEN c.SEVERITY = 'Minor' THEN 1
-        WHEN c.SEVERITY = 'Major' THEN 2
-        WHEN c.SEVERITY = 'Fatal' THEN 3
+        WHEN SEVERITY = 'Minor' THEN 1
+        WHEN SEVERITY = 'Major' THEN 2
+        WHEN SEVERITY = 'Fatal' THEN 3
     END;
 ```
 
@@ -104,7 +111,7 @@ WITH buckets(bucket_order, bucket_label, lower_bound, upper_bound) AS (
         (51,   '51-60',  51,  60),
         (61,   '61-70',  61,  70),
         (71,   '71-80',  71,  80),
-        (81,   '> 80',  81,  110)
+        (81,   '> 80',   81,  110)
 ),
 null_bucket AS (
     SELECT 9999 AS bucket_order, 'Null' AS bucket_label, 120 AS lower_bound, 120 AS upper_bound
@@ -113,43 +120,53 @@ all_buckets AS (
     SELECT * FROM buckets
     UNION ALL
     SELECT * FROM null_bucket
+),
+binned_data AS (
+    SELECT
+        ab.bucket_order,
+        ab.bucket_label,
+        c.MODE,
+        COALESCE(SUM(c.COUNT), 0) AS Injuries
+    FROM all_buckets ab
+    LEFT JOIN crashes.crashes c 
+      ON (
+           -- For the Null bucket, match records where AGE equals 120 exactly
+           (ab.bucket_label = 'Null' AND CAST(c.AGE AS INTEGER) = ab.lower_bound)
+           OR
+           -- For all other buckets, match where AGE falls between the bucket's lower and upper bounds
+           (ab.bucket_label <> 'Null' AND CAST(c.AGE AS INTEGER) BETWEEN ab.lower_bound AND ab.upper_bound)
+         )
+         AND c.MODE IN ${inputs.multi_mode_dd.value}
+         AND c.SEVERITY IN ${inputs.multi_severity.value}
+         AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+                              AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+         AND c.AGE BETWEEN ${inputs.min_age.value}
+                        AND (
+                            CASE 
+                                WHEN ${inputs.min_age.value} <> 0 
+                                AND ${inputs.max_age.value} = 120
+                                THEN 119
+                                ELSE ${inputs.max_age.value}
+                            END
+                        )
+    GROUP BY ab.bucket_order, ab.bucket_label, c.MODE
 )
 SELECT
-    ab.bucket_label,
-    c.MODE,
-    COALESCE(SUM(c.COUNT), 0) AS Injuries
-FROM all_buckets ab
-LEFT JOIN crashes.crashes c 
-    ON (
-         -- For the Null bucket, match records where AGE equals 120 exactly
-         (ab.bucket_label = 'Null' AND CAST(c.AGE AS INTEGER) = ab.lower_bound)
-         OR
-         -- For all other buckets, match where AGE falls between the bucket's lower and upper bounds
-         (ab.bucket_label <> 'Null' AND CAST(c.AGE AS INTEGER) BETWEEN ab.lower_bound AND ab.upper_bound)
-       )
-    AND c.MODE IN ${inputs.multi_mode_dd.value}
-    AND c.SEVERITY IN ${inputs.multi_severity.value}
-    AND c.REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-                         AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-    AND c.AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-        AND (
-            CASE 
-                WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                AND COALESCE('${inputs.max_age}', '120') = '120'
-                THEN 119
-                ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-            END
-            )
-GROUP BY ab.bucket_order, ab.bucket_label, c.MODE
-ORDER BY ab.bucket_order,
+    bucket_label,
+    MODE,
+    Injuries
+FROM binned_data
+WHERE MODE IS NOT NULL
+ORDER BY 
+    bucket_order,
     CASE 
-        WHEN c.MODE = 'Pedestrian' THEN 1
-        WHEN c.MODE = 'Other' THEN 2
-        WHEN c.MODE = 'Bicyclist' THEN 3
-        WHEN c.MODE = 'Scooterist*' THEN 4
-        WHEN c.MODE = 'Motorcyclist*' THEN 5
-        WHEN c.MODE = 'Passenger' THEN 6
-        WHEN c.MODE = 'Driver' THEN 7
+        WHEN MODE = 'Pedestrian' THEN 1
+        WHEN MODE = 'Other' THEN 2
+        WHEN MODE = 'Bicyclist' THEN 3
+        WHEN MODE = 'Scooterist*' THEN 4
+        WHEN MODE = 'Motorcyclist*' THEN 5
+        WHEN MODE = 'Passenger' THEN 6
+        WHEN MODE = 'Driver' THEN 7
         ELSE 8  -- for any other cases, place them last
     END;
 ```
@@ -203,17 +220,22 @@ WHERE
     description="*Only fatal"
 />
 
-<TextInput
-    name="min_age" 
-    title="Enter Min Age"
-    defaultValue="0"
+<Dropdown 
+    data={age_range} 
+    name=min_age
+    value=age_int
+    title="Select Min Age" 
+    defaultValue={0}
     description='The minumum age for the current selection of filters is {min_max_age[0].unique_min_age}.'
 />
 
-<TextInput
+<Dropdown 
+    data={age_range} 
     name="max_age"
-    title="Enter Max Age"
-    defaultValue="120"
+    value=age_int
+    title="Select Max Age"
+    order="age_int desc"
+    defaultValue={120}
     description='Age 120 serves as a placeholder for missing age values in the records. However, missing values will be automatically excluded from the query if the default 0-120 range is changed by the user. The maximum age for the current selection of filters is {min_max_age[0].unique_max_age}.'
 />
 

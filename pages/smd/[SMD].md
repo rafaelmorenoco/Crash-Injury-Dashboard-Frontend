@@ -2,6 +2,7 @@
 queries:
    - smd_link: smd_link.sql
    - last_record: last_record.sql
+   - age_range: age_range.sql
 ---
 
 # SMD {params.SMD}
@@ -59,19 +60,19 @@ SELECT
     SUM(COUNT) AS Count
 FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
-  AND SMD = '${params.SMD}'
-  AND SEVERITY IN ${inputs.multi_severity.value}
-  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-  AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-  AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-            AND (
-                CASE 
-                    WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                    AND COALESCE('${inputs.max_age}', '120') = '120'
-                    THEN 119
-                    ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-                END
-                )
+AND SMD = '${params.SMD}'
+AND SEVERITY IN ${inputs.multi_severity.value}
+AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+AND AGE BETWEEN ${inputs.min_age.value}
+                AND (
+                    CASE 
+                        WHEN ${inputs.min_age.value} <> 0 
+                        AND ${inputs.max_age.value} = 120
+                        THEN 119
+                        ELSE ${inputs.max_age.value}
+                    END
+                    )
 GROUP BY
     REPORTDATE,
     MODE,
@@ -93,15 +94,15 @@ WHERE MODE IN ${inputs.multi_mode_dd.value}
 AND SEVERITY IN ${inputs.multi_severity.value}
 AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
 AND (('${inputs.date_range.end}'::DATE)+ INTERVAL '1 day')
-AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-        AND (
-            CASE 
-                WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                AND COALESCE('${inputs.max_age}', '120') = '120'
-                THEN 119
-                ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-            END
-            )
+AND AGE BETWEEN ${inputs.min_age.value}
+                AND (
+                    CASE 
+                        WHEN ${inputs.min_age.value} <> 0 
+                        AND ${inputs.max_age.value} = 120
+                        THEN 119
+                        ELSE ${inputs.max_age.value}
+                    END
+                    )
 GROUP BY all;
 ```
 
@@ -154,16 +155,21 @@ WHERE
     description="*Only fatal"
 />
 
-<TextInput
-    name="min_age" 
-    title="Enter Min Age"
-    defaultValue="0"
+<Dropdown 
+    data={age_range} 
+    name=min_age
+    value=age_int
+    title="Select Min Age" 
+    defaultValue={0}
 />
 
-<TextInput
+<Dropdown 
+    data={age_range} 
     name="max_age"
-    title="Enter Max Age"
-    defaultValue="120"
+    value=age_int
+    title="Select Max Age"
+    order="age_int desc"
+    defaultValue={120}
     description='Age 120 serves as a placeholder for missing age values in the records. However, missing values will be automatically excluded from the query if the default 0-120 range is changed by the user. To get a count of missing age values, go to the "Age Distribution" page.'
 />
 

@@ -2,6 +2,7 @@
 queries:
    - anc_link: anc_link.sql
    - last_record: last_record.sql
+   - age_range: age_range.sql
 ---
 
 # ANC {params.ANC}
@@ -67,15 +68,15 @@ LEFT JOIN (
         AND MODE IN ${inputs.multi_mode_dd.value}
         AND SEVERITY IN ${inputs.multi_severity.value}
         AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-        AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-            AND (
-                CASE 
-                    WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                    AND COALESCE('${inputs.max_age}', '120') = '120'
-                    THEN 119
-                    ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-                END
-                )
+        AND AGE BETWEEN ${inputs.min_age.value}
+                            AND (
+                                CASE 
+                                    WHEN ${inputs.min_age.value} <> 0 
+                                    AND ${inputs.max_age.value} = 120
+                                    THEN 119
+                                    ELSE ${inputs.max_age.value}
+                                END
+                                )
         AND SMD IS NOT NULL
     GROUP BY 
         SMD
@@ -159,15 +160,15 @@ WITH
             AND crashes.MODE IN ${inputs.multi_mode_dd.value}
             AND crashes.REPORTDATE BETWEEN (SELECT start_date FROM date_info)
             AND (SELECT end_date FROM date_info)
-            AND crashes.AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-                AND (
-                    CASE 
-                        WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                        AND COALESCE('${inputs.max_age}', '120') = '120'
-                        THEN 119
-                        ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-                    END
-                    )
+            AND AGE BETWEEN ${inputs.min_age.value}
+                                AND (
+                                    CASE 
+                                        WHEN ${inputs.min_age.value} <> 0 
+                                        AND ${inputs.max_age.value} = 120
+                                        THEN 119
+                                        ELSE ${inputs.max_age.value}
+                                    END
+                                    )
         GROUP BY 
             crashes.SMD
     ), 
@@ -188,15 +189,15 @@ WITH
                 ) AND (
                     (SELECT end_date FROM date_info) - (SELECT interval_offset FROM offset_period)
                 )
-            AND crashes.AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-                AND (
-                    CASE 
-                        WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                        AND COALESCE('${inputs.max_age}', '120') = '120'
-                        THEN 119
-                        ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-                    END
-                    )
+            AND AGE BETWEEN ${inputs.min_age.value}
+                                AND (
+                                    CASE 
+                                        WHEN ${inputs.min_age.value} <> 0 
+                                        AND ${inputs.max_age.value} = 120
+                                        THEN 119
+                                        ELSE ${inputs.max_age.value}
+                                    END
+                                    )
         GROUP BY 
             crashes.SMD
     ),
@@ -303,16 +304,21 @@ WHERE
     description="*Only fatal"
 />
 
-<TextInput
-    name="min_age" 
-    title="Enter Min Age"
-    defaultValue="0"
+<Dropdown 
+    data={age_range} 
+    name=min_age
+    value=age_int
+    title="Select Min Age" 
+    defaultValue={0}
 />
 
-<TextInput
+<Dropdown 
+    data={age_range} 
     name="max_age"
-    title="Enter Max Age"
-    defaultValue="120"
+    value=age_int
+    title="Select Max Age"
+    order="age_int desc"
+    defaultValue={120}
     description='Age 120 serves as a placeholder for missing age values in the records. However, missing values will be automatically excluded from the query if the default 0-120 range is changed by the user. To get a count of missing age values, go to the "Age Distribution" page.'
 />
 

@@ -2,6 +2,7 @@
 title: Multiyear Trend
 queries:
    - last_record: last_record.sql
+   - age_range: age_range.sql
 sidebar_position: 7
 ---
 
@@ -76,15 +77,15 @@ FROM (
     AND REPORTDATE < CAST(CAST(strftime('%Y', REPORTDATE) AS TEXT) || '-' || strftime(end_date, '%m-%d') AS DATE) + INTERVAL '1 day'
     AND crashes.SEVERITY IN ${inputs.multi_severity.value}
     AND crashes.MODE IN ${inputs.multi_mode_dd.value}
-    AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-            AND (
-                  CASE 
-                    WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                      AND COALESCE('${inputs.max_age}', '120') = '120'
-                      THEN 119
-                    ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-                  END
-                )
+    AND crashes.AGE BETWEEN ${inputs.min_age.value}
+                        AND (
+                            CASE 
+                                WHEN ${inputs.min_age.value} <> 0 
+                                AND ${inputs.max_age.value} = 120
+                                THEN 119
+                                ELSE ${inputs.max_age.value}
+                            END
+                            )
     AND strftime('%Y', REPORTDATE) IN ${inputs.multi_year.value}
   GROUP BY yr
 ) AS yearly_counts;
@@ -153,15 +154,15 @@ WITH
           AND REPORTDATE < CAST(y.yr || '-' || d.month_day_end AS DATE) + INTERVAL '1 day'
           AND crashes.SEVERITY IN ${inputs.multi_severity.value}
           AND crashes.MODE IN ${inputs.multi_mode_dd.value}
-          AND crashes.AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-            AND (
-                  CASE 
-                    WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                      AND COALESCE('${inputs.max_age}', '120') = '120'
-                      THEN 119
-                    ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-                  END
-                )
+          AND crashes.AGE BETWEEN ${inputs.min_age.value}
+                              AND (
+                                  CASE 
+                                      WHEN ${inputs.min_age.value} <> 0 
+                                      AND ${inputs.max_age.value} = 120
+                                      THEN 119
+                                      ELSE ${inputs.max_age.value}
+                                  END
+                                  )
       ) AS year_count
     FROM years y
   ),
@@ -221,15 +222,15 @@ WITH
           AND c.REPORTDATE < make_date(ay.yr, d.end_month, d.end_day) + INTERVAL '1 day'
           AND c.SEVERITY IN ${inputs.multi_severity.value}
           AND c.MODE IN ${inputs.multi_mode_dd.value}
-          AND c.AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-            AND (
-                  CASE 
-                    WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                      AND COALESCE('${inputs.max_age}', '120') = '120'
-                      THEN 119
-                    ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-                  END
-                )
+          AND c.AGE BETWEEN ${inputs.min_age.value}
+                              AND (
+                                  CASE 
+                                      WHEN ${inputs.min_age.value} <> 0 
+                                      AND ${inputs.max_age.value} = 120
+                                      THEN 119
+                                      ELSE ${inputs.max_age.value}
+                                  END
+                                  )
       ) AS year_count
     FROM allowed_years ay
   )
@@ -273,15 +274,15 @@ WITH
           c.REPORTDATE < make_date(ay.yr, d.end_month, d.end_day) + INTERVAL '1 day' 
           AND c.SEVERITY IN ${inputs.multi_severity.value} 
           AND c.MODE IN ${inputs.multi_mode_dd.value}
-          AND c.AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-            AND (
-                  CASE 
-                    WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                      AND COALESCE('${inputs.max_age}', '120') = '120'
-                      THEN 119
-                    ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-                  END
-                )
+          AND c.AGE BETWEEN ${inputs.min_age.value}
+                              AND (
+                                  CASE 
+                                      WHEN ${inputs.min_age.value} <> 0 
+                                      AND ${inputs.max_age.value} = 120
+                                      THEN 119
+                                      ELSE ${inputs.max_age.value}
+                                  END
+                                  )
       ) AS year_count,
       (SELECT cy_start_date FROM date_info_cy) AS cy_start_date,
       (SELECT cy_end_date FROM date_info_cy) AS cy_end_date
@@ -324,16 +325,21 @@ ORDER BY yc.yr DESC;
     description="*Only fatal"
 />
 
-<TextInput
-    name="min_age" 
-    title="Enter Min Age"
-    defaultValue="0"
+<Dropdown 
+    data={age_range} 
+    name=min_age
+    value=age_int
+    title="Select Min Age" 
+    defaultValue={0}
 />
 
-<TextInput
+<Dropdown 
+    data={age_range} 
     name="max_age"
-    title="Enter Max Age"
-    defaultValue="120"
+    value=age_int
+    title="Select Max Age"
+    order="age_int desc"
+    defaultValue={120}
     description='Age 120 serves as a placeholder for missing age values in the records. However, missing values will be automatically excluded from the query if the default 0-120 range is changed by the user. To get a count of missing age values, go to the "Age Distribution" page.'
 />
 
