@@ -60,6 +60,13 @@ group by all
 
   UNION ALL
 
+  SELECT 'Age', 
+        CAST(CAST(replace(AGE, '*', '') AS INTEGER) AS VARCHAR) AS AGE
+  FROM crashes.crashes
+  WHERE OBJECTID = '${params.OBJECTID}'
+
+  UNION ALL
+
   SELECT 'CCN', CCN::TEXT
   FROM crashes.crashes
   WHERE OBJECTID = '${params.OBJECTID}'

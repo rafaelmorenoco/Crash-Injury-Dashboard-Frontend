@@ -2,6 +2,7 @@
 queries:
    - hex: hex.sql
    - last_record: last_record.sql
+   - age_range: age_range.sql
 ---
 
 # Selected Hexagon
@@ -48,19 +49,19 @@ SELECT
     SUM(COUNT) AS Count
 FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
-  AND GRID_ID = '${params.GRID_ID}'
-  AND SEVERITY IN ${inputs.multi_severity.value}
-  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
-  AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-  AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-        AND (
-            CASE 
-                WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                AND COALESCE('${inputs.max_age}', '120') = '120'
-                THEN 119
-                ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-            END
-            )
+AND GRID_ID = '${params.GRID_ID}'
+AND SEVERITY IN ${inputs.multi_severity.value}
+AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE)
+AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+AND AGE BETWEEN ${inputs.min_age.value}
+                    AND (
+                        CASE 
+                            WHEN ${inputs.min_age.value} <> 0 
+                            AND ${inputs.max_age.value} = 120
+                            THEN 119
+                            ELSE ${inputs.max_age.value}
+                        END
+                        )
 GROUP BY
     REPORTDATE,
     MODE,
@@ -80,17 +81,17 @@ SELECT
     SUM(COUNT) AS Count
 FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
-  AND SEVERITY IN ${inputs.multi_severity.value}
-  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-  AND AGE BETWEEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0)
-            AND (
-                CASE 
-                    WHEN COALESCE(CAST(NULLIF('${inputs.min_age}', '') AS INTEGER), 0) <> 0 
-                    AND COALESCE('${inputs.max_age}', '120') = '120'
-                    THEN 119
-                    ELSE COALESCE(CAST(NULLIF('${inputs.max_age}', '') AS INTEGER), 119)
-                END
-                )
+AND SEVERITY IN ${inputs.multi_severity.value}
+AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+AND AGE BETWEEN ${inputs.min_age.value}
+                    AND (
+                        CASE 
+                            WHEN ${inputs.min_age.value} <> 0 
+                            AND ${inputs.max_age.value} = 120
+                            THEN 119
+                            ELSE ${inputs.max_age.value}
+                        END
+                        )
 GROUP BY
     MODE,
     SEVERITY,
@@ -115,14 +116,21 @@ WHERE NOT EXISTS (
 );
 ```
 
+```sql roadsegment_dropdown
+SELECT DISTINCT roadsegment
+FROM intersections.intersections
+CROSS JOIN UNNEST(split(INTERSECTIONNAME, ' & ')) AS t(roadsegment);
+```
+
 ```sql intersections_table
 SELECT
     INTERSECTIONNAME,
-    '/hexgrid/' || GRID_ID AS link
-FROM
-    intersections.intersections
-WHERE
-    INTERSECTIONNAME ILIKE '%' || '${inputs.intersection_search}' || '%'
+    '/hexgrid/' || GRID_ID AS link,
+    split(INTERSECTIONNAME, ' & ') AS ROADSEGMENT
+FROM intersections.intersections
+WHERE array_position(split(INTERSECTIONNAME, ' & '), '${inputs.roadsegment_a.value}') IS NOT NULL
+  AND array_position(split(INTERSECTIONNAME, ' & '), '${inputs.roadsegment_b.value}') IS NOT NULL
+GROUP BY INTERSECTIONNAME, GRID_ID
 LIMIT 5;
 ```
 
@@ -179,15 +187,21 @@ WHERE
             selectAllByDefault=true
             description="*Only fatal"
         />
-        <TextInput
-            name="min_age" 
-            title="Enter Min Age"
-            defaultValue="0"
+        <Dropdown 
+            data={age_range} 
+            name=min_age
+            value=age_int
+            title="Select Min Age" 
+            defaultValue={0}
         />
-        <TextInput
+
+        <Dropdown 
+            data={age_range} 
             name="max_age"
-            title="Enter Max Age"
-            defaultValue="120"
+            value=age_int
+            title="Select Max Age"
+            order="age_int desc"
+            defaultValue={120}
             description='Age 120 serves as a placeholder for missing age values in the records. However, missing values will be automatically excluded from the query if the default 0-120 range is changed by the user. To get a count of missing age values, go to the "Age Distribution" page.'
         />
     </Group>
@@ -237,28 +251,28 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
         <Alert status="info">
             To navigate to another hexagon, use the intersection search function below, or go back to: <b><a href="https://crash-injury-dashboard.evidence.app/hexgrid/">Injuries Heatmap</a></b>.
         </Alert>
-        <TextInput
-            name=intersection_search
-            title="Intersection Search"
-            description="Search for an intersection within a hexagon"
-            placeholder="E.g. 14TH ST NW & PENNSYLVANIA AVE NW"
-            defaultValue="14TH ST NW"
+        <div>
+            <b>Intersection Search:</b>
+        </div>
+        <Dropdown 
+            data={roadsegment_dropdown} 
+            name=roadsegment_a
+            value=roadsegment
+            title="Select 1st Road" 
+            defaultValue="13TH ST NW"
         />
-        <DataTable data={intersections_table} subtitle="Select an intersection from the resulting search to zoom into the hexagon that contains it." rowShading=true rows=5 link=link downloadable=false>
-                    <Column id=INTERSECTIONNAME title="Intersection Match:"/>
+        <Dropdown 
+            data={roadsegment_dropdown} 
+            name=roadsegment_b
+            value=roadsegment
+            title="Select 2nd Road" 
+            defaultValue="PENNSYLVANIA AVE NW"
+        />
+        <DataTable data={intersections_table} rowShading=true rows=2 link=link downloadable=false>
+                    <Column id=INTERSECTIONNAME title="Go to Selected Intersection:"/>
         </DataTable>
     </Group>
 </Grid>
-
-<Details title="Having trouble with the search? Tap/click here for solutions.">
-
-### Tips:
-- For numbered streets, keep the ordinal attached directly to the number without spaces (e.g., "14TH ST NW" is correct, while "14 TH ST NW" is not).
-- Always include the road type after the name or number, followed by the quadrant (e.g., "PENNSYLVANIA AVE NW").
-- Don’t use "and" for intersections; always use "&" (e.g., "14TH ST NW & PENNSYLVANIA AVE NW").
-- If you don’t see the intersection listed here, try reversing the order (e.g., change "PENNSYLVANIA AVE NW & 14TH ST NW" to "14TH ST NW & PENNSYLVANIA AVE NW").
-
-</Details>
 
 <Note>
     The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs.
