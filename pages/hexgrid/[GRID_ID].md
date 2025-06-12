@@ -116,24 +116,6 @@ WHERE NOT EXISTS (
 );
 ```
 
-```sql roadsegment_dropdown
-SELECT DISTINCT roadsegment
-FROM intersections.intersections
-CROSS JOIN UNNEST(split(INTERSECTIONNAME, ' & ')) AS t(roadsegment);
-```
-
-```sql intersections_table
-SELECT
-    INTERSECTIONNAME,
-    '/hexgrid/' || GRID_ID AS link,
-    split(INTERSECTIONNAME, ' & ') AS ROADSEGMENT
-FROM intersections.intersections
-WHERE array_position(split(INTERSECTIONNAME, ' & '), '${inputs.roadsegment_a.value}') IS NOT NULL
-  AND array_position(split(INTERSECTIONNAME, ' & '), '${inputs.roadsegment_b.value}') IS NOT NULL
-GROUP BY INTERSECTIONNAME, GRID_ID
-LIMIT 5;
-```
-
 ```sql mode_severity_selection
 SELECT
     STRING_AGG(DISTINCT MODE, ', ' ORDER BY MODE ASC) AS MODE_SELECTION,
@@ -249,28 +231,8 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
           <Column id=Count totalAgg=sum/>
         </DataTable>
         <Alert status="info">
-            To navigate to another hexagon, use the intersection search function below, or go back to: <b><a href="https://crash-injury-dashboard.evidence.app/hexgrid/">Injuries Heatmap</a></b>.
+            To navigate to another hexagon, go back to: <b><a href="https://crash-injury-dashboard.evidence.app/hexgrid/">Injuries Heatmap</a></b>.
         </Alert>
-        <div>
-            <b>Intersection Search:</b>
-        </div>
-        <Dropdown 
-            data={roadsegment_dropdown} 
-            name=roadsegment_a
-            value=roadsegment
-            title="Select 1st Road" 
-            defaultValue="13TH ST NW"
-        />
-        <Dropdown 
-            data={roadsegment_dropdown} 
-            name=roadsegment_b
-            value=roadsegment
-            title="Select 2nd Road" 
-            defaultValue="PENNSYLVANIA AVE NW"
-        />
-        <DataTable data={intersections_table} rowShading=true rows=2 link=link downloadable=false>
-                    <Column id=INTERSECTIONNAME title="Go to Selected Intersection:"/>
-        </DataTable>
     </Group>
 </Grid>
 
