@@ -262,10 +262,17 @@ LEFT JOIN (
 ON h.GRID_ID = i.GRID_ID;
 ```
 
-```sql roadsegment_dropdown
+```sql roadsegment_dropdown_a
 SELECT DISTINCT roadsegment
 FROM intersections.intersections
 CROSS JOIN UNNEST(split(INTERSECTIONNAME, ' & ')) AS t(roadsegment);
+```
+
+```sql roadsegment_dropdown_b
+SELECT DISTINCT t.roadsegment
+FROM intersections.intersections
+CROSS JOIN UNNEST(split(INTERSECTIONNAME, ' & ')) AS t(roadsegment)
+WHERE INTERSECTIONNAME ILIKE '%' || '${inputs.roadsegment_a.value}' || '%';
 ```
 
 ```sql intersections_table
@@ -491,14 +498,14 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
             <b>Intersection Search:</b>
         </div>
         <Dropdown 
-            data={roadsegment_dropdown} 
+            data={roadsegment_dropdown_a} 
             name=roadsegment_a
             value=roadsegment
             title="Select 1st Road" 
             defaultValue="13TH ST NW"
         />
         <Dropdown 
-            data={roadsegment_dropdown} 
+            data={roadsegment_dropdown_b} 
             name=roadsegment_b
             value=roadsegment
             title="Select 2nd Road" 
