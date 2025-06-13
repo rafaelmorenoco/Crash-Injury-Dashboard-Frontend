@@ -194,12 +194,12 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
                 {id:'REPORTDATE', showColumnName:false, fmt:'mm/dd/yy hh:mm'},
                 {id:'ADDRESS', showColumnName:false, fmt:'id'}
             ]}/>
-          <Areas data={unique_hin} geoJsonUrl='/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ borderWidth=1.5 ignoreZoom=true
+          <Areas data={unique_hin} geoJsonUrl='https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Frontend/main/static/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00/ borderWidth=1.5 ignoreZoom=true
           tooltip={[
                 {id: 'ROUTENAME'}
             ]}
           />
-          <Areas data={unique_smd} geoJsonUrl='/smd_2023.geojson' geoId=SMD areaCol=SMD min=0 borderColor=#000000 color=#1C00ff00 borderWidth=1.75/>
+          <Areas data={unique_smd} geoJsonUrl='https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Frontend/main/static/smd_2023.geojson' geoId=SMD areaCol=SMD min=0 borderColor=#000000 color=#1C00ff00 borderWidth=1.75/>
         </BaseMap>
         <Note>
         The purple lines represent DC's High Injury Network
