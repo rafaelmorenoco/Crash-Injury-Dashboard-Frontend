@@ -29,26 +29,6 @@ jobs:
           rm -rf deploy/package
           rm -rf deploy/.github
 
-          # Edit the /pages files to update the links
-
-          # For /pages/hexgrid/index.md, replace:
-          #   '/hexgrid/' || h.GRID_ID AS link
-          # With:
-          #   '/Crash-Injury-Dashboard-Frontend/hexgrid/' || h.GRID_ID AS link
-          sed -i "s#'/hexgrid/' || h.GRID_ID AS link#'/Crash-Injury-Dashboard-Frontend/hexgrid/' || h.GRID_ID AS link#g" deploy/pages/hexgrid/index.md
-
-          # For /pages/anc/index.md, replace:
-          #   '/anc/' || a.ANC AS link
-          # With:
-          #   '/Crash-Injury-Dashboard-Frontend/anc/' || a.ANC AS link
-          sed -i "s#'/anc/' || a.ANC AS link#'/Crash-Injury-Dashboard-Frontend/anc/' || a.ANC AS link#g" deploy/pages/anc/index.md
-
-          # For /pages/smd/index.md, replace:
-          #   '/smd/' || a.SMD AS link
-          # With:
-          #   '/Crash-Injury-Dashboard-Frontend/smd/' || a.SMD AS link
-          sed -i "s#'/smd/' || a.SMD AS link#'/Crash-Injury-Dashboard-Frontend/smd/' || a.SMD AS link#g" deploy/pages/smd/index.md
-
       # Step 3: Initialize a new Git repository in the deploy folder
       - name: Initialize Clean Repo for Deployment
         working-directory: deploy
