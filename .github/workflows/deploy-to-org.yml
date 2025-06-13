@@ -27,7 +27,7 @@ jobs:
           # Remove files/folders that should NOT be pushed
           rm -f deploy/evidence.config
           rm -rf deploy/package
-          rm -rf deploy/.github
+          rm -rf deploy/.github/workflows/deploy-to-org.yml
 
       # Step 3: Initialize a new Git repository in the deploy folder
       - name: Initialize Clean Repo for Deployment
