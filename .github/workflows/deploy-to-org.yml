@@ -25,8 +25,7 @@ jobs:
           git archive HEAD | tar -x -C deploy
 
           # Remove files/folders that should NOT be pushed
-          rm -f deploy/evidence.config
-          rm -rf deploy/package
+          rm -rf .github\workflows\deploy-to-org.yml
 
           # Edit the /pages files to update the links
 
