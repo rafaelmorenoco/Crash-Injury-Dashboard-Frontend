@@ -272,7 +272,7 @@ CROSS JOIN UNNEST(split(INTERSECTIONNAME, ' & ')) AS t(roadsegment);
 SELECT DISTINCT t.roadsegment
 FROM intersections.intersections
 CROSS JOIN UNNEST(split(INTERSECTIONNAME, ' & ')) AS t(roadsegment)
-WHERE INTERSECTIONNAME ILIKE '%' || '${inputs.roadsegment_a.value}' || '%';
+WHERE INTERSECTIONNAME LIKE '%${inputs.roadsegment_a.value}%';
 ```
 
 ```sql intersections_table
