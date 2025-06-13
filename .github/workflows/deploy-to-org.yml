@@ -67,5 +67,5 @@ jobs:
           # Add the organization repository as a remote destination.
           # The URL includes your username and the PAT stored as secret.
           git remote add origin https://rafaelmorenoco:${ORG_TOKEN}@github.com/dcvisionzero/Crash-Injury-Dashboard-Frontend.git
-          # Force push the clean commit to the desired branch (e.g., master)
-          git push origin master --force
+          # Force push the clean commit to the desired branch
+          git push origin main --force
