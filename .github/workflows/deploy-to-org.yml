@@ -20,21 +20,33 @@ jobs:
       # Step 2: Create an archive, remove unwanted files, and modify files
       - name: Prepare Clean Archive
         run: |
-          # Create a temporary directory for the deployable version
+          # Create a temporary directory and export the repository content into it
           mkdir deploy
-          # Export the repository content into the "deploy" folder
           git archive HEAD | tar -x -C deploy
-          
-          # Edit the files in /pages to update the links
 
-          # Update /pages/hexgrid/index.md:
-          sed -i "s|'/hexgrid/' || h.GRID_ID AS link|'/Crash-Injury-Dashboard-Frontend/hexgrid/' || h.GRID_ID AS link|g" deploy/pages/hexgrid/index.md
-          
-          # Update /pages/anc/index.md:
-          sed -i "s|'/anc/' || a.ANC AS link|'/Crash-Injury-Dashboard-Frontend/anc/' || a.ANC AS link|g" deploy/pages/anc/index.md
-          
-          # Update /pages/smd/index.md:
-          sed -i "s|'/smd/' || a.SMD AS link|'/Crash-Injury-Dashboard-Frontend/smd/' || a.SMD AS link|g" deploy/pages/smd/index.md
+          # Remove files/folders that should NOT be pushed
+          rm -f deploy/evidence.config
+          rm -rf deploy/package
+
+          # Edit the /pages files to update the links
+
+          # For /pages/hexgrid/index.md, replace:
+          #   '/hexgrid/' || h.GRID_ID AS link
+          # With:
+          #   '/Crash-Injury-Dashboard-Frontend/hexgrid/' || h.GRID_ID AS link
+          sed -i "s#'/hexgrid/' || h.GRID_ID AS link#'/Crash-Injury-Dashboard-Frontend/hexgrid/' || h.GRID_ID AS link#g" deploy/pages/hexgrid/index.md
+
+          # For /pages/anc/index.md, replace:
+          #   '/anc/' || a.ANC AS link
+          # With:
+          #   '/Crash-Injury-Dashboard-Frontend/anc/' || a.ANC AS link
+          sed -i "s#'/anc/' || a.ANC AS link#'/Crash-Injury-Dashboard-Frontend/anc/' || a.ANC AS link#g" deploy/pages/anc/index.md
+
+          # For /pages/smd/index.md, replace:
+          #   '/smd/' || a.SMD AS link
+          # With:
+          #   '/Crash-Injury-Dashboard-Frontend/smd/' || a.SMD AS link
+          sed -i "s#'/smd/' || a.SMD AS link#'/Crash-Injury-Dashboard-Frontend/smd/' || a.SMD AS link#g" deploy/pages/smd/index.md
 
       # Step 3: Initialize a new Git repository in the deploy folder
       - name: Initialize Clean Repo for Deployment
