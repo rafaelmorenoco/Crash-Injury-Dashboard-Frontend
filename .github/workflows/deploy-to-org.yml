@@ -43,6 +43,12 @@ jobs:
           #   '/Crash-Injury-Dashboard-Frontend/anc/' || a.ANC AS link
           sed -i "s#'/anc/' || a.ANC AS link#'/Crash-Injury-Dashboard-Frontend/anc/' || a.ANC AS link#g" deploy/pages/anc/index.md
 
+          # For /pages/anc/[ANC].md, replace:
+          #   '/smd/' || smd_2023.SMD AS link
+          # With:
+          #   '/Crash-Injury-Dashboard-Frontend/smd/' || smd_2023.SMD AS link
+          sed -i "s#'/smd/' || smd_2023.SMD AS link#'/Crash-Injury-Dashboard-Frontend/smd/' || smd_2023.SMD AS link#g" deploy/pages/anc/[ANC].md
+
           # For /pages/smd/index.md, replace:
           #   '/smd/' || a.SMD AS link
           # With:
