@@ -30,15 +30,15 @@ jobs:
           rm -rf deploy/.github/workflows/deploy-to-org.yml
 
           # Update the /pages files using sed:
-          sed -i "s#'/hexgrid/' || h.GRID_ID AS link#'/Crash-Injury-Dashboard/hexgrid/' || h.GRID_ID AS link#g" deploy/pages/hexgrid/index.md
-          sed -i "s#'/anc/' || a.ANC AS link#'/Crash-Injury-Dashboard/anc/' || a.ANC AS link#g" deploy/pages/anc/index.md
-          sed -i "s#'/smd/' || smd_2023.SMD AS link#'/Crash-Injury-Dashboard/smd/' || smd_2023.SMD AS link#g" deploy/pages/anc/[ANC].md
-          sed -i "s#'/smd/' || a.SMD AS link#'/Crash-Injury-Dashboard/smd/' || a.SMD AS link#g" deploy/pages/smd/index.md
+          sed -i "s#'/hexgrid/' || h.GRID_ID AS link#'/Crash-Injury-Dashboard-Frontend/hexgrid/' || h.GRID_ID AS link#g" deploy/pages/hexgrid/index.md
+          sed -i "s#'/anc/' || a.ANC AS link#'/Crash-Injury-Dashboard-Frontend/anc/' || a.ANC AS link#g" deploy/pages/anc/index.md
+          sed -i "s#'/smd/' || smd_2023.SMD AS link#'/Crash-Injury-Dashboard-Frontend/smd/' || smd_2023.SMD AS link#g" deploy/pages/anc/[ANC].md
+          sed -i "s#'/smd/' || a.SMD AS link#'/Crash-Injury-Dashboard-Frontend/smd/' || a.SMD AS link#g" deploy/pages/smd/index.md
 
       # 3. Clone the destination organization repository.
       - name: Clone Organization Repository
         run: |
-          git clone https://rafaelmorenoco:${{ secrets.ORG_TOKEN }}@github.com/dcvisionzero/Crash-Injury-Dashboard.git org_repo
+          git clone https://rafaelmorenoco:${{ secrets.ORG_TOKEN }}@github.com/dcvisionzero/Crash-Injury-Dashboard-Frontend.git org_repo
 
       # 4. Sync files from the deploy folder into the org repository,
       #    while preserving files that should not be updated.
