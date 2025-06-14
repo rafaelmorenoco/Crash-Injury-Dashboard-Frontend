@@ -3,78 +3,60 @@ name: Deploy Clean Version to Org Repo
 on:
   push:
     branches:
-      - dev  # adjust if you need a different branch
-  # Optional: manual trigger
+      - dev  # adjust triggered branch as needed
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Check out the full repository history
-      - name: Checkout code
+      # 1. Checkout your personal repository on the desired branch.
+      - name: Checkout personal repository
         uses: actions/checkout@v3
         with:
+          ref: dev
           fetch-depth: 0
 
-      # Step 2: Create an archive, remove unwanted files, and modify files
+      # 2. Prepare the clean archive in a temporary 'deploy' folder.
       - name: Prepare Clean Archive
         run: |
-          # Create a temporary directory and export the repository content into it
           mkdir deploy
           git archive HEAD | tar -x -C deploy
-
-          # Remove files/folders that should NOT be pushed
+          
+          # Remove files/folders we don't want pushed (so they're absent in our deploy folder)
           rm -f deploy/evidence.config
           rm -rf deploy/package
           rm -rf deploy/.github/workflows/deploy-to-org.yml
 
-          # Edit the /pages files to update the links
+          # Update the /pages files with sed commands
+          sed -i "s#'/hexgrid/' || h.GRID_ID AS link#'/Crash-Injury-Dashboard/hexgrid/' || h.GRID_ID AS link#g" deploy/pages/hexgrid/index.md
+          sed -i "s#'/anc/' || a.ANC AS link#'/Crash-Injury-Dashboard/anc/' || a.ANC AS link#g" deploy/pages/anc/index.md
+          sed -i "s#'/smd/' || smd_2023.SMD AS link#'/Crash-Injury-Dashboard/smd/' || smd_2023.SMD AS link#g" deploy/pages/anc/[ANC].md
+          sed -i "s#'/smd/' || a.SMD AS link#'/Crash-Injury-Dashboard/smd/' || a.SMD AS link#g" deploy/pages/smd/index.md
 
-          # For /pages/hexgrid/index.md, replace:
-          #   '/hexgrid/' || h.GRID_ID AS link
-          # With:
-          #   '/Crash-Injury-Dashboard-Frontend/hexgrid/' || h.GRID_ID AS link
-          sed -i "s#'/hexgrid/' || h.GRID_ID AS link#'/Crash-Injury-Dashboard-Frontend/hexgrid/' || h.GRID_ID AS link#g" deploy/pages/hexgrid/index.md
-
-          # For /pages/anc/index.md, replace:
-          #   '/anc/' || a.ANC AS link
-          # With:
-          #   '/Crash-Injury-Dashboard-Frontend/anc/' || a.ANC AS link
-          sed -i "s#'/anc/' || a.ANC AS link#'/Crash-Injury-Dashboard-Frontend/anc/' || a.ANC AS link#g" deploy/pages/anc/index.md
-
-          # For /pages/anc/[ANC].md, replace:
-          #   '/smd/' || smd_2023.SMD AS link
-          # With:
-          #   '/Crash-Injury-Dashboard-Frontend/smd/' || smd_2023.SMD AS link
-          sed -i "s#'/smd/' || smd_2023.SMD AS link#'/Crash-Injury-Dashboard-Frontend/smd/' || smd_2023.SMD AS link#g" deploy/pages/anc/[ANC].md
-
-          # For /pages/smd/index.md, replace:
-          #   '/smd/' || a.SMD AS link
-          # With:
-          #   '/Crash-Injury-Dashboard-Frontend/smd/' || a.SMD AS link
-          sed -i "s#'/smd/' || a.SMD AS link#'/Crash-Injury-Dashboard-Frontend/smd/' || a.SMD AS link#g" deploy/pages/smd/index.md
-
-      # Step 3: Initialize a new Git repository in the deploy folder
-      - name: Initialize Clean Repo for Deployment
-        working-directory: deploy
+      # 3. Clone the destination organization repository.
+      - name: Clone Organization Repository
         run: |
-          git init
-          # Rename the default branch to 'main'
-          git branch -M main
+          git clone https://rafaelmorenoco:${{ secrets.ORG_TOKEN }}@github.com/dcvisionzero/Crash-Injury-Dashboard.git org_repo
+
+      # 4. Sync files from the deploy folder into the org repository,
+      #    excluding the files you want to preserve.
+      - name: Sync Files to Org Repository
+        run: |
+          rsync -av --delete \
+            --exclude 'evidence.config' \
+            --exclude 'package' \
+            --exclude '.github/workflows/deploy-to-gh-pages.yml' \
+            deploy/ org_repo/
+          # The --delete option removes files in org_repo that don't exist in deploy,
+          # except for the ones we excluded.
+
+      # 5. Commit and push the updates to the organization repository.
+      - name: Commit and Push Changes
+        working-directory: org_repo
+        run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add .
-          git commit -m "Deploying clean version to organization repository"
-
-      # Step 4: Push the clean version to the organization repository
-      - name: Push Clean Version to Org Repository
-        working-directory: deploy
-        env:
-          ORG_TOKEN: ${{ secrets.ORG_TOKEN }}
-        run: |
-          # Add the organization repository as a remote destination.
-          # The URL includes your username and the PAT stored as secret.
-          git remote add origin https://rafaelmorenoco:${ORG_TOKEN}@github.com/dcvisionzero/Crash-Injury-Dashboard-Frontend.git
-          # Force push the clean commit to the desired branch
+          git commit -m "Deploy update from personal dev branch" || echo "No changes to commit"
           git push origin main --force
