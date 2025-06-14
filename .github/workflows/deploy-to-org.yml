@@ -3,7 +3,7 @@ name: Deploy Clean Version to Org Repo
 on:
   push:
     branches:
-      - dev  # adjust triggered branch as needed
+      - dev  # Trigger on pushes to dev branch
   workflow_dispatch:
 
 jobs:
@@ -23,12 +23,12 @@ jobs:
           mkdir deploy
           git archive HEAD | tar -x -C deploy
           
-          # Remove files/folders we do NOT want pushed
-          rm -f deploy/evidence.config
+          # Remove files/folders we do NOT want to deploy
+          # (Assuming your org repo uses evidence.config.yaml; adjust if necessary.)
+          rm -f deploy/evidence.config.yaml
           rm -rf deploy/package
-          rm -rf deploy/.github/workflows/deploy-to-org.yml
 
-          # Update the /pages files using sed:
+          # Update the /pages files using sed (note the use of '#' as delimiter)
           sed -i "s#'/hexgrid/' || h.GRID_ID AS link#'/Crash-Injury-Dashboard/hexgrid/' || h.GRID_ID AS link#g" deploy/pages/hexgrid/index.md
           sed -i "s#'/anc/' || a.ANC AS link#'/Crash-Injury-Dashboard/anc/' || a.ANC AS link#g" deploy/pages/anc/index.md
           sed -i "s#'/smd/' || smd_2023.SMD AS link#'/Crash-Injury-Dashboard/smd/' || smd_2023.SMD AS link#g" deploy/pages/anc/[ANC].md
@@ -40,17 +40,17 @@ jobs:
           git clone https://rafaelmorenoco:${{ secrets.ORG_TOKEN }}@github.com/dcvisionzero/Crash-Injury-Dashboard.git org_repo
 
       # 4. Sync files from the deploy folder into the org repository,
-      #    while preserving the excluded files.
+      #    while preserving the files that should not be touched.
       - name: Sync Files to Org Repository
         run: |
           rsync -av --delete \
             --exclude='.git' \
-            --exclude 'evidence.config' \
-            --exclude 'package' \
-            --exclude '.github/workflows/deploy-to-gh-pages.yml' \
+            --exclude='evidence.config.yaml' \
+            --exclude='package' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            --exclude='.github/workflows/deploy-to-gh-pages.yml' \
             deploy/ org_repo/
-          # The --delete option removes files in org_repo that don't exist in deploy,
-          # except for those that are excluded (like .git).
 
       # 5. Commit and push the changes to the organization repository.
       - name: Commit and Push Changes
