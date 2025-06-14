@@ -3,32 +3,32 @@ name: Deploy Clean Version to Org Repo
 on:
   push:
     branches:
-      - dev  # adjust triggered branch as needed
+      - dev  # Trigger on pushes to dev branch
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1. Checkout your personal repository on the desired branch.
+      # 1. Checkout your personal repository on branch dev.
       - name: Checkout personal repository
         uses: actions/checkout@v3
         with:
           ref: dev
           fetch-depth: 0
 
-      # 2. Prepare the clean archive in a temporary 'deploy' folder.
+      # 2. Prepare a clean archive from the current commit.
       - name: Prepare Clean Archive
         run: |
           mkdir deploy
           git archive HEAD | tar -x -C deploy
           
-          # Remove files/folders we don't want pushed (so they're absent in our deploy folder)
+          # Remove files/folders we do NOT want pushed
           rm -f deploy/evidence.config
           rm -rf deploy/package
           rm -rf deploy/.github/workflows/deploy-to-org.yml
 
-          # Update the /pages files with sed commands
+          # Update the /pages files using sed:
           sed -i "s#'/hexgrid/' || h.GRID_ID AS link#'/Crash-Injury-Dashboard/hexgrid/' || h.GRID_ID AS link#g" deploy/pages/hexgrid/index.md
           sed -i "s#'/anc/' || a.ANC AS link#'/Crash-Injury-Dashboard/anc/' || a.ANC AS link#g" deploy/pages/anc/index.md
           sed -i "s#'/smd/' || smd_2023.SMD AS link#'/Crash-Injury-Dashboard/smd/' || smd_2023.SMD AS link#g" deploy/pages/anc/[ANC].md
@@ -40,7 +40,7 @@ jobs:
           git clone https://rafaelmorenoco:${{ secrets.ORG_TOKEN }}@github.com/dcvisionzero/Crash-Injury-Dashboard.git org_repo
 
       # 4. Sync files from the deploy folder into the org repository,
-      #    excluding the files you want to preserve.
+      #    while preserving the excluded files.
       - name: Sync Files to Org Repository
         run: |
           rsync -av --delete \
@@ -48,15 +48,17 @@ jobs:
             --exclude 'package' \
             --exclude '.github/workflows/deploy-to-gh-pages.yml' \
             deploy/ org_repo/
-          # The --delete option removes files in org_repo that don't exist in deploy,
-          # except for the ones we excluded.
+          # Note: --delete will remove files in org_repo that are not present in deploy,
+          # except for the paths we explicitly excluded.
 
-      # 5. Commit and push the updates to the organization repository.
+      # 5. Commit and push the changes to the organization repository.
       - name: Commit and Push Changes
         working-directory: org_repo
         run: |
+          # Ensure we are on (or create) the main branch.
+          git checkout -B main
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add .
           git commit -m "Deploy update from personal dev branch" || echo "No changes to commit"
-          git push origin main --force
+          git push -u origin main --force
