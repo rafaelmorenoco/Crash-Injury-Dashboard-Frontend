@@ -46,23 +46,21 @@ jobs:
         run: |
           rsync -av --delete \
             --exclude='.git' \
+            --exclude='.github' \
             --exclude='evidence.config.yaml' \
             --exclude='package' \
             --exclude='package.json' \
             --exclude='package-lock.json' \
-            --exclude='.github/workflows/deploy-to-org.yml' \
             deploy/ org_repo/
 
       # 5. Commit and push the changes to the organization repository.
       - name: Commit and Push Changes
         working-directory: org_repo
         run: |
-          # Ensure we're on (or create) the main branch.
+          # Ensure we are on (or create) the main branch.
           git checkout -B main
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add .
           git commit -m "Deploy update from personal dev branch" || echo "No changes to commit"
           git push -u origin main --force
-
-
