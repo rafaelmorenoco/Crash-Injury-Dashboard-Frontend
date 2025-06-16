@@ -19,38 +19,52 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      # 2. Configure Git.
+      # 2. Ensure the .github/workflows folder exists on main.
+      - name: Ensure workflows folder exists
+        run: |
+          if [ ! -d ".github/workflows" ]; then
+            mkdir -p .github/workflows
+            # Create a placeholder file; this file (and the folder) will be preserved.
+            touch .github/workflows/.keep
+            git add .github/workflows/.keep
+            git commit -m "Add empty workflows folder placeholder" || echo "Already committed"
+          else
+            echo ".github/workflows folder exists."
+          fi
+
+      # 3. Configure Git.
       - name: Configure Git
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
-      # 3. Merge dev into main (excluding changes in .github/workflows).
+      # 4. Merge dev into main, then force the workflows folder to remain as on main,
+      #    and resolve crashes.parquet by taking the dev version.
       - name: Merge dev into main excluding workflows
         run: |
           # Fetch the latest dev branch.
           git fetch origin dev
-          # Merge origin/dev into main without auto-committing.
+          # Merge dev into main without auto-committing.
           git merge origin/dev --no-commit --no-ff || true
           
-          # Remove any changes in the .github/workflows folder made by the merge.
-          rm -rf .github/workflows
-          # Restore the entire workflows folder from origin/main.
-          git checkout origin/main -- .github/workflows
+          # Remove any changes made to the .github/workflows folder during the merge.
+          # Reset the folder so that it remains exactly as it was on main.
+          git reset HEAD -- .github/workflows
+          git checkout HEAD -- .github/workflows
           git add .github/workflows
           
-          # Resolve crashes.parquet conflicts by taking the version from dev.
+          # Resolve conflicts in crashes.parquet by checking out the version from dev.
           git checkout --theirs crashes.parquet || true
           git add crashes.parquet
           
-          # If any changes are staged, commit them.
+          # If there are staged changes (excluding workflows), commit them.
           if ! git diff --cached --quiet; then
             git commit -m "Merge dev into main excluding workflows (skip CI)"
           else
             echo "No merge commit necessary; nothing to commit."
           fi
 
-      # 4. Push the merge commit to main.
+      # 5. Push the merge commit to main.
       - name: Push changes
         run: |
           git push origin main
