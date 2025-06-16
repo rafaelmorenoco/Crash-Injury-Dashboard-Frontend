@@ -1,10 +1,9 @@
 name: Deploy Clean Version to Org Repo
 
 on:
-  push:
-    branches:
-      - dev  # Trigger on pushes to dev branch
   workflow_dispatch:
+  repository_dispatch:
+    types: [update-crashes]
 
 jobs:
   deploy:
