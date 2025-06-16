@@ -67,4 +67,8 @@ jobs:
       # 5. Push the merge commit to main.
       - name: Push changes
         run: |
+<<<<<<< HEAD
           git push origin main
+=======
+          git push origin main
+>>>>>>> 5de2a2b5e8fe2af320a269d9775075cced8ca375
