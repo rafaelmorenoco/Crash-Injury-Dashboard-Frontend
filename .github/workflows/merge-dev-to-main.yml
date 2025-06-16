@@ -1,5 +1,9 @@
 name: Merge dev to main (Exclude Workflows)
 
+# Ensure GitHub Actions has permission to write to repository contents.
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   repository_dispatch:
@@ -45,7 +49,8 @@ jobs:
             echo "No merge commit necessary; nothing to commit."
           fi
 
-      # 4. Push the merge commit to main.
+      # 4. Set remote URL with a PAT and push the merge commit to main.
       - name: Push changes
         run: |
+          git remote set-url origin https://x-access-token:${{ secrets.REPO_PAT }}@github.com/rafaelmorenoco/Crash-Injury-Dashboard-Frontend.git
           git push origin main
