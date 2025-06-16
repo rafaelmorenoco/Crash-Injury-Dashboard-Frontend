@@ -1,0 +1,47 @@
+name: Merge dev to main (Exclude Workflows)
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [update-crashes]
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Check out the main branch with full history.
+      - name: Checkout main branch
+        uses: actions/checkout@v3
+        with:
+          ref: main
+          fetch-depth: 0
+
+      # 2. Configure Git.
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      # 3. Merge dev into main with changes from .github/workflows excluded.
+      - name: Merge dev into main excluding workflows
+        run: |
+          # Ensure the latest dev branch is fetched.
+          git fetch origin dev
+          # Merge dev into main without auto-committing.
+          git merge origin/dev --no-commit --no-ff || true
+          
+          # If there were merge changes, restore .github/workflows from the current main.
+          # This resets any changes to .github/workflows introduced by dev.
+          git checkout origin/main -- .github/workflows || true
+
+          # Check if there is anything staged for commit.
+          if ! git diff --cached --quiet; then
+            git commit -m "Merge dev into main excluding workflows (skip CI)"
+          else
+            echo "No merge commit necessary; nothing to commit."
+          fi
+
+      # 4. Push the merge commit to main.
+      - name: Push changes
+        run: |
+          git push origin main
