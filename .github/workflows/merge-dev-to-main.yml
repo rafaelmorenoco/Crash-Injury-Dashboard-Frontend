@@ -22,19 +22,23 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
-      # 3. Merge dev into main with changes from .github/workflows excluded.
+      # 3. Merge dev into main with changes in .github/workflows and crashes.parquet resolved.
       - name: Merge dev into main excluding workflows
         run: |
-          # Ensure the latest dev branch is fetched.
+          # Fetch latest dev branch.
           git fetch origin dev
           # Merge dev into main without auto-committing.
           git merge origin/dev --no-commit --no-ff || true
           
-          # If there were merge changes, restore .github/workflows from the current main.
-          # This resets any changes to .github/workflows introduced by dev.
-          git checkout origin/main -- .github/workflows || true
-
-          # Check if there is anything staged for commit.
+          # Force the workflows folder to remain as in main.
+          git checkout origin/main -- .github/workflows
+          git add .github/workflows
+          
+          # Resolve conflict in crashes.parquet by taking the dev (theirs) version.
+          git checkout --theirs crashes.parquet || true
+          git add crashes.parquet
+          
+          # If there are any staged changes, commit them.
           if ! git diff --cached --quiet; then
             git commit -m "Merge dev into main excluding workflows (skip CI)"
           else
