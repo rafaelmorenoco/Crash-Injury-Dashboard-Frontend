@@ -3,7 +3,7 @@ queries:
    - fatality: fatality.sql
 ---
 
-# <Value data={Tittle} column=ADDRESS/> - <Value data={Tittle} column=Date/>
+# <Value data={Tittle} column=ADDRESS/> - <Value data={Tittle} column=Date/> hrs.
 
 ```sql fatality_with_link
 select *, '/fatalities/' || OBJECTID as link
