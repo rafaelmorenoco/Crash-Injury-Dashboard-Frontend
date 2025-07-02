@@ -46,6 +46,7 @@ SELECT
         WHEN CAST(AGE AS INTEGER) = 120 THEN '-'
         ELSE CAST(CAST(AGE AS INTEGER) AS VARCHAR)
     END AS Age,
+    CCN,
     SUM(COUNT) AS Count
 FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
@@ -67,6 +68,7 @@ GROUP BY
     MODE,
     SEVERITY,
     ADDRESS,
+    CCN,
     AGE;
 ```
 
@@ -224,10 +226,11 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
     <Group>
         <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 title='Injury Table' rowShading=true wrapTitles=true>
           <Column id=REPORTDATE title='Date' fmt='mm/dd/yy hh:mm' totalAgg="Total" wrap=true description="24-Hour Format"/>
+          <Column id=Count totalAgg=sum/>
           <Column id=mode_severity title='Road User - Severity' totalAgg="-" wrap=true/>
           <Column id=Age totalAgg="-"/>
           <Column id=ADDRESS title='Apporx Address' wrap=true/>
-          <Column id=Count totalAgg=sum/>
+          <Column id=CCN title="CCN" totalAgg="-"/>
         </DataTable>
         <Alert status="info">
             To navigate to another hexagon, go back to: <b><a href="https://crash-injury-dashboard.evidence.app/hexgrid/">Injuries Heatmap</a></b>.
