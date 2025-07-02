@@ -57,6 +57,7 @@ SELECT
         WHEN CAST(AGE AS INTEGER) = 120 THEN '-'
         ELSE CAST(CAST(AGE AS INTEGER) AS VARCHAR)
     END AS Age,
+    CCN,
     SUM(COUNT) AS Count
 FROM crashes.crashes
 WHERE MODE IN ${inputs.multi_mode_dd.value}
@@ -78,6 +79,7 @@ GROUP BY
     MODE,
     SEVERITY,
     ADDRESS,
+    CCN,
     AGE;
 ```
 
@@ -207,10 +209,11 @@ The selection for <b>Severity</b> is: <b><Value data={mode_severity_selection} c
     <Group>
         <DataTable data={table_query} sort="REPORTDATE desc" totalRow=true rows=5 subtitle='Injury Table' rowShading=true wrapTitles=true>
           <Column id=REPORTDATE title='Date' wrap=true fmt='mm/dd/yy hh:mm' totalAgg="Total"/>
+          <Column id=Count totalAgg=sum/>
           <Column id=mode_severity title='Road User - Severity' totalAgg="-" wrap=true/>
           <Column id=Age totalAgg="-"/>
           <Column id=ADDRESS title='Approx Address' wrap=true totalAgg="-"/>
-          <Column id=Count totalAgg=sum/>
+          <Column id=CCN title='CCN' totalAgg="-"/>
         </DataTable>
     </Group>
 </Grid>
