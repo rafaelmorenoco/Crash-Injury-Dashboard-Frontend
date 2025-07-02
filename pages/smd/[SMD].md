@@ -129,7 +129,6 @@ WHERE
           }).format(twoDaysAgo);
         })()
   }
-  title="Select Time Period"
   name="date_range"
   presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
   defaultValue="Year to Today"
@@ -140,7 +139,7 @@ WHERE
     data={unique_severity} 
     name=multi_severity
     value=SEVERITY
-    title="Select Severity"
+    title="Severity"
     multiple=true
     defaultValue={["Major","Fatal"]}
 />
@@ -149,7 +148,7 @@ WHERE
     data={unique_mode} 
     name=multi_mode_dd
     value=MODE
-    title="Select Road User"
+    title="Road User"
     multiple=true
     selectAllByDefault=true
     description="*Only fatal"
@@ -159,7 +158,7 @@ WHERE
     data={age_range} 
     name=min_age
     value=age_int
-    title="Select Min Age" 
+    title="Min Age" 
     defaultValue={0}
 />
 
@@ -167,7 +166,7 @@ WHERE
     data={age_range} 
     name="max_age"
     value=age_int
-    title="Select Max Age"
+    title="Max Age"
     order="age_int desc"
     defaultValue={120}
     description='Age 120 serves as a placeholder for missing age values in the records. However, missing values will be automatically excluded from the query if the default 0-120 range is changed by the user. To get a count of missing age values, go to the "Age Distribution" page.'
