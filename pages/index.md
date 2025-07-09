@@ -50,7 +50,7 @@ SELECT improvement,
     WHEN improvement = 'Curb Extensions'
       THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/CE_2.png'
     WHEN improvement = 'Annual Safety Improvement Program (ASAP) - Intersections'
-      THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/road-sign-left.png'
+      THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/intersection.png'
     ELSE NULL
   END AS icon
 FROM interventions.interventions
