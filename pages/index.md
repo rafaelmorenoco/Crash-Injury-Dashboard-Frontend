@@ -565,7 +565,7 @@ SELECT
   END AS ICON,
 
   COALESCE(cp.sum_count, 0)                             AS current_period_sum,
-  pa.avg_sum_count                                      AS prior_3yr_avg_sum,
+  ROUND(pa.avg_sum_count, 0)                            AS prior_3yr_avg_sum,
 
   CASE WHEN pa.avg_sum_count IS NOT NULL
        THEN COALESCE(cp.sum_count, 0) - pa.avg_sum_count
@@ -1128,8 +1128,8 @@ description="By default, there is a two-day lag after the latest update"
                 <Column id="MODE" title="Road User" description="*Fatal Only" wrap=true totalAgg="Total"/>
                 <Column id=ICON title=' ' contentType=image height=22px align=center totalAgg=" "/>
                 <Column id="current_period_sum" title="{period_comp_mode_3ytd[0].current_period_range}"/>
-                <Column id="prior_3yr_avg_sum" fmt="#,##0.0" title="{period_comp_mode_3ytd[0].prior_period_range}" />
-                <Column id="difference" contentType="delta" fmt="#,##0.0" downIsGood title="Diff"/>
+                <Column id="prior_3yr_avg_sum" fmt="#,##0" title="{period_comp_mode_3ytd[0].prior_period_range}" />
+                <Column id="difference" contentType="delta" fmt="#,##0" downIsGood title="Diff"/>
                 <Column id="percentage_change" fmt="pct0" title="% Diff" totalAgg={period_comp_mode_3ytd[0].total_percentage_change} totalFmt="pct0"/>
             </DataTable>
             <div style="font-size: 14px;">
