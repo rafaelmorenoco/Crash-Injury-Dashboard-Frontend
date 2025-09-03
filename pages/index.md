@@ -568,13 +568,13 @@ SELECT
   ROUND(pa.avg_sum_count, 0)                            AS prior_3yr_avg_sum,
 
   CASE WHEN pa.avg_sum_count IS NOT NULL
-       THEN COALESCE(cp.sum_count, 0) - pa.avg_sum_count
+       THEN ROUND(COALESCE(cp.sum_count, 0) - pa.avg_sum_count, 0)
        ELSE NULL
   END AS difference,
 
   CASE
     WHEN pa.avg_sum_count IS NOT NULL AND pa.avg_sum_count != 0
-    THEN (COALESCE(cp.sum_count, 0) - pa.avg_sum_count) / pa.avg_sum_count
+    THEN (COALESCE(cp.sum_count, 0) - ROUND(pa.avg_sum_count, 0)) / ROUND(pa.avg_sum_count, 0)
     ELSE NULL
   END AS percentage_change,
 
@@ -585,7 +585,7 @@ SELECT
 
   CASE
     WHEN total_prior_avg IS NOT NULL AND total_prior_avg != 0
-    THEN (total_current_period - total_prior_avg) / total_prior_avg
+    THEN (total_current_period - ROUND(total_prior_avg, 0)) / ROUND(total_prior_avg, 0)
     ELSE NULL
   END AS total_percentage_change,
 
