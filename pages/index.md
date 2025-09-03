@@ -541,11 +541,11 @@ total_counts AS (
     FULL JOIN prior_avg pa USING (MODE)
 ),
 
--- Label "'YY-'YY YTD Avg" based on the current period's calendar year
+-- Label "'YY⁃'YY YTD Avg" based on the current period's calendar year
 prior_period_label AS (
     SELECT
       '''' || RIGHT(CAST(EXTRACT(YEAR FROM start_date) - 3 AS VARCHAR), 2)
-      || '-' || '''' || RIGHT(CAST(EXTRACT(YEAR FROM start_date) - 1 AS VARCHAR), 2)
+      || '⁃' || '''' || RIGHT(CAST(EXTRACT(YEAR FROM start_date) - 1 AS VARCHAR), 2)
       || ' YTD Avg' AS label
     FROM date_info
 )
