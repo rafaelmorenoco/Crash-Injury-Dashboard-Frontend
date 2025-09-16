@@ -1376,51 +1376,102 @@ description="By default, there is a two-day lag after the latest update"
         </Group>
     </Tab>
     </Tabs>
-    <Group>
-        <DataTable data={period_comp_severity} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true title="Year Over Year Comparison of {`${severity_selection[0].SEVERITY_SELECTION}`} for All Road Users">
-            <Column id=SEVERITY title=Severity wrap=true totalAgg="Total"/>
-            <Column id=current_period_sum title="{period_comp_severity[0].current_period_range}" />
-            <Column id=prior_period_sum title="{period_comp_severity[0].prior_period_range}" />
-            <Column id=difference contentType=delta downIsGood=True title="Diff"/>
-            <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_severity[0].total_percentage_change} totalFmt='pct0' /> 
-        </DataTable>
-        <div style="font-size: 14px;">
-            <b>Percentage Breakdown of {`${severity_selection[0].SEVERITY_SELECTION}`} for All Road Users</b>
-        </div>
-        <BarChart 
-            data={barchart_severity}
-            chartAreaHeight=80
-            x=period_range
-            y=period_sum
-            xLabelWrap={true}
-            swapXY=true
-            yFmt=pct0
-            series=SEVERITY
-            seriesColors={{"Minor": '#ffdf00',"Major": '#ff9412',"Fatal": '#ff5a53'}}
-            labels={true}
-            type=stacked100
-            downloadableData=false
-            downloadableImage=false
-            leftPadding={10}
-        /> 
-        <Alert status="positive">
-        <div markdown style="font-size: 14px;">
+    <Tabs fullWidth=true>
+    <Tab label="{`${period_comp_mode_3ytd[0].current_year_label}`} vs {`${period_comp_mode_3ytd[0].prior_period_range}`}">
+        <Group>
+            <DataTable data={period_comp_severity} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true title="Year Over Year Comparison of {`${severity_selection[0].SEVERITY_SELECTION}`} for All Road Users">
+                <Column id=SEVERITY title=Severity wrap=true totalAgg="Total"/>
+                <Column id=current_period_sum title="{period_comp_severity[0].current_period_range}" />
+                <Column id=prior_period_sum title="{period_comp_severity[0].prior_period_range}" />
+                <Column id=difference contentType=delta downIsGood=True title="Diff"/>
+                <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_severity[0].total_percentage_change} totalFmt='pct0' /> 
+            </DataTable>
+            <div style="font-size: 14px;">
+                <b>Percentage Breakdown of {`${severity_selection[0].SEVERITY_SELECTION}`} for All Road Users</b>
+            </div>
+            <BarChart 
+                data={barchart_severity}
+                chartAreaHeight=80
+                x=period_range
+                y=period_sum
+                xLabelWrap={true}
+                swapXY=true
+                yFmt=pct0
+                series=SEVERITY
+                seriesColors={{"Minor": '#ffdf00',"Major": '#ff9412',"Fatal": '#ff5a53'}}
+                labels={true}
+                type=stacked100
+                downloadableData=false
+                downloadableImage=false
+                leftPadding={10}
+            /> 
+            <Alert status="positive">
+            <div markdown style="font-size: 14px;">
 
-        The District uses the Safe System Approach to eliminate roadway deaths and serious injuries, focusing on safe people, safe streets, safe vehicles, safe speeds, and post-crash care. Many District agencies have roles to play. Learn more: [2022 Update](https://visionzero.dc.gov/pages/2022-update).
+            The District uses the Safe System Approach to eliminate roadway deaths and serious injuries, focusing on safe people, safe streets, safe vehicles, safe speeds, and post-crash care. Many District agencies have roles to play. Learn more: [2022 Update](https://visionzero.dc.gov/pages/2022-update).
 
-        </div>
-        <div markdown style="font-size: 14px;">
+            </div>
+            <div markdown style="font-size: 14px;">
 
-        Additionally, DDOT uses crash injury data to target engineering fixes that slow speeds, shorten crossings, and carve out safe spaces for all road users. Learn more: [Engineering for Safety](https://visionzero.dc.gov/pages/engineering).
+            Additionally, DDOT uses crash injury data to target engineering fixes that slow speeds, shorten crossings, and carve out safe spaces for all road users. Learn more: [Engineering for Safety](https://visionzero.dc.gov/pages/engineering).
 
-        </div>
-        <div markdown style="font-size: 14px;">
+            </div>
+            <div markdown style="font-size: 14px;">
 
-        Similarly, DDOT intentionally aligns with Vision Zero goals through safety-focused projects across all eight wards. Learn more: [Projects and Programs](https://ddot.dc.gov/page/projects-and-programs).
+            Similarly, DDOT intentionally aligns with Vision Zero goals through safety-focused projects across all eight wards. Learn more: [Projects and Programs](https://ddot.dc.gov/page/projects-and-programs).
 
-        </div>
-        </Alert>
-    </Group>
+            </div>
+            </Alert>
+        </Group>
+    </Tab>
+    <Tab label="{`${period_comp_mode_3ytd[0].current_year_label}`} vs {`${period_comp_mode_3ytd[0].prior_year_label}`} YTD">
+        <Group>
+            <DataTable data={period_comp_severity} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true title="Year Over Year Comparison of {`${severity_selection[0].SEVERITY_SELECTION}`} for All Road Users">
+                <Column id=SEVERITY title=Severity wrap=true totalAgg="Total"/>
+                <Column id=current_period_sum title="{period_comp_severity[0].current_period_range}" />
+                <Column id=prior_period_sum title="{period_comp_severity[0].prior_period_range}" />
+                <Column id=difference contentType=delta downIsGood=True title="Diff"/>
+                <Column id=percentage_change fmt='pct0' title="% Diff" totalAgg={period_comp_severity[0].total_percentage_change} totalFmt='pct0' /> 
+            </DataTable>
+            <div style="font-size: 14px;">
+                <b>Percentage Breakdown of {`${severity_selection[0].SEVERITY_SELECTION}`} for All Road Users</b>
+            </div>
+            <BarChart 
+                data={barchart_severity}
+                chartAreaHeight=80
+                x=period_range
+                y=period_sum
+                xLabelWrap={true}
+                swapXY=true
+                yFmt=pct0
+                series=SEVERITY
+                seriesColors={{"Minor": '#ffdf00',"Major": '#ff9412',"Fatal": '#ff5a53'}}
+                labels={true}
+                type=stacked100
+                downloadableData=false
+                downloadableImage=false
+                leftPadding={10}
+            /> 
+            <Alert status="positive">
+            <div markdown style="font-size: 14px;">
+
+            The District uses the Safe System Approach to eliminate roadway deaths and serious injuries, focusing on safe people, safe streets, safe vehicles, safe speeds, and post-crash care. Many District agencies have roles to play. Learn more: [2022 Update](https://visionzero.dc.gov/pages/2022-update).
+
+            </div>
+            <div markdown style="font-size: 14px;">
+
+            Additionally, DDOT uses crash injury data to target engineering fixes that slow speeds, shorten crossings, and carve out safe spaces for all road users. Learn more: [Engineering for Safety](https://visionzero.dc.gov/pages/engineering).
+
+            </div>
+            <div markdown style="font-size: 14px;">
+
+            Similarly, DDOT intentionally aligns with Vision Zero goals through safety-focused projects across all eight wards. Learn more: [Projects and Programs](https://ddot.dc.gov/page/projects-and-programs).
+
+            </div>
+            </Alert>
+        </Group>
+    </Tab>
+    </Tabs>
 </Grid>
 
 <Note>
