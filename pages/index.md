@@ -5,14 +5,6 @@ queries:
    - age_range: age_range.sql
 ---
 
-<Details title="About this dashboard">
-
-    The Traffic Fatalities and Injuries Dashboard can be used by the public to know more about injuries or fatalities product of a crash in the District of Columbia (DC).
-    
-    Adjust the Road User, Severity, Age and Date filters to refine the results.
-
-</Details>
-
 <Tabs>
 <Tab label="{`${yoy_text_fatal_3ytd[0].current_year_label}`} vs {`${yoy_text_fatal_3ytd[0].prior_period_label}`}">
 
@@ -1986,6 +1978,14 @@ description="By default, there is a two-day lag after the latest update"
 <Note>
     The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
 </Note>
+
+<Details title="About this dashboard">
+
+    The Traffic Fatalities and Injuries Dashboard can be used by the public to know more about injuries or fatalities product of a crash in the District of Columbia (DC).
+    
+    Adjust the Road User, Severity, Age and Date filters to refine the results.
+
+</Details>
 
 <Details title="About Road Users">
 
