@@ -24,17 +24,17 @@ sidebar_position: 10
   </AccordionItem>
   <AccordionItem title="Safe People">
 
-    This is the third item's accordion body.
+    Lorem ipsum
 
   </AccordionItem>
   <AccordionItem title="Safe Vehicles">
 
-    This is the third item's accordion body.
+    Lorem ipsum
 
   </AccordionItem>
   <AccordionItem title="Post-Crash Care">
 
-    This is the third item's accordion body.
+    Lorem ipsum
 
   </AccordionItem>
 </Accordion>
