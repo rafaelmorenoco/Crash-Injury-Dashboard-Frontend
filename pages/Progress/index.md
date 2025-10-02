@@ -12,7 +12,7 @@ Select any year to view the key efforts and initiatives the District has underta
     <Accordion single=true>
       <AccordionItem title="2014 Vision Zero Initiative Launch">
         <span slot="title" class="text-lg font-bold">
-        2014 Vision Zero Initiative Launch </span>  
+        • 2014 Vision Zero Initiative Launch </span>  
 
         **Mayor Bowser’s Commitment**: Introduced the Vision Zero initiative aiming to eliminate traffic fatalities and serious injuries.
         ---
@@ -25,7 +25,7 @@ Select any year to view the key efforts and initiatives the District has underta
 
       <AccordionItem title="2015 Implementation Begins">
         <span slot="title" class="text-lg font-bold">
-        2015 Implementation Begins </span>
+        • 2015 Implementation Begins </span>
 
         **Safety Map**: The District launched an interactive online safety map, which captured thousands of concerns from people walking, biking, and driving in the District. 
         ---
@@ -34,7 +34,7 @@ Select any year to view the key efforts and initiatives the District has underta
 
       <AccordionItem title="2016 Data-Driven Safety Measures">
         <span slot="title" class="text-lg font-bold">
-        2016 Data-Driven Safety Measures </span>
+        • 2016 Data-Driven Safety Measures </span>
 
         **Rulemaking Report Released**: Published a report focusing on deterring aggressive driving and speeding. 
         ---
@@ -43,7 +43,7 @@ Select any year to view the key efforts and initiatives the District has underta
 
       <AccordionItem title="2017 On-The-Ground Progress">
         <span slot="title" class="text-lg font-bold">
-        2017 On-The-Ground Progress </span>
+        • 2017 On-The-Ground Progress </span>
 
         **Intersection Assessments**: Conducted site visits to five high-crash intersections with community stakeholders to develop tailored safety enhancements.
         ---
@@ -54,7 +54,7 @@ Select any year to view the key efforts and initiatives the District has underta
 
       <AccordionItem title="2018 Intersection Safety Overhaul">
         <span slot="title" class="text-lg font-bold">
-        2018 Intersection Safety Overhaul </span>
+        • 2018 Intersection Safety Overhaul </span>
 
         **Mayor Bowser’s Announcement**: Unveiled plans to improve 36 intersections with dual turn lanes, identified as “multiple threat” zones for pedestrians.
         ---
@@ -65,7 +65,7 @@ Select any year to view the key efforts and initiatives the District has underta
 
       <AccordionItem title="2019 Enhanced Progress and Commitments to Vision Zero">
         <span slot="title" class="text-lg font-bold">
-        2019 Enhanced Progress and Commitments to Vision Zero </span>
+        • 2019 Enhanced Progress and Commitments to Vision Zero </span>
 
         **Making Safe Infrastructure the Standard**: The District made high-visibility crosswalks the standard and rolled out No Turn On Red at 100 intersections. Today, the District has No Turn on Red signs and enforcement at nearly 70% of intersections, and Right Turn restrictions are enforced by automated safety cameras at dozens of locations.
         ---
@@ -77,7 +77,7 @@ Select any year to view the key efforts and initiatives the District has underta
     <Accordion>
       <AccordionItem title="2020 Speed Limit Reduction & Innovation During the Pandemic">
         <span slot="title" class="text-lg font-bold">
-        2020 Speed Limit Reduction & Innovation During the Pandemic </span>
+        • 2020 Speed Limit Reduction & Innovation During the Pandemic </span>
 
         **“20 Is Plenty” and Lowered Speed Limits**: Mayor Bowser announced plans to permanently lower the default speed limit on all of the District’s streets to 20 mph unless otherwise signed. Thousands of miles of local street speed limits were reduced from 25 mph to 20 mph. Throughout the District, speeds on major streets have been lowered from 30 mph to 25 mph—lower speed limits have been shown to decrease dangerous speeding and the number of severe crashes.
         ---
@@ -90,7 +90,7 @@ Select any year to view the key efforts and initiatives the District has underta
 
       <AccordionItem title="2021 Emerging from the Pandemic">
         <span slot="title" class="text-lg font-bold">
-        2021 Emerging from the Pandemic </span>
+        • 2021 Emerging from the Pandemic </span>
 
         **Bus Priority Plan**: Emerging from the COVID-19 Pandemic, the District committed to improving bus speeds and reliability on 51 corridors. As of 2025, DDOT has completed over 10 Bus Priority projects that have also taken a holistic approach to improving safety—decreasing injuries by as much as 40%.
         ---
@@ -101,14 +101,14 @@ Select any year to view the key efforts and initiatives the District has underta
 
       <AccordionItem title="2022 Vision Zero Update and Safe System Approach">
         <span slot="title" class="text-lg font-bold">
-        2022 Vision Zero Update and Safe System Approach </span>
+        • 2022 Vision Zero Update and Safe System Approach </span>
 
         **Vision Zero 2022 Update**: Adopted the Safe System approach for the District following USDOT’s lead, emphasized fair distribution of safety investments, focusing on high-risk corridors and vulnerable communities. The 2022 Update also amended the District’s High Injury Network with a more robust methodology and increased institutional focus on those streets.
       </AccordionItem>
 
       <AccordionItem title="2023 Multi-Agency Efforts and Innovative Approaches">
         <span slot="title" class="text-lg font-bold">
-        2023 Multi-Agency Efforts and Innovative Approaches </span>
+        • 2023 Multi-Agency Efforts and Innovative Approaches </span>
 
         **Enhancing the Multi-Agency Approach**: The DC Highway Safety Office and Vision Zero Office moved out of DDOT and joined the Executive Office of the Mayor.
         ---
@@ -121,7 +121,7 @@ Select any year to view the key efforts and initiatives the District has underta
 
       <AccordionItem title="2024 Intensified Enforcement">
         <span slot="title" class="text-lg font-bold">
-        2024 Intensified Enforcement </span>
+        • 2024 Intensified Enforcement </span>
 
         **High Visibility Enforcement by MPD**: The Metropolitan Police Department (MPD) of Washington, DC, intensified its high visibility traffic safety enforcement efforts—such as Operation Safeguard and Traffic Safety Compliance Checkpoints—to promote safe driving, educate motorists, and remove impaired or unsafe drivers from the roads, aligning with the City’s Vision Zero initiative to eliminate traffic fatalities and serious injuries.
         ---
@@ -130,7 +130,7 @@ Select any year to view the key efforts and initiatives the District has underta
 
       <AccordionItem title="2025 Expanding Networks">
         <span slot="title" class="text-lg font-bold">
-        2025 Expanding Networks </span>
+        • 2025 Expanding Networks </span>
 
         **Protected Bicycle Lane Growth**: In 2014, the District had about 5 miles of protected bicycle lanes; by 2025, that number has grown to more than 40 miles, reflecting a decade of sustained investment in safe cycling infrastructure.
         ---
