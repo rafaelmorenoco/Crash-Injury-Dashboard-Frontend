@@ -780,7 +780,7 @@ description="By default, there is a two-day lag after the latest update"
     </DataTable>
 
     <div style="font-size: 14px;">
-      <b>Percentage Breakdown of Fatalities by Road User</b>
+      <b>Percentage Breakdown:</b>
     </div>
 
     <BarChart 
@@ -812,7 +812,7 @@ description="By default, there is a two-day lag after the latest update"
     </DataTable>
 
     <div style="font-size: 14px;">
-      <b>Percentage Breakdown of Major Injuries by Road User</b>
+      <b>Percentage Breakdown:</b>
     </div>
 
     <BarChart 
