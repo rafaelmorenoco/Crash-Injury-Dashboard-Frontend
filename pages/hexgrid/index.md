@@ -1,5 +1,5 @@
 ---
-title: Heatmap Breakdown
+title: Heatmap
 queries:
    - hex: hex.sql
    - last_record: last_record.sql
