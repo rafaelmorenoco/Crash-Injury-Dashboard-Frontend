@@ -1,5 +1,5 @@
 ---
-title: Injuries by SMD
+title: SMD Breakdown
 queries:
    - smd_link: smd_link.sql
    - last_record: last_record.sql

@@ -1,5 +1,5 @@
 ---
-title: Injuries Heatmap
+title: Heatmap Breakdown
 queries:
    - hex: hex.sql
    - last_record: last_record.sql
