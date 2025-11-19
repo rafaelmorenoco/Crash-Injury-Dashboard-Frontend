@@ -17,6 +17,8 @@ group by 1
 select 
     SEVERITY
 from crashes.crashes
+WHERE
+    SEVERITY = 'Fatal'
 group by 1
 ```
 
