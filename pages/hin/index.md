@@ -110,12 +110,6 @@ FROM
   total_modes_cte;
 ```
 
-```sql hin_eda
-SELECT *
-FROM crashes.crashes
-LIMIT 5
-```
-
 ```sql hin_tier_table
 WITH 
     report_date_range AS (
