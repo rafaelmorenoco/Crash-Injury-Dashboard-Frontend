@@ -608,7 +608,17 @@ WITH
 ```sql yoy_text_fatal
 WITH date_range AS (
     SELECT
-        MAX(REPORTDATE)::DATE + INTERVAL '1 day' AS max_report_date
+        CASE
+            -- First week of any year → freeze to last year's final date
+            WHEN extract(month FROM current_date) = 1
+             AND extract(day FROM current_date) <= 7
+            THEN (date_trunc('year', current_date) - INTERVAL '1 day')::DATE
+
+            -- Normal behavior
+            WHEN MAX(REPORTDATE)::DATE = (current_date - INTERVAL '1 day')
+            THEN MAX(REPORTDATE)::DATE + INTERVAL '1 day'
+            ELSE MAX(REPORTDATE)::DATE + INTERVAL '2 day'
+        END AS max_report_date
     FROM crashes.crashes
 ),
 params AS (
