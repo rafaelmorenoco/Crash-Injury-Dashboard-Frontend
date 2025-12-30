@@ -669,9 +669,16 @@ CROSS JOIN params p;
 ```sql yoy_text_major_injury
 WITH date_range AS (
     SELECT
-        MAX(REPORTDATE)::DATE + INTERVAL '1 day' AS max_report_date
-    FROM
-        crashes.crashes
+        CASE
+            -- Freeze to last year's final date during Jan 1–7 of ANY year
+            WHEN extract(month FROM current_date) = 1
+             AND extract(day FROM current_date) <= 7
+            THEN (date_trunc('year', current_date) - INTERVAL '1 day')::DATE
+
+            -- Normal behavior: advance 1 day past the latest report
+            ELSE MAX(REPORTDATE)::DATE + INTERVAL '1 day'
+        END AS max_report_date
+    FROM crashes.crashes
 ),
 params AS (
     SELECT
@@ -681,8 +688,7 @@ params AS (
         dr.max_report_date - interval '1 year' AS prior_year_end,
         extract(year FROM dr.max_report_date) AS current_year,
         extract(year FROM dr.max_report_date - interval '1 year') AS year_prior
-    FROM
-        date_range dr
+    FROM date_range dr
 ),
 yearly_counts AS (
     SELECT
@@ -692,41 +698,32 @@ yearly_counts AS (
         SUM(CASE
             WHEN cr.REPORTDATE BETWEEN p.prior_year_start AND p.prior_year_end
             THEN cr.COUNT ELSE 0 END) AS prior_year_sum
-    FROM
-        crashes.crashes AS cr
-        CROSS JOIN params p
-    WHERE
-        cr.SEVERITY = 'Major'
-        AND cr.REPORTDATE >= p.prior_year_start -- More efficient date filtering
-        AND cr.REPORTDATE <= p.current_year_end
+    FROM crashes.crashes AS cr
+    CROSS JOIN params p
+    WHERE cr.SEVERITY = 'Major'
+      AND cr.REPORTDATE >= p.prior_year_start
+      AND cr.REPORTDATE <= p.current_year_end
 )
 SELECT
     'Major' AS severity,
     yc.current_year_sum,
     yc.prior_year_sum,
     ABS(yc.current_year_sum - yc.prior_year_sum) AS difference,
-    CASE
-        WHEN yc.prior_year_sum <> 0
-        THEN ((yc.current_year_sum - yc.prior_year_sum)::numeric / yc.prior_year_sum)
-        ELSE NULL
-    END AS percentage_change,
-    CASE
-        WHEN (yc.current_year_sum - yc.prior_year_sum) > 0 THEN 'an increase of'
-        WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'a decrease of'
-        ELSE NULL
-    END AS percentage_change_text,
-    CASE
-        WHEN (yc.current_year_sum - yc.prior_year_sum) > 0 THEN 'more'
-        WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'fewer'
-        ELSE 'no change'
-    END AS difference_text,
+    CASE WHEN yc.prior_year_sum <> 0
+         THEN ((yc.current_year_sum - yc.prior_year_sum)::numeric / yc.prior_year_sum)
+         ELSE NULL END AS percentage_change,
+    CASE WHEN (yc.current_year_sum - yc.prior_year_sum) > 0 THEN 'an increase of'
+         WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'a decrease of'
+         ELSE NULL END AS percentage_change_text,
+    CASE WHEN (yc.current_year_sum - yc.prior_year_sum) > 0 THEN 'more'
+         WHEN (yc.current_year_sum - yc.prior_year_sum) < 0 THEN 'fewer'
+         ELSE 'no change' END AS difference_text,
     p.current_year,
     p.year_prior,
     CASE WHEN yc.current_year_sum = 1 THEN 'has' ELSE 'have' END AS has_have,
     CASE WHEN yc.current_year_sum = 1 THEN 'major injury' ELSE 'major injuries' END AS major_injury
-FROM
-    yearly_counts yc
-    CROSS JOIN params p;
+FROM yearly_counts yc
+CROSS JOIN params p;
 ```
 
 <!--
