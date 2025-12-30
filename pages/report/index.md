@@ -191,7 +191,6 @@ WITH
             start_date,
             end_date,
             CASE
-                -- YTD when: start = Jan 1 of current year AND selected end date = end_date - 1 day
                 WHEN start_date = DATE_TRUNC('year', CURRENT_DATE)
                  AND '${inputs.date_range.end}'::DATE = end_date - INTERVAL '1 day'
                 THEN EXTRACT(YEAR FROM (end_date - INTERVAL '1 day'))::VARCHAR || ' YTD'
@@ -282,7 +281,6 @@ WITH
     prior_date_label AS (
         SELECT
             CASE
-                -- Prior YTD only when current period is YTD
                 WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', CURRENT_DATE)
                  AND '${inputs.date_range.end}'::DATE = (SELECT end_date FROM date_info) - INTERVAL '1 day'
                 THEN EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
@@ -320,12 +318,7 @@ ORDER BY mas.MODE, period;
 WITH 
   report_date_range AS (
     SELECT
-      CASE 
-        WHEN '${inputs.date_range_mi.end}'::DATE 
-             >= (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE
-        THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-        ELSE '${inputs.date_range_mi.end}'::DATE + INTERVAL '1 day'
-      END   AS end_date,
+      ('${inputs.date_range_mi.end}'::DATE + INTERVAL '1 day') AS end_date,
       '${inputs.date_range_mi.start}'::DATE AS start_date
   ),
   date_info AS (
@@ -333,9 +326,9 @@ WITH
       start_date,
       end_date,
       CASE
-        WHEN start_date = DATE_TRUNC('year', '${inputs.date_range_mi.end}'::DATE)
-         AND '${inputs.date_range_mi.end}'::DATE = (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE
-        THEN EXTRACT(YEAR FROM '${inputs.date_range_mi.end}'::DATE)::VARCHAR || ' YTD'
+        WHEN start_date = DATE_TRUNC('year', CURRENT_DATE)
+        AND '${inputs.date_range_mi.end}'::DATE = end_date - INTERVAL '1 day'
+        THEN EXTRACT(YEAR FROM (end_date - INTERVAL '1 day'))::VARCHAR || ' YTD'
         ELSE
           strftime(start_date, '%m/%d/%y')
           || '-'
@@ -349,7 +342,7 @@ WITH
       start_date,
       end_date,
       CASE 
-        WHEN end_date > start_date + INTERVAL '5 year' THEN (SELECT 1/0)  -- guard: >5 yrs
+        WHEN end_date > start_date + INTERVAL '5 year' THEN (SELECT 1/0)
         WHEN end_date > start_date + INTERVAL '4 year' THEN INTERVAL '5 year'
         WHEN end_date > start_date + INTERVAL '3 year' THEN INTERVAL '4 year'
         WHEN end_date > start_date + INTERVAL '2 year' THEN INTERVAL '3 year'
@@ -426,8 +419,8 @@ WITH
   prior_date_label AS (
     SELECT
       CASE
-        WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', '${inputs.date_range_mi.end}'::DATE)
-         AND '${inputs.date_range_mi.end}'::DATE = (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE
+        WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', CURRENT_DATE)
+         AND '${inputs.date_range_mi.end}'::DATE = (SELECT end_date FROM date_info) - INTERVAL '1 day'
         THEN EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
         ELSE
           strftime(prior_start_date,   '%m/%d/%y')
@@ -448,14 +441,14 @@ SELECT
       / COALESCE(pp.sum_count, 0)
     ELSE NULL
   END AS percentage_change,
-  (SELECT date_range_label       FROM date_info)       AS current_period_range,
+  (SELECT date_range_label       FROM date_info)        AS current_period_range,
   (SELECT prior_date_range_label FROM prior_date_label) AS prior_period_range,
   (total_current_period - total_prior_period)
-    / NULLIF(total_prior_period, 0)                    AS total_percentage_change,
+    / NULLIF(total_prior_period, 0)                     AS total_percentage_change,
   COALESCE(cp.sum_count, 0)
-    / NULLIF(total_current_period, 0)                  AS current_mode_percentage,
+    / NULLIF(total_current_period, 0)                   AS current_mode_percentage,
   COALESCE(pp.sum_count, 0)
-    / NULLIF(total_prior_period, 0)                    AS prior_mode_percentage
+    / NULLIF(total_prior_period, 0)                     AS prior_mode_percentage
 FROM modes_and_severities mas
 LEFT JOIN current_period cp USING (MODE)
 LEFT JOIN prior_period   pp USING (MODE),
@@ -466,28 +459,23 @@ LEFT JOIN prior_period   pp USING (MODE),
 WITH 
     report_date_range AS (
         SELECT
-        CASE 
-            WHEN '${inputs.date_range_mi.end}'::DATE 
-                >= (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE
-            THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
-            ELSE '${inputs.date_range_mi.end}'::DATE + INTERVAL '1 day'
-        END   AS end_date,
-        '${inputs.date_range_mi.start}'::DATE AS start_date
+            ('${inputs.date_range_mi.end}'::DATE + INTERVAL '1 day') AS end_date,
+            '${inputs.date_range_mi.start}'::DATE AS start_date
     ),
     date_info AS (
         SELECT
-        start_date,
-        end_date,
-        CASE
-            WHEN start_date = DATE_TRUNC('year', '${inputs.date_range_mi.end}'::DATE)
-            AND '${inputs.date_range_mi.end}'::DATE = (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE
-            THEN EXTRACT(YEAR FROM '${inputs.date_range_mi.end}'::DATE)::VARCHAR || ' YTD'
-            ELSE
-            strftime(start_date, '%m/%d/%y')
-            || '-'
-            || strftime(end_date - INTERVAL '1 day', '%m/%d/%y')
-        END AS date_range_label,
-        (end_date - start_date) AS date_range_days
+            start_date,
+            end_date,
+            CASE
+                WHEN start_date = DATE_TRUNC('year', CURRENT_DATE)
+                 AND '${inputs.date_range_mi.end}'::DATE = end_date - INTERVAL '1 day'
+                THEN EXTRACT(YEAR FROM (end_date - INTERVAL '1 day'))::VARCHAR || ' YTD'
+                ELSE
+                    strftime(start_date, '%m/%d/%y')
+                    || '-'
+                    || strftime(end_date - INTERVAL '1 day', '%m/%d/%y')
+            END AS date_range_label,
+            (end_date - start_date) AS date_range_days
         FROM report_date_range
     ),
     offset_period AS (
@@ -571,15 +559,15 @@ WITH
     ),
     prior_date_label AS (
         SELECT
-        CASE
-            WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', '${inputs.date_range_mi.end}'::DATE)
-            AND '${inputs.date_range_mi.end}'::DATE = (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE
-            THEN EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
-            ELSE
-            strftime(prior_start_date,   '%m/%d/%y')
-            || '-'
-            || strftime(prior_end_date - INTERVAL '1 day', '%m/%d/%y')
-        END AS prior_date_range_label
+            CASE
+                WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', CURRENT_DATE)
+                 AND '${inputs.date_range_mi.end}'::DATE = (SELECT end_date FROM date_info) - INTERVAL '1 day'
+                THEN EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
+                ELSE
+                    strftime(prior_start_date,   '%m/%d/%y')
+                    || '-'
+                    || strftime(prior_end_date - INTERVAL '1 day', '%m/%d/%y')
+            END AS prior_date_range_label
         FROM prior_date_info
     )
     SELECT
@@ -873,7 +861,19 @@ echartsOptions={{animation: false}}
       disableAutoDefault={true}
       name="date_range_mi"
       presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
-      defaultValue="Year to Today"
+      defaultValue={
+        (() => {
+          const fmt = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/New_York'
+          });
+          // Get today's date in ET as YYYY-MM-DD
+          const todayStr = fmt.format(new Date());
+          const [year, month, day] = todayStr.split('-').map(Number);
+          // First week of the year = Jan 1–7 (ET)
+          const inFirstWeek = (month === 1 && day <= 7);
+          return inFirstWeek ? 'Last Year' : 'Year to Today';
+        })()
+      }
       description="By default, there is a two-day lag after the latest update"
       title="Major Injuries Date Range"
       />    
