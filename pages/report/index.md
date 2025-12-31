@@ -332,8 +332,13 @@ ORDER BY mas.MODE, period;
 ```sql period_comp_major
 WITH 
   report_date_range AS (
-    SELECT
-      ('${inputs.date_range_mi.end}'::DATE + INTERVAL '1 day') AS end_date,
+      SELECT
+      CASE 
+          WHEN '${inputs.date_range_mi.end}'::DATE 
+              >= (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE
+          THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
+          ELSE '${inputs.date_range_mi.end}'::DATE + INTERVAL '1 day'
+      END   AS end_date,
       '${inputs.date_range_mi.start}'::DATE AS start_date
   ),
   date_info AS (
@@ -486,8 +491,13 @@ LEFT JOIN prior_period   pp USING (MODE),
 WITH 
     report_date_range AS (
         SELECT
-            ('${inputs.date_range_mi.end}'::DATE + INTERVAL '1 day') AS end_date,
-            '${inputs.date_range_mi.start}'::DATE AS start_date
+        CASE 
+            WHEN '${inputs.date_range_mi.end}'::DATE 
+                >= (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE
+            THEN (SELECT MAX(REPORTDATE) FROM crashes.crashes)::DATE + INTERVAL '1 day'
+            ELSE '${inputs.date_range_mi.end}'::DATE + INTERVAL '1 day'
+        END   AS end_date,
+        '${inputs.date_range_mi.start}'::DATE AS start_date
     ),
     date_info AS (
         SELECT
