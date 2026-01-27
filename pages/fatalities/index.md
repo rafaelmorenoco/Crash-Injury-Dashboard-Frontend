@@ -20,72 +20,117 @@ GROUP BY 1
 ```
 
 ```sql Impairment
+WITH categories AS (
+    SELECT * FROM (VALUES 
+        ('Yes'),
+        ('No'),
+        ('Unknown')
+    ) AS t(SuspectedImpaired)
+),
+filtered AS (
+    SELECT
+        UPPER(substr(SuspectedImpaired, 1, 1)) || LOWER(substr(SuspectedImpaired, 2)) AS SuspectedImpaired,
+        COUNT AS Count
+    FROM crashes.crashes
+    WHERE replace(MODE, '*', '') IN ${inputs.multi_mode_dd.value}
+      AND SEVERITY = 'Fatal'
+      AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) 
+                          AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+      AND AGE BETWEEN ${inputs.min_age.value}
+                  AND (
+                      CASE 
+                          WHEN ${inputs.min_age.value} <> 0 
+                           AND ${inputs.max_age.value} = 120
+                          THEN 119
+                          ELSE ${inputs.max_age.value}
+                      END
+                  )
+)
 SELECT
     'Suspected Impairment*' AS Impairment,
-    UPPER(substr(SuspectedImpaired, 1, 1)) || LOWER(substr(SuspectedImpaired, 2)) AS SuspectedImpaired,
-    SUM(COUNT) AS Count
-FROM crashes.crashes
-WHERE replace(MODE, '*', '') IN ${inputs.multi_mode_dd.value}
-  AND SEVERITY = 'Fatal'
-  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) 
-                      AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-  AND AGE BETWEEN ${inputs.min_age.value}
-              AND (
-                  CASE 
-                      WHEN ${inputs.min_age.value} <> 0 
-                       AND ${inputs.max_age.value} = 120
-                      THEN 119
-                      ELSE ${inputs.max_age.value}
-                  END
-              )
-GROUP BY
-    UPPER(substr(SuspectedImpaired, 1, 1)) || LOWER(substr(SuspectedImpaired, 2));
+    c.SuspectedImpaired,
+    COALESCE(SUM(f.Count), 0) AS Count
+FROM categories c
+LEFT JOIN filtered f
+    ON c.SuspectedImpaired = f.SuspectedImpaired
+GROUP BY c.SuspectedImpaired
+ORDER BY c.SuspectedImpaired;
 ```
 
 ```sql Speeding
+WITH categories AS (
+    SELECT * FROM (VALUES 
+        ('Yes'),
+        ('No'),
+        ('Unknown')
+    ) AS t(SuspectedSpeeding)
+),
+filtered AS (
+    SELECT
+        UPPER(substr(SuspectedSpeeding, 1, 1)) || LOWER(substr(SuspectedSpeeding, 2)) AS SuspectedSpeeding,
+        COUNT AS Count
+    FROM crashes.crashes
+    WHERE replace(MODE, '*', '') IN ${inputs.multi_mode_dd.value}
+      AND SEVERITY = 'Fatal'
+      AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) 
+                          AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+      AND AGE BETWEEN ${inputs.min_age.value}
+                  AND (
+                      CASE 
+                          WHEN ${inputs.min_age.value} <> 0 
+                           AND ${inputs.max_age.value} = 120
+                          THEN 119
+                          ELSE ${inputs.max_age.value}
+                      END
+                  )
+)
 SELECT
     'Suspected Speeding** ' AS Speeding,
-    UPPER(substr(SuspectedSpeeding, 1, 1)) || LOWER(substr(SuspectedSpeeding, 2)) AS SuspectedSpeeding,
-    SUM(COUNT) AS Count
-FROM crashes.crashes
-WHERE replace(MODE, '*', '') IN ${inputs.multi_mode_dd.value}
-  AND SEVERITY = 'Fatal'
-  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) 
-                      AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-  AND AGE BETWEEN ${inputs.min_age.value}
-              AND (
-                  CASE 
-                      WHEN ${inputs.min_age.value} <> 0 
-                       AND ${inputs.max_age.value} = 120
-                      THEN 119
-                      ELSE ${inputs.max_age.value}
-                  END
-              )
-GROUP BY
-    UPPER(substr(SuspectedSpeeding, 1, 1)) || LOWER(substr(SuspectedSpeeding, 2));
+    c.SuspectedSpeeding,
+    COALESCE(SUM(f.Count), 0) AS Count
+FROM categories c
+LEFT JOIN filtered f
+    ON c.SuspectedSpeeding = f.SuspectedSpeeding
+GROUP BY c.SuspectedSpeeding
+ORDER BY c.SuspectedSpeeding;
 ```
 
 ```sql HitAndRun
+WITH categories AS (
+    SELECT * FROM (VALUES 
+        ('Yes'),
+        ('No'),
+        ('Unknown')
+    ) AS t(HitAndRun)
+),
+filtered AS (
+    SELECT
+        UPPER(substr(HitAndRun, 1, 1)) || LOWER(substr(HitAndRun, 2)) AS HitAndRun,
+        COUNT AS Count
+    FROM crashes.crashes
+    WHERE replace(MODE, '*', '') IN ${inputs.multi_mode_dd.value}
+      AND SEVERITY = 'Fatal'
+      AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) 
+                          AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
+      AND AGE BETWEEN ${inputs.min_age.value}
+                  AND (
+                      CASE 
+                          WHEN ${inputs.min_age.value} <> 0 
+                           AND ${inputs.max_age.value} = 120
+                          THEN 119
+                          ELSE ${inputs.max_age.value}
+                      END
+                  )
+)
 SELECT
     'Hit-and-Run                  ' AS HitAndRunLabel,
-    UPPER(substr(HitAndRun, 1, 1)) || LOWER(substr(HitAndRun, 2)) AS HitAndRun,
-    SUM(COUNT) AS Count
-FROM crashes.crashes
-WHERE replace(MODE, '*', '') IN ${inputs.multi_mode_dd.value}
-  AND SEVERITY = 'Fatal'
-  AND REPORTDATE BETWEEN ('${inputs.date_range.start}'::DATE) 
-                      AND (('${inputs.date_range.end}'::DATE) + INTERVAL '1 day')
-  AND AGE BETWEEN ${inputs.min_age.value}
-              AND (
-                  CASE 
-                      WHEN ${inputs.min_age.value} <> 0 
-                       AND ${inputs.max_age.value} = 120
-                      THEN 119
-                      ELSE ${inputs.max_age.value}
-                  END
-              )
-GROUP BY
-    UPPER(substr(HitAndRun, 1, 1)) || LOWER(substr(HitAndRun, 2));
+    c.HitAndRun,
+    COALESCE(SUM(f.Count), 0) AS Count
+FROM categories c
+LEFT JOIN filtered f
+    ON c.HitAndRun = f.HitAndRun
+GROUP BY c.HitAndRun
+ORDER BY c.HitAndRun;
 ```
 
 ```sql unique_hin
@@ -349,6 +394,7 @@ As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_
           downloadableImage=false
           leftPadding={10} 
           seriesOrder={['Yes','No','Unknown']}
+          seriesColors={{'Yes': '#f95738','No': '#0d3b66','Unknown': '#faf0ca'}}
         />
         <BarChart 
           data={Speeding}
@@ -367,6 +413,7 @@ As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_
           legend=false
           yAxisLabels=false
           seriesOrder={['Yes','No','Unknown']}
+          seriesColors={{'Yes': '#f95738','No': '#0d3b66','Unknown': '#faf0ca'}}
         />
         <BarChart 
           data={HitAndRun}
@@ -385,6 +432,7 @@ As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_
           legend=false
           yAxisLabels=false
           seriesOrder={['Yes','No','Unknown']}
+          seriesColors={{'Yes': '#f95738','No': '#0d3b66','Unknown': '#faf0ca'}}
         />
     </Group>
 </Grid>
