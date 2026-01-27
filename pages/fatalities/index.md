@@ -289,21 +289,34 @@ FROM
 As of <Value data={last_record} column="latest_record"/> there <Value data={yoy_text_fatal} column="has_have"/> been <Value data={yoy_text_fatal} column="current_year_sum" agg=sum/> <Value data={yoy_text_fatal} column="fatality"/> among all road users in <Value data={yoy_text_fatal} column="current_year" fmt='####","'/>   <Value data={yoy_text_fatal} column="difference" agg=sum fmt='####' /> <Value data={yoy_text_fatal} column="difference_text"/> (<Delta data={yoy_text_fatal} column="percentage_change" fmt="+0%;-0%;0%" downIsGood=True neutralMin=-0.00 neutralMax=0.00/>) compared to the same period in <Value data={yoy_text_fatal} column="year_prior" fmt="####."/>
 
 <DateRange
-  start="2017-01-01"
-  end={
+start="2017-01-01"
+end={
     (last_record && last_record[0] && last_record[0].end_date)
-      ? `${last_record[0].end_date}`
-      : (() => {
-          const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
-          return new Intl.DateTimeFormat('en-CA', {
+    ? `${last_record[0].end_date}`
+    : (() => {
+        const twoDaysAgo = new Date(new Date().setDate(new Date().getDate() - 2));
+        return new Intl.DateTimeFormat('en-CA', {
             timeZone: 'America/New_York'
-          }).format(twoDaysAgo);
+        }).format(twoDaysAgo);
         })()
-  }
-  name="date_range"
-  presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
-  defaultValue="Year to Today"
-  description="By default, there is a two-day lag after the latest update"
+}
+disableAutoDefault={true}
+name="date_range"
+presetRanges={['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'Last 6 Months', 'Last 12 Months', 'Month to Today', 'Last Month', 'Year to Today', 'Last Year']}
+defaultValue={
+  (() => {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York'
+    });
+    // Get today's date in ET as YYYY-MM-DD
+    const todayStr = fmt.format(new Date());
+    const [year, month, day] = todayStr.split('-').map(Number);
+    // First week of the year = Jan 1–9 (ET)
+    const inFirstWeek = (month === 1 && day <= 9);
+    return inFirstWeek ? 'Last Year' : 'Year to Today';
+  })()
+}
+description="By default, there is a two-day lag after the latest update"
 />
 
 <Dropdown
