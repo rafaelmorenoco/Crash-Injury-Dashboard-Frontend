@@ -59,9 +59,15 @@ WITH
       start_date,
       end_date,
       CASE
-        WHEN start_date = DATE_TRUNC('year', '${inputs.date_range.end}'::DATE)
-         AND '${inputs.date_range.end}'::DATE = (SELECT MAX(LAST_RECORD) FROM crashes.crashes)::DATE
-        THEN EXTRACT(YEAR FROM '${inputs.date_range.end}'::DATE)::VARCHAR || ' YTD'
+        -- Full calendar year → "YYYY"
+        WHEN start_date = DATE_TRUNC('year', start_date)
+         AND end_date   = DATE_TRUNC('year', start_date) + INTERVAL '1 year'
+        THEN EXTRACT(YEAR FROM start_date)::VARCHAR
+        -- Current YTD → "YYYY YTD"
+        WHEN start_date = DATE_TRUNC('year', CURRENT_DATE)
+         AND '${inputs.date_range.end}'::DATE = end_date - INTERVAL '1 day'
+        THEN EXTRACT(YEAR FROM (end_date - INTERVAL '1 day'))::VARCHAR || ' YTD'
+        -- Default formatted range
         ELSE
           strftime(start_date, '%m/%d/%y')
           || '-'
@@ -141,17 +147,23 @@ WITH
   ),
   prior_date_info AS (
     SELECT
-      (SELECT start_date      FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_start_date,
-      (SELECT end_date        FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_end_date
+      (SELECT start_date FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_start_date,
+      (SELECT end_date   FROM date_info) - (SELECT interval_offset FROM offset_period) AS prior_end_date
   ),
   prior_date_label AS (
     SELECT
       CASE
-        WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', '${inputs.date_range.end}'::DATE)
-         AND '${inputs.date_range.end}'::DATE = (SELECT MAX(LAST_RECORD) FROM crashes.crashes)::DATE
+        -- Full calendar year → "YYYY"
+        WHEN prior_start_date = DATE_TRUNC('year', prior_start_date)
+         AND prior_end_date   = DATE_TRUNC('year', prior_start_date) + INTERVAL '1 year'
+        THEN EXTRACT(YEAR FROM prior_start_date)::VARCHAR
+        -- Prior YTD → "YYYY YTD"
+        WHEN (SELECT start_date FROM date_info) = DATE_TRUNC('year', CURRENT_DATE)
+         AND '${inputs.date_range.end}'::DATE = (SELECT end_date FROM date_info) - INTERVAL '1 day'
         THEN EXTRACT(YEAR FROM prior_end_date)::VARCHAR || ' YTD'
+        -- Default formatted range
         ELSE
-          strftime(prior_start_date,   '%m/%d/%y')
+          strftime(prior_start_date, '%m/%d/%y')
           || '-'
           || strftime(prior_end_date - INTERVAL '1 day', '%m/%d/%y')
       END AS prior_date_range_label
@@ -170,8 +182,8 @@ SELECT
                                    THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/unknown.png'
     ELSE NULL
   END AS ICON,
-  COALESCE(cp.sum_count, 0)                           AS current_period_sum,
-  COALESCE(pp.sum_count, 0)                           AS prior_period_sum,
+  COALESCE(cp.sum_count, 0) AS current_period_sum,
+  COALESCE(pp.sum_count, 0) AS prior_period_sum,
   COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0) AS difference,
   CASE
     WHEN COALESCE(cp.sum_count, 0) = 0 THEN NULL
@@ -180,14 +192,14 @@ SELECT
       / COALESCE(pp.sum_count, 0)
     ELSE NULL
   END AS percentage_change,
-  (SELECT date_range_label       FROM date_info)       AS current_period_range,
+  (SELECT date_range_label       FROM date_info)        AS current_period_range,
   (SELECT prior_date_range_label FROM prior_date_label) AS prior_period_range,
   (total_current_period - total_prior_period)
-    / NULLIF(total_prior_period, 0)                    AS total_percentage_change,
+    / NULLIF(total_prior_period, 0) AS total_percentage_change,
   COALESCE(cp.sum_count, 0)
-    / NULLIF(total_current_period, 0)                  AS current_mode_percentage,
+    / NULLIF(total_current_period, 0) AS current_mode_percentage,
   COALESCE(pp.sum_count, 0)
-    / NULLIF(total_prior_period, 0)                    AS prior_mode_percentage
+    / NULLIF(total_prior_period, 0) AS prior_mode_percentage
 FROM modes_and_severities mas
 LEFT JOIN current_period cp USING (MODE)
 LEFT JOIN prior_period   pp USING (MODE),
