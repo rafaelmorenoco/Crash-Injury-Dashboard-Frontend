@@ -559,10 +559,10 @@ validate_range AS (
       start_date,
       end_date,
       CASE 
-        WHEN end_date > start_date + INTERVAL '1 year' THEN 0 -- exceeds 1 year span
+        WHEN end_date > start_date + INTERVAL '1 year' THEN 0
         WHEN EXTRACT(YEAR FROM start_date) <> EXTRACT(YEAR FROM end_date - INTERVAL '1 day')
-          THEN 0 -- crosses calendar years
-        ELSE 1 -- valid
+          THEN 0
+        ELSE 1
       END AS is_valid
     FROM report_date_range
 ),
@@ -572,29 +572,18 @@ date_info AS (
       r.start_date,
       r.end_date,
       CASE
-        -- Full calendar year → "'YY"
         WHEN r.start_date = DATE_TRUNC('year', r.start_date)
          AND r.end_date   = DATE_TRUNC('year', r.start_date) + INTERVAL '1 year'
-        THEN
-          '''' || RIGHT(CAST(EXTRACT(YEAR FROM r.start_date) AS VARCHAR), 2)
-        -- YTD → "'YY YTD"
+        THEN '''' || RIGHT(CAST(EXTRACT(YEAR FROM r.start_date) AS VARCHAR), 2)
         WHEN r.start_date = DATE_TRUNC('year', CURRENT_DATE)
          AND '${inputs.date_range.end}'::DATE = r.end_date - INTERVAL '1 day'
-        THEN
-          '''' || RIGHT(CAST(EXTRACT(YEAR FROM (r.end_date - INTERVAL '1 day')) AS VARCHAR), 2)
-          || ' YTD'
-        -- Default formatted range
-        ELSE
-          strftime(r.start_date, '%m/%d/%y')
-          || '-'
-          || strftime(r.end_date - INTERVAL '1 day', '%m/%d/%y')
+        THEN '''' || RIGHT(CAST(EXTRACT(YEAR FROM (r.end_date - INTERVAL '1 day')) AS VARCHAR), 2) || ' YTD'
+        ELSE strftime(r.start_date, '%m/%d/%y') || '-' || strftime(r.end_date - INTERVAL '1 day', '%m/%d/%y')
       END AS date_range_label,
-      -- These labels stay compact
       '''' || RIGHT(CAST(EXTRACT(YEAR FROM r.start_date) AS VARCHAR), 2)      AS current_year_label,
       '''' || RIGHT(CAST(EXTRACT(YEAR FROM r.start_date) - 1 AS VARCHAR), 2)  AS prior_year_label,
       (r.end_date - r.start_date) AS date_range_days,
       v.is_valid,
-      -- Full-year flag
       CASE
         WHEN r.start_date = DATE_TRUNC('year', r.start_date)
          AND r.end_date   = DATE_TRUNC('year', r.start_date) + INTERVAL '1 year'
@@ -607,7 +596,7 @@ modes_and_severities AS (
     SELECT DISTINCT MODE
     FROM crashes.crashes
 ),
--- Current period sum by mode (half-open interval)
+-- Current period sum by mode
 current_period AS (
     SELECT 
       MODE,
@@ -628,7 +617,7 @@ current_period AS (
                   )
     GROUP BY MODE
 ),
--- Three prior 1-year slices (T-1, T-2, T-3)
+-- Three prior 1-year slices
 prior_years AS (
     SELECT MODE, SUM(COUNT) AS sum_count, 1 AS yr_offset
     FROM crashes.crashes
@@ -684,18 +673,18 @@ prior_avg AS (
     FROM prior_years
     GROUP BY MODE
 ),
--- Totals for share and overall percentage change
+-- Totals 
 total_counts AS (
     SELECT
       SUM(cp.sum_count) AS total_current_period,
       CASE WHEN (SELECT is_valid FROM date_info) = 1
-           THEN SUM(pa.avg_sum_count)
+           THEN SUM(ROUND(pa.avg_sum_count, 2))
            ELSE NULL
       END AS total_prior_avg
     FROM current_period cp
     FULL JOIN prior_avg pa USING (MODE)
 ),
--- Prior period label: switches between "Avg" and "YTD Avg"
+-- Prior period label
 prior_period_label AS (
     SELECT
       CASE
@@ -726,25 +715,31 @@ SELECT
                                     THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/unknown.png'
     ELSE NULL
   END AS ICON,
-  COALESCE(cp.sum_count, 0)                             AS current_period_sum,
-  ROUND(pa.avg_sum_count, 1)                            AS prior_3yr_avg_sum,
-  CASE WHEN pa.avg_sum_count IS NOT NULL
-       THEN ROUND(COALESCE(cp.sum_count, 0) - pa.avg_sum_count, 1)
-       ELSE NULL
-  END AS difference,
+  COALESCE(cp.sum_count, 0) AS current_period_sum,
+  ROUND(COALESCE(pa.avg_sum_count, 0), 2) AS prior_3yr_avg_sum,
+  ROUND(
+      COALESCE(cp.sum_count, 0) - COALESCE(pa.avg_sum_count, 0),
+      2
+  ) AS difference,
   CASE
-    WHEN pa.avg_sum_count IS NOT NULL AND pa.avg_sum_count != 0
-    THEN (COALESCE(cp.sum_count, 0) - ROUND(pa.avg_sum_count, 1)) / ROUND(pa.avg_sum_count, 1)
-    ELSE NULL
+    WHEN COALESCE(cp.sum_count, 0) = 0
+      OR COALESCE(pa.avg_sum_count, 0) = 0
+    THEN NULL
+    ELSE
+      (COALESCE(cp.sum_count, 0) - ROUND(pa.avg_sum_count, 2))
+      / ROUND(pa.avg_sum_count, 2)
   END AS percentage_change,
   (SELECT date_range_label   FROM date_info)        AS current_period_range,
   (SELECT label              FROM prior_period_label) AS prior_period_range,
   (SELECT current_year_label FROM date_info)        AS current_year_label,
   (SELECT prior_year_label   FROM date_info)        AS prior_year_label,
   CASE
-    WHEN total_prior_avg IS NOT NULL AND total_prior_avg != 0
-    THEN (total_current_period - ROUND(total_prior_avg, 1)) / ROUND(total_prior_avg, 1)
-    ELSE NULL
+    WHEN COALESCE(total_current_period, 0) = 0
+      OR COALESCE(total_prior_avg, 0) = 0
+    THEN NULL
+    ELSE
+      (ROUND(total_current_period, 1) - ROUND(total_prior_avg, 1))
+      / ROUND(total_prior_avg, 1)
   END AS total_percentage_change,
   COALESCE(cp.sum_count, 0) / NULLIF(total_current_period, 0) AS current_mode_percentage,
   CASE WHEN total_prior_avg IS NOT NULL
@@ -938,29 +933,18 @@ date_info AS (
       r.start_date,
       r.end_date,
       CASE
-        -- Full calendar year → "'YY"
         WHEN r.start_date = DATE_TRUNC('year', r.start_date)
          AND r.end_date   = DATE_TRUNC('year', r.start_date) + INTERVAL '1 year'
-        THEN
-          '''' || RIGHT(CAST(EXTRACT(YEAR FROM r.start_date) AS VARCHAR), 2)
-        -- YTD → "'YY YTD"
+        THEN '''' || RIGHT(CAST(EXTRACT(YEAR FROM r.start_date) AS VARCHAR), 2)
         WHEN r.start_date = DATE_TRUNC('year', CURRENT_DATE)
          AND '${inputs.date_range.end}'::DATE = r.end_date - INTERVAL '1 day'
-        THEN
-          '''' || RIGHT(CAST(EXTRACT(YEAR FROM (r.end_date - INTERVAL '1 day')) AS VARCHAR), 2)
-          || ' YTD'
-        -- Default formatted range
-        ELSE
-          strftime(r.start_date, '%m/%d/%y')
-          || '-'
-          || strftime(r.end_date - INTERVAL '1 day', '%m/%d/%y')
+        THEN '''' || RIGHT(CAST(EXTRACT(YEAR FROM (r.end_date - INTERVAL '1 day')) AS VARCHAR), 2) || ' YTD'
+        ELSE strftime(r.start_date, '%m/%d/%y') || '-' || strftime(r.end_date - INTERVAL '1 day', '%m/%d/%y')
       END AS date_range_label,
-      -- Compact year labels
       '''' || RIGHT(CAST(EXTRACT(YEAR FROM r.start_date) AS VARCHAR), 2)      AS current_year_label,
       '''' || RIGHT(CAST(EXTRACT(YEAR FROM r.start_date) - 1 AS VARCHAR), 2)  AS prior_year_label,
       (r.end_date - r.start_date) AS date_range_days,
       v.is_valid,
-      -- Full-year flag
       CASE
         WHEN r.start_date = DATE_TRUNC('year', r.start_date)
          AND r.end_date   = DATE_TRUNC('year', r.start_date) + INTERVAL '1 year'
@@ -1066,18 +1050,18 @@ prior_avg AS (
     FROM prior_years
     GROUP BY SEVERITY
 ),
--- Totals for share and overall percentage change
+-- Totals 
 total_counts AS (
     SELECT
       SUM(cp.sum_count) AS total_current_period,
       CASE WHEN (SELECT is_valid FROM date_info) = 1
-           THEN SUM(pa.avg_sum_count)
+           THEN SUM(ROUND(pa.avg_sum_count, 2))
            ELSE NULL
       END AS total_prior_avg
     FROM current_period cp
     FULL JOIN prior_avg pa USING (SEVERITY)
 ),
--- Prior period label: switches between "Avg" and "YTD Avg"
+-- Prior period label
 prior_period_label AS (
     SELECT
       CASE
@@ -1098,22 +1082,28 @@ prior_period_label AS (
 SELECT 
     s.SEVERITY,
     COALESCE(cp.sum_count, 0) AS current_period_sum, 
-    ROUND(pa.avg_sum_count, 1) AS prior_3yr_avg_sum, 
+    ROUND(pa.avg_sum_count, 2) AS prior_3yr_avg_sum, 
     CASE WHEN pa.avg_sum_count IS NOT NULL
-         THEN ROUND(COALESCE(cp.sum_count, 0) - pa.avg_sum_count, 1)
+         THEN ROUND(COALESCE(cp.sum_count, 0) - pa.avg_sum_count, 2)
          ELSE NULL
     END AS difference,
     CASE
-        WHEN pa.avg_sum_count IS NOT NULL AND pa.avg_sum_count != 0
-        THEN (COALESCE(cp.sum_count, 0) - ROUND(pa.avg_sum_count,1)) / ROUND(pa.avg_sum_count, 1)
-        ELSE NULL
+        WHEN COALESCE(cp.sum_count, 0) = 0
+          OR COALESCE(pa.avg_sum_count, 0) = 0
+        THEN NULL
+        ELSE
+          (COALESCE(cp.sum_count, 0) - ROUND(pa.avg_sum_count, 1))
+          / ROUND(pa.avg_sum_count, 1)
     END AS percentage_change,
     (SELECT date_range_label FROM date_info) AS current_period_range,
     (SELECT label FROM prior_period_label)   AS prior_period_range,
     CASE
-        WHEN total_prior_avg IS NOT NULL AND total_prior_avg != 0
-        THEN (total_current_period - ROUND(total_prior_avg, 1)) / ROUND(total_prior_avg, 1)
-        ELSE NULL
+        WHEN COALESCE(total_current_period, 0) = 0
+          OR COALESCE(total_prior_avg, 0) = 0
+        THEN NULL
+        ELSE
+          (ROUND(total_current_period, 1) - ROUND(total_prior_avg, 1))
+          / ROUND(total_prior_avg, 1)
     END AS total_percentage_change,
     COALESCE(cp.sum_count, 0) / NULLIF(total_current_period, 0) AS current_severity_percentage,
     CASE WHEN total_prior_avg IS NOT NULL
@@ -1615,13 +1605,15 @@ prior_years AS (
       AND cr.REPORTDATE >= p.current_year_start - INTERVAL '3 year'
       AND cr.REPORTDATE <  p.current_year_end_excl - INTERVAL '3 year'
 ),
--- Average of the three prior YTDs
+-- Average of the three prior YTDs (rounded)
 prior_avg AS (
     SELECT
-        (COALESCE(MAX(CASE WHEN yr_offset = 1 THEN sum_count END), 0) +
-         COALESCE(MAX(CASE WHEN yr_offset = 2 THEN sum_count END), 0) +
-         COALESCE(MAX(CASE WHEN yr_offset = 3 THEN sum_count END), 0)
-        ) / 3.0 AS prior_3yr_avg_sum
+        ROUND(
+            (COALESCE(MAX(CASE WHEN yr_offset = 1 THEN sum_count END), 0) +
+             COALESCE(MAX(CASE WHEN yr_offset = 2 THEN sum_count END), 0) +
+             COALESCE(MAX(CASE WHEN yr_offset = 3 THEN sum_count END), 0)
+            ) / 3.0
+        , 1) AS prior_3yr_avg_sum
     FROM prior_years
 )
 SELECT
@@ -1960,8 +1952,8 @@ description="By default, there is a two-day lag after the latest update"
           <Column id="MODE" title="Road User" description="*Fatal Only" wrap=true totalAgg="Total"/>
           <Column id=ICON title=' ' contentType=image height=22px align=center totalAgg=" "/>
           <Column id="current_period_sum" title="{period_comp_mode_3ytd[0].current_period_range}"/>
-          <Column id="prior_3yr_avg_sum" fmt="#,##0" description="Average counts are rounded to simplify reporting." title="{period_comp_mode_3ytd[0].prior_period_range}" />
-          <Column id="difference" contentType="delta" fmt="#,##0" downIsGood title="Diff"/>
+          <Column id="prior_3yr_avg_sum" fmt="#,##0.0" description="Average counts are rounded to simplify reporting." title="{period_comp_mode_3ytd[0].prior_period_range}" />
+          <Column id="difference" contentType="delta" fmt="#,##0.0" downIsGood title="Diff"/>
           <Column id="percentage_change" fmt="pct0" title="% Diff" totalAgg={period_comp_mode_3ytd[0].total_percentage_change} totalFmt="pct0"/>
         </DataTable>
 
@@ -1992,9 +1984,9 @@ description="By default, there is a two-day lag after the latest update"
         <DataTable data={period_comp_severity_3ytd} totalRow=true sort="current_period_sum desc" wrapTitles=true rowShading=true title="Year Over Year Comparison of {`${severity_selection[0].SEVERITY_SELECTION}`} for All Road Users">
           <Column id=SEVERITY title=Severity wrap=true totalAgg="Total"/>
           <Column id=current_period_sum title="{period_comp_severity_3ytd[0].current_period_range}" />
-          <Column id=prior_3yr_avg_sum fmt='#,##0' description="Average counts are rounded to simplify reporting." title="{period_comp_severity_3ytd[0].prior_period_range}" />
-          <Column id=difference contentType=delta fmt='#,##0' downIsGood=True title="Diff"/>
-          <Column id=percentage_change fmt='pct' title="% Diff" totalAgg={period_comp_severity_3ytd[0].total_percentage_change} totalFmt='pct' /> 
+          <Column id=prior_3yr_avg_sum fmt='#,##0.0' description="Average counts are rounded to simplify reporting." title="{period_comp_severity_3ytd[0].prior_period_range}" />
+          <Column id=difference contentType=delta fmt='#,##0.0' downIsGood=True title="Diff"/>
+          <Column id=percentage_change fmt="pct0" title="% Diff" totalAgg={period_comp_severity_3ytd[0].total_percentage_change} totalFmt="pct0" /> 
         </DataTable>
 
         <div style="font-size: 14px;">
