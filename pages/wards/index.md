@@ -87,12 +87,10 @@ WITH
                 WHEN start_date = DATE_TRUNC('year', start_date)
                 AND end_date   = DATE_TRUNC('year', start_date) + INTERVAL '1 year'
                 THEN EXTRACT(YEAR FROM start_date)::VARCHAR
-
                 -- Current YTD → "YYYY YTD"
                 WHEN start_date = DATE_TRUNC('year', CURRENT_DATE)
                 AND '${inputs.date_range.end}'::DATE = end_date - INTERVAL '1 day'
                 THEN EXTRACT(YEAR FROM (end_date - INTERVAL '1 day'))::VARCHAR || ' YTD'
-
                 -- Default formatted range
                 ELSE
                     strftime(start_date, '%m/%d/%y')
