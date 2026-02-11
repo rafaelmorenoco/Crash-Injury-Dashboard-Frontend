@@ -458,7 +458,7 @@ WITH
     WHERE yr <> current_year
   )
 SELECT 
-  COALESCE(AVG(yearly_count), 0) AS average_count,
+  ROUND(COALESCE(AVG(yearly_count), 0), 0) AS average_count,
   CASE
     -- Full calendar year → remove YTD
     WHEN ANY_VALUE(date_info.start_date) = DATE_TRUNC('year', ANY_VALUE(date_info.start_date))
