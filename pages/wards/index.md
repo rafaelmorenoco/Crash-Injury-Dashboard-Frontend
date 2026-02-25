@@ -3,6 +3,7 @@ title: Ward Breakdown
 queries:
    - last_record: last_record.sql
    - age_range: age_range.sql
+   - has_major_fatal: has_major_fatal.sql
 sidebar_position: 3
 ---
 
@@ -348,12 +349,23 @@ description="By default, there is a two-day lag after the latest update"
 />
 
 <Dropdown
-    data={unique_severity} 
-    name=multi_severity
-    value=SEVERITY
-    title="Severity"
-    multiple=true
-    defaultValue={['Fatal', 'Major']}
+data={unique_severity}
+name="multi_severity"
+value="SEVERITY"
+title="Severity"
+multiple={true}
+defaultValue={
+    (() => {
+    const today = new Date();
+    const day = today.getDate();
+    const notInFirstWeek = (day > 9);
+    const noMajorFatal = (has_major_fatal[0].mf_count === 0);
+    const shouldIncludeMinor = notInFirstWeek && noMajorFatal;
+    return shouldIncludeMinor
+      ? ['Fatal', 'Major', 'Minor']
+      : ['Fatal', 'Major'];
+    })()
+}
 />
 
 <Dropdown
