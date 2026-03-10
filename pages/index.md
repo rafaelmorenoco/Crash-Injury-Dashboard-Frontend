@@ -173,17 +173,6 @@ WITH
   )
 SELECT
   mas.MODE,
-  CASE
-    WHEN mas.MODE = 'Driver'       THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/driver.png'
-    WHEN mas.MODE = 'Passenger'    THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/passenger.png'
-    WHEN mas.MODE = 'Pedestrian'   THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/pedestrian.png'
-    WHEN mas.MODE = 'Bicyclist'    THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/bicyclist.png'
-    WHEN mas.MODE = 'Motorcyclist*' THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/motorcyclist.png'
-    WHEN mas.MODE = 'Scooterist*'  THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/scooterist.png'
-    WHEN mas.MODE IN ('Unknown','Other')
-                                   THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/unknown.png'
-    ELSE NULL
-  END AS ICON,
   COALESCE(cp.sum_count, 0) AS current_period_sum,
   COALESCE(pp.sum_count, 0) AS prior_period_sum,
   COALESCE(cp.sum_count, 0) - COALESCE(pp.sum_count, 0) AS difference,
@@ -710,17 +699,6 @@ prior_period_label AS (
 )
 SELECT
   mas.MODE,
-  CASE
-    WHEN mas.MODE = 'Driver'        THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/driver.png'
-    WHEN mas.MODE = 'Passenger'     THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/passenger.png'
-    WHEN mas.MODE = 'Pedestrian'    THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/pedestrian.png'
-    WHEN mas.MODE = 'Bicyclist'     THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/bicyclist.png'
-    WHEN mas.MODE = 'Motorcyclist*' THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/motorcyclist.png'
-    WHEN mas.MODE = 'Scooterist*'   THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/scooterist.png'
-    WHEN mas.MODE IN ('Unknown','Other')
-                                    THEN 'https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Backend/main/Icons/unknown.png'
-    ELSE NULL
-  END AS ICON,
   COALESCE(cp.sum_count, 0) AS current_period_sum,
   ROUND(COALESCE(pa.avg_sum_count, 0), 2) AS prior_3yr_avg_sum,
   ROUND(
@@ -2118,7 +2096,6 @@ defaultValue={
       <Group>
         <DataTable data={period_comp_mode} totalRow sort="current_period_sum desc" wrapTitles rowShading title="Year Over Year Comparison of {`${severity_selection[0].SEVERITY_SELECTION}`} by Road User">
           <Column id="MODE" title="Road User" description="*Fatal Only" wrap=true totalAgg="Total"/>
-          <Column id=ICON title=' ' contentType=image height=22px align=center totalAgg=" "/>
           <Column id="current_period_sum" title="{period_comp_mode[0].current_period_range}"/>
           <Column id="prior_period_sum" title="{period_comp_mode[0].prior_period_range}"/>
           <Column id="difference" contentType="delta" downIsGood title="Diff"/>
