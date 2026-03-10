@@ -2105,16 +2105,6 @@ defaultValue={
             Since Mayor Bowser launched Vision Zero in 2015, the District has transformed how we design and use our streets, strengthening laws, expanding education, redesigning roads and intersections, lowering speed limits, and increasing enforcement to make travel safer for everyone. Learn more: [Progress Timeline](/Progress/).
 
           </div>
-          <div markdown style="font-size: 14px;">
-
-            Additionally, DDOT uses crash injury data to target engineering fixes that slow speeds, shorten crossings, and carve out safe spaces for all road users. Learn more: [Engineering for Safety](https://visionzero.dc.gov/pages/engineering).
-
-          </div>
-          <div markdown style="font-size: 14px;">
-
-            Similarly, DDOT intentionally aligns with Vision Zero goals through safety-focused projects across all eight wards. Learn more: [Projects](https://projects.ddot.dc.gov/pages/projects).
-
-          </div>
         </Alert>
       </Group>
 
@@ -2194,22 +2184,25 @@ defaultValue={
             Since Mayor Bowser launched Vision Zero in 2015, the District has transformed how we design and use our streets, strengthening laws, expanding education, redesigning roads and intersections, lowering speed limits, and increasing enforcement to make travel safer for everyone. [Progress Timeline](/Progress/).
 
           </div>
-          <div markdown style="font-size: 14px;">
-
-            Additionally, DDOT uses crash injury data to target engineering fixes that slow speeds, shorten crossings, and carve out safe spaces for all road users. Learn more: [Engineering for Safety](https://visionzero.dc.gov/pages/engineering).
-
-          </div>
-          <div markdown style="font-size: 14px;">
-
-            Similarly, DDOT intentionally aligns with Vision Zero goals through safety-focused projects across all eight wards. Learn more: [Projects](https://projects.ddot.dc.gov/pages/projects).
-
-          </div>
         </Alert>
       </Group>
 
     </Grid>
   </Tab>
 </Tabs>
+
+<Alert status="positive">
+  <div markdown style="font-size: 14px;">
+
+    Additionally, DDOT uses crash injury data to target engineering fixes that slow speeds, shorten crossings, and carve out safe spaces for all road users. Learn more: [Engineering for Safety](https://visionzero.dc.gov/pages/engineering).
+
+  </div>
+  <div markdown style="font-size: 14px;">
+
+    Similarly, DDOT intentionally aligns with Vision Zero goals through safety-focused projects across all eight wards. Learn more: [Projects](https://projects.ddot.dc.gov/pages/projects).
+
+  </div>
+</Alert>
 
 <Note>
     The latest crash record in the dataset is from <Value data={last_record} column="latest_record"/> and the data was last updated on <Value data={last_record} column="latest_update"/> hrs. This lag factors into prior period comparisons. The maximum comparison period is 5 years.
