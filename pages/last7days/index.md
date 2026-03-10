@@ -251,6 +251,17 @@ The last 7 days with available data range from <Value data={inc_map} column="WEE
     description='Age 120 serves as a placeholder for missing age values in the records. However, missing values will be automatically excluded from the query if the default 0-120 range is changed by the user. To get a count of missing age values, go to the "Age Distribution" page.'
 />
 
+<script>
+  let isDesktop = false;
+
+  onMount(() => {
+    isDesktop = window.innerWidth >= 768;
+    const handleResize = () => { isDesktop = window.innerWidth >= 768; };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  });
+</script>
+
 <Grid cols=2>
     <Group>
         <div style="font-size: 14px;">
@@ -287,6 +298,9 @@ The last 7 days with available data range from <Value data={inc_map} column="WEE
         <DataTable data={inc_map} title="Last 7 Days - Table of {`${mode_severity_selection[0].SEVERITY_SELECTION}`} for {`${mode_severity_selection[0].MODE_SELECTION}`}" wrapTitles=true rowShading=true groupBy=WEEKDAY subtotals=true sort="day desc" totalRow=true accordionRowColor="#D3D3D3">
             <Column id=REPORTDATE title="Date" fmt='hh:mm' wrap=true totalAgg="Total"/>
             <Column id=MODESEV title="Road User - Sev" wrap=true/>
+            {#if isDesktop}
+                <Column id=CCN title="CCN" wrap=true/>
+            {/if}
             <Column id=AGE title="Age" wrap=true totalAgg="-"/>
             <Column id=ADDRESS title="Approx Address" wrap=true/>
             <Column id=COUNT title="#" wrap=true/>
