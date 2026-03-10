@@ -44,9 +44,9 @@ WITH latest AS (
 ),
 date_range AS (
     SELECT 
-    (end_date - INTERVAL '6 day') AS start_date,
-    end_date,
-    (end_date + INTERVAL '1 day') AS end_date_exclusive
+        (end_date - INTERVAL '6 day') AS start_date,
+        end_date,
+        (end_date + INTERVAL '1 day') AS end_date_exclusive
     FROM latest
 ),
 dates AS (
@@ -60,19 +60,19 @@ filtered_crashes AS (
         date_trunc('day', c.REPORTDATE) AS crash_day
     FROM crashes.crashes c
     JOIN date_range d
-    ON c.REPORTDATE >= d.start_date 
+        ON c.REPORTDATE >= d.start_date 
         AND c.REPORTDATE < d.end_date_exclusive
     WHERE c.MODE IN ${inputs.multi_mode_dd.value}
-    AND c.SEVERITY IN ${inputs.multi_severity.value}
-    AND c.AGE BETWEEN ${inputs.min_age.value}
-                        AND (
-                            CASE 
-                                WHEN ${inputs.min_age.value} <> 0 
-                                AND ${inputs.max_age.value} = 120
-                                THEN 119
-                                ELSE ${inputs.max_age.value}
-                            END
-                            )
+      AND c.SEVERITY IN ${inputs.multi_severity.value}
+      AND c.AGE BETWEEN ${inputs.min_age.value}
+                     AND (
+                         CASE 
+                             WHEN ${inputs.min_age.value} <> 0 
+                                  AND ${inputs.max_age.value} = 120
+                             THEN 119
+                             ELSE ${inputs.max_age.value}
+                         END
+                     )
 )
 SELECT 
     d.day,
@@ -81,8 +81,45 @@ SELECT
     COALESCE(fc.LATITUDE, 0) AS LATITUDE,
     COALESCE(fc.LONGITUDE, 0) AS LONGITUDE,
     SUBSTRING(fc.MODE, 1, 3) || '-' || SUBSTRING(fc.SEVERITY, 1) AS MODESEV,
-    fc.ADDRESS,
-    fc.GRID_ID,
+    -- Address abbreviation
+    REGEXP_REPLACE(
+        REGEXP_REPLACE(
+            REGEXP_REPLACE(
+                REGEXP_REPLACE(
+                    REGEXP_REPLACE(
+                        REGEXP_REPLACE(
+                            REGEXP_REPLACE(
+                                REGEXP_REPLACE(
+                                    REGEXP_REPLACE(
+                                        REGEXP_REPLACE(
+                                            REGEXP_REPLACE(
+                                                REGEXP_REPLACE(
+                                                    fc.ADDRESS,
+                                                    '\\bSTREET\\b', 'ST'
+                                                ),
+                                                '\\bAVENUE\\b', 'AVE'
+                                            ),
+                                            '\\bROAD\\b', 'RD'
+                                        ),
+                                        '\\bPLACE\\b', 'PL'
+                                    ),
+                                    '\\bCOURT\\b', 'CT'
+                                ),
+                                '\\bCIRCLE\\b', 'CIR'
+                            ),
+                            '\\bBOULEVARD\\b', 'BLVD'
+                        ),
+                        '\\bDRIVE\\b', 'DR'
+                    ),
+                    '\\bTERRACE\\b', 'TER'
+                ),
+                '\\bPARKWAY\\b', 'PKWY'
+            ),
+            '\\bEXPRESSWAY\\b', 'EXPY'
+        ),
+        '\\bLANE\\b', 'LN'
+    ) AS ADDRESS,
+    fc.CCN,
     CASE
         WHEN CAST(fc.AGE AS INTEGER) = 120 THEN '-'
         ELSE CAST(CAST(fc.AGE AS INTEGER) AS VARCHAR)
@@ -229,6 +266,7 @@ The last 7 days with available data range from <Value data={inc_map} column="WEE
             <Points data={inc_map} lat=LATITUDE long=LONGITUDE pointName=MODE value=WEEKDAY ignoreZoom=true colorPalette={['#595cff','#6b76ff','#7d90ff','#90aaff','#a2c4ff','#b4deff','#c6f8ff']}
             tooltip={[
                 {id:'MODESEV', showColumnName:false, fmt:'id', valueClass:'text-l font-semibold'},
+                {id:'CCN', showColumnName:false, fmt:'id'},
                 {id:'day', showColumnName:false, fmt:'mm/dd/yy'},
                 {id:'ADDRESS', showColumnName:false, fmt:'id'}
             ]}
