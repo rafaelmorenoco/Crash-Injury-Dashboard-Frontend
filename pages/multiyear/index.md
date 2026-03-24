@@ -180,12 +180,12 @@ WITH
   report_date_range AS (
     SELECT
       CASE 
-          WHEN '${inputs.date_range.end}'::DATE >= 
-               (SELECT CAST(MAX(LAST_RECORD) AS DATE) FROM crashes.crashes) 
-            THEN (SELECT MAX(LAST_RECORD) FROM crashes.crashes)
-          ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
-      END AS current_end_date,
-      '${inputs.date_range.start}'::DATE AS current_start_date
+        WHEN '${inputs.date_range.end}'::DATE 
+            >= (SELECT MAX(LAST_RECORD) FROM crashes.crashes)::DATE
+        THEN (SELECT MAX(LAST_RECORD) FROM crashes.crashes)::DATE + INTERVAL '1 day'
+        ELSE '${inputs.date_range.end}'::DATE + INTERVAL '1 day'
+      END AS end_date,
+      '${inputs.date_range.start}'::DATE AS start_date
   ),
   -- Extract month/day details, current year & build a date_range_label following your criteria.
   date_info AS (
