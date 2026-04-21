@@ -194,8 +194,8 @@ WITH
       current_end_date     AS end_date,
 
       CASE
-        WHEN current_start_date = DATE_TRUNC('year', current_end_date)
-            AND '${inputs.date_range.end}'::DATE = current_end_date::DATE
+        WHEN current_start_date = DATE_TRUNC('year', current_end_date - INTERVAL '1 day')
+            AND '${inputs.date_range.end}'::DATE >= (SELECT MAX(LAST_RECORD) FROM crashes.crashes)::DATE
           THEN 'to Date'
         ELSE
           '('
