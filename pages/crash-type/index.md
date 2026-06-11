@@ -339,7 +339,7 @@ description="By default, there is a two-day lag after the latest update"
 
 
 <Note>
-    Crash type abbreviations: Motor Vehicle (MV), Bicycle (Bic), Pedestrian (Ped), Other (Oth), Motorcycle* (MC*), Standing Scooter* (SS*), Multi-party (MP), Object (Obj), Unclassified (Unc).
+    <b>Crash type abbreviations</b>: Motor Vehicle (MV), Bicycle (Bic), Pedestrian (Ped), Other (Oth), Motorcycle* (MC*), Standing Scooter* (SS*), Multi-party (MP), Object (Obj), Unclassified (Unc).
 </Note>
 
 <Note>

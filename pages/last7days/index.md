@@ -433,7 +433,7 @@ The last 7 days with available data range from <Value data={inc_map} column="WEE
 </Grid>
 
 <Note>
-    Crash type abbreviations: Motor Vehicle (MV), Motorcycle or Motor Driven Cycle (MC), Standing Scooter (SS), Multi-party (MP). 
+    <b>Crash type abbreviations</b>: Motor Vehicle (MV), Bicycle (Bic), Pedestrian (Ped), Other (Oth), Motorcycle* (MC*), Standing Scooter* (SS*), Multi-party (MP), Object (Obj), Unclassified (Unc).
 </Note>
 
 <Note>
