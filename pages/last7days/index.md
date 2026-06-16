@@ -310,7 +310,7 @@ WITH
 SELECT
   CASE
     WHEN mode_count = 0 THEN ' '
-    WHEN mode_count = total_mode_count THEN 'all Road Users (RU)'
+    WHEN mode_count = total_mode_count THEN 'All Road Users (RU)'
     WHEN mode_count = 1 THEN mode_list
     WHEN mode_count = 2 THEN REPLACE(mode_list, ', ', ' and ')
     ELSE REGEXP_REPLACE(mode_list, ',([^,]+)$', ', and \\1')
