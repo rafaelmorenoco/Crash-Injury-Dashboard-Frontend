@@ -12,40 +12,28 @@ jobs:
   merge:
     runs-on: ubuntu-latest
     steps:
-      # 1. Check out the main branch with full history.
       - name: Checkout main branch
         uses: actions/checkout@v3
         with:
           ref: main
           fetch-depth: 0
 
-      # 2. Configure Git.
       - name: Configure Git
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
-      # 3. Merge dev into main, then force the workflows folder to remain as on main,
-      #    and resolve crashes.parquet by taking the dev version.
       - name: Merge dev into main
         run: |
-          # Fetch the latest dev branch.
           git fetch origin dev
-          # Merge dev into main without auto-committing.
           git merge origin/dev --no-commit --no-ff || true
-          
-          # Resolve conflicts in crashes.parquet by checking out the version from dev.
-          git checkout --theirs crashes.parquet || true
-          git add crashes.parquet
-          
-          # Commit the merge if there are any staged changes.
+          git add -A
           if ! git diff --cached --quiet; then
-            git commit -m "Merge dev into main (skip CI)"
+            git commit -m "Merge dev into main [skip ci]"
           else
             echo "No merge commit necessary; nothing to commit."
           fi
 
-      # 4. Push the merge commit to main.
       - name: Push changes
         run: |
           git push origin main
