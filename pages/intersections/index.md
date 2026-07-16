@@ -766,9 +766,15 @@ defaultValue={
 
 <Grid cols=2>
     <Group>
+        <div style="font-size: 14px;">
+            <b>{`${mode_severity_selection[0].SEVERITY_SELECTION}`} for {`${mode_severity_selection[0].MODE_SELECTION}`} by Intersection ({`${period_comp_intx[0].current_period_range}`})</b>
+            <span style="display:block; font-size: 12px; color: #6c757d;">
+                Select an intersection on the map for details
+            </span>
+        </div>
+
         <BaseMap
             height=450
-            title="{`${mode_severity_selection[0].SEVERITY_SELECTION}`} for {`${mode_severity_selection[0].MODE_SELECTION}`} by Intersection ({`${period_comp_intx[0].current_period_range}`})"
         >
         <Areas data={unique_hin} geoJsonUrl='https://raw.githubusercontent.com/rafaelmorenoco/Crash-Injury-Dashboard-Frontend/main/static/High_Injury_Network.geojson' geoId=GIS_ID areaCol=GIS_ID borderColor=#9d00ff color=#1C00ff00
             tooltip={[
@@ -815,14 +821,16 @@ defaultValue={
         </Note>
     </Group>
     <Group>
-        <div style="font-size: 14px;">
-            <b>Find a Specific Intersection</b>
-            <span style="display:block; font-size: 12px; color: #6c757d;">
-                Choose streets 1 and 2 to filter the table below, or select an intersection on the map for details.
-            </span>
-        </div>
-        <Dropdown data={roadsegment_dropdown_a} name=roadsegment_a value=road title="Street 1" defaultValue="All Streets"/>
-        <Dropdown data={roadsegment_dropdown_b} name=roadsegment_b value=road title="Street 2" defaultValue="All Streets"/>
+        <Alert status="positive">
+            <div style="font-size: 14px;">
+                <b>Start Here: Intersection Search</b>
+                <span style="display:block; font-size: 12px; color: #6c757d;">
+                    Choose a street (↓) and the intersecting street (↓)
+                </span>
+            </div>
+            <Dropdown data={roadsegment_dropdown_a} name=roadsegment_a value=road title="①" defaultValue="All Streets"/>
+            <Dropdown data={roadsegment_dropdown_b} name=roadsegment_b value=road title="②" defaultValue="All Streets"/>
+        </Alert>
         <DataTable data={period_comp_intx} search=false rows=10 sort="current_period_sum desc" title="Year Over Year Comparison of {`${mode_severity_selection[0].SEVERITY_SELECTION}`} for {`${mode_severity_selection[0].MODE_SELECTION}`} by Intersection" wrapTitles=true rowShading=true>
             <Column id=INTERSECTION_NAME title="Intersection" wrap=true/>
             <Column id=current_period_sum title={`${period_comp_intx[0].current_period_range}`} />
