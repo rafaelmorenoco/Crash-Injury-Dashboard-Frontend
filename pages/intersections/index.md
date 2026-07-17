@@ -745,7 +745,7 @@ defaultValue={
         <div style="font-size: 14px;">
             <b>{`${mode_severity_selection[0].SEVERITY_SELECTION}`} for {`${mode_severity_selection[0].MODE_SELECTION}`} by Intersection ({`${period_comp_intx[0].current_period_range}`})</b>
             <span style="display:block; font-size: 12px; color: #6c757d;">
-                Select an intersection on the map for details
+                Select an intersection on the map for details. Refresh the page to reset.
             </span>
         </div>
 
@@ -792,7 +792,7 @@ defaultValue={
             <div style="font-size: 14px;">
                 <b>Start Here: Intersection Search</b>
                 <span style="display:block; font-size: 12px; color: #6c757d;">
-                    Choose a street (↓) and the intersecting street (↓). Pick "All Streets" to reset.
+                    Choose a street (↓) and the intersecting street (↓)
                 </span>
             </div>
             <Dropdown data={roadsegment_dropdown_a} name=roadsegment_a value=road title="①" defaultValue="All Streets" order="sort_order asc, road asc"/>
