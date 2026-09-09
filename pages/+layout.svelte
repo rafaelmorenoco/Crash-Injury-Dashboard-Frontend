@@ -2,10 +2,11 @@
 	import '@evidence-dev/tailwind/fonts.css';
 	import '../app.css';
 	import { EvidenceDefaultLayout } from '@evidence-dev/core-components';
+	import { base } from '$app/paths';
 	export let data;
 </script>
 
-<a class="vz-mobile-logo" href="/Crash-Injury-Dashboard/" aria-label="Home">
+<a class="vz-mobile-logo" href="{base}/" aria-label="Home">
 	<img src="https://app.box.com/shared/static/gumr231kd3x35lrvkl54qirbphvsnkkx.png" alt="Home" />
 </a>
 
