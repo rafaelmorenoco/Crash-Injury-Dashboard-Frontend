@@ -76,6 +76,10 @@ crash_map AS (
         ('motor vehicle - other', 'MV-Oth'),
         ('motor vehicle - motorcycle*', 'MV-MC'),
         ('motor vehicle - standing scooter*', 'MV-SS'),
+        ('motorcycle* - motorcycle*', 'MC-MC'),
+        ('multiple motorcycle*s', '>2 MC'),
+        ('motorcycle* - standing scooter*', 'MC-SS'),
+        ('motorcycle* - other', 'MC-Oth'),
         ('bicycle - other', 'Bic-Oth'),
         ('other - pedestrian', 'Oth-Ped'),
         ('motorcycle* - pedestrian', 'MC-Ped'),
@@ -345,7 +349,7 @@ The last 7 days with available data range from <Value data={inc_map} column="WEE
     title="Road User"
     multiple=true
     selectAllByDefault=true
-    description="*Only fatal"
+    description="*Limited historical coverage"
 />
 
 <Dropdown 
@@ -435,6 +439,14 @@ The last 7 days with available data range from <Value data={inc_map} column="WEE
 
 <Note>
     <b>Crash type abbreviations</b>: Motor Vehicle (MV), Bicycle (Bic), Pedestrian (Ped), Other (Oth), Motorcycle* (MC*), Standing Scooter* (SS*), Multi-party (MP), Object (Obj), Unclassified (Unc).
+</Note>
+
+<Note>
+    Crash types marked * (MC*, SS*) carry the same coverage caveat as the road users above. Fatal crash type is defined by the first and second striking vehicle or object; injury crash type is defined from the parties present in the crash.
+</Note>
+
+<Note>
+    <b>Road users marked *</b> (Motorcyclist*, Scooterist*): fatalities cover all years, while injury data is newer. Scooterist injuries are available from 2021 onward, and Motorcyclist pre-2021 injury coverage is being verified.
 </Note>
 
 <Note>

@@ -80,6 +80,10 @@ WITH crash_map AS (
         ('motor vehicle - other', 'MV-Oth'),
         ('motor vehicle - motorcycle*', 'MV-MC*'),
         ('motor vehicle - standing scooter*', 'MV-SS*'),
+        ('motorcycle* - motorcycle*', 'MC*-MC*'),
+        ('multiple motorcycle*s', '>2 MC*'),
+        ('motorcycle* - standing scooter*', 'MC*-SS*'),
+        ('motorcycle* - other', 'MC*-Oth'),
         ('bicycle - other', 'Bic-Oth'),
         ('other - pedestrian', 'Oth-Ped'),
         ('motorcycle* - pedestrian', 'MC*-Ped'),
@@ -261,7 +265,7 @@ description="By default, there is a two-day lag after the latest update"
     title="Road User"
     multiple=true
     selectAllByDefault=true
-    description="*Only fatal"
+    description="*Limited historical coverage"
 />
 
 <Dropdown
@@ -385,7 +389,11 @@ description="By default, there is a two-day lag after the latest update"
 </Note>
 
 <Note>
-    *Fatal only.  For fatalities, crash type is defined exclusively by the first striking vehicle and the second striking vehicle or object.
+    Crash types marked * (MC*, SS*) carry the same coverage caveat as the road users above. Fatal crash type is defined by the first and second striking vehicle or object; injury crash type is defined from the parties present in the crash.
+</Note>
+
+<Note>
+    <b>Road users marked *</b> (Motorcyclist*, Scooterist*): fatalities cover all years, while injury data is newer. Scooterist injuries are available from 2021 onward, and Motorcyclist pre-2021 injury coverage is being verified.
 </Note>
 
 <Note>
