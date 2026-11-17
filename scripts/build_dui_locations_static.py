@@ -26,7 +26,8 @@ rebuilding those files.
 
 Inputs (all committed):
   Intersection_Points_unique.parquet       copied in by the monthly refresh
-  establishments_weighted.parquet          venue points and weights
+  establishments_weighted.parquet          venue points and weights, rebuilt
+                                           monthly by prep_establishments.py
   scripts/dui_arrests_2021_2025.parquet    DUI arrest points, 2021-2025, from
                                            MPD Adult Arrests (driving, not
                                            boating; offense location). Fixed:
